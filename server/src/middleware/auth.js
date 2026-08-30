@@ -3,6 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { verifyAccessToken } from '../utils/jwt.js';
 import { ACCESS_TOKEN_COOKIE } from '../utils/cookies.js';
+import { can } from '../config/permissions.js';
 
 /**
  * Verifies the access token from its HttpOnly cookie and attaches a minimal
@@ -30,8 +31,9 @@ const authenticate = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * Restricts a route to the given roles. Must run after `authenticate`.
- * Usage: router.post('/employees', authenticate, authorize('admin', 'super_admin'), ...)
+ * Restricts a route to a set of roles. Must run after `authenticate`.
+ * Accepts explicit role names for ad-hoc gating:
+ *   authorize('admin', 'super_admin')
  */
 const authorize = (...roles) => (req, res, next) => {
   if (!req.user) {
@@ -42,6 +44,56 @@ const authorize = (...roles) => (req, res, next) => {
   }
   next();
 };
+
+/**
+ * Preferred gate for feature routes: checks a named permission against the
+ * central matrix in config/permissions.js instead of an inline role list, so
+ * the policy stays in one place.
+ *   router.post('/employees', authenticate, requirePermission('employees:manage'), ...)
+ */
+const requirePermission = (action) => (req, res, next) => {
+  if (!req.user) {
+    return next(ApiError.unauthorized('Authentication required'));
+  }
+  if (!can(req.user.role, action)) {
+    return next(ApiError.forbidden('You do not have permission to perform this action'));
+  }
+  next();
+};
+
+/**
+ * Ownership guard: allows the request when the authenticated user owns the
+ * target resource, OR holds one of the fallback roles (typically the "manage"
+ * roles for that resource). This expresses the spec's "Own profile" cells in
+ * the authorization matrix - e.g. an intern may edit their own profile, while
+ * admins may edit anyone's.
+ *
+ * `getOwnerId(req)` returns the id that must match the requester. It may be
+ * async (e.g. to look up the owning user of a resource). Returning null/undefined
+ * means ownership cannot be established, so access falls to the role check.
+ *
+ *   authorizeOwnerOrRoles(
+ *     (req) => req.params.userId,
+ *     ROLES.SUPER_ADMIN, ROLES.ADMIN
+ *   )
+ */
+const authorizeOwnerOrRoles = (getOwnerId, ...fallbackRoles) =>
+  asyncHandler(async (req, res, next) => {
+    if (!req.user) {
+      return next(ApiError.unauthorized('Authentication required'));
+    }
+
+    const ownerId = await getOwnerId(req);
+    if (ownerId && ownerId.toString() === req.user.id) {
+      return next();
+    }
+
+    if (fallbackRoles.includes(req.user.role)) {
+      return next();
+    }
+
+    return next(ApiError.forbidden('You do not have permission to perform this action'));
+  });
 
 /**
  * Like `authenticate`, but never rejects the request. Used on /auth/logout so
@@ -66,4 +118,10 @@ const attachUserIfPresent = asyncHandler(async (req, res, next) => {
   next();
 });
 
-export { authenticate, authorize, attachUserIfPresent };
+export {
+  authenticate,
+  authorize,
+  requirePermission,
+  authorizeOwnerOrRoles,
+  attachUserIfPresent,
+};

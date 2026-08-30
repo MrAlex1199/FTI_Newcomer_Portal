@@ -5,6 +5,9 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
+import authCheckRoutes from './routes/authCheck.js';
+import employeeRoutes from './routes/employees.js';
+import departmentRoutes from './routes/departments.js';
 
 const app = express();
 
@@ -44,8 +47,15 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/v1/auth', authRoutes);
-// app.use('/api/v1/employees', employeeRoutes);
+app.use('/api/v1/employees', employeeRoutes);
+app.use('/api/v1/departments', departmentRoutes);
 // etc.
+
+// Development-only routes for exercising the authorization layer. Never mounted
+// in production so they can't be reached on a deployed instance.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/v1/_authcheck', authCheckRoutes);
+}
 
 // Error handling middleware (must be last)
 app.use(notFound);

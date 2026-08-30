@@ -1,27 +1,64 @@
-import React from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './hooks/AuthContext.jsx';
+import ProtectedRoute from './components/common/ProtectedRoute.jsx';
+import RoleGuard from './components/common/RoleGuard.jsx';
+import Login from './pages/Login.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Employees from './pages/Employees.jsx';
+import AdminArea from './pages/AdminArea.jsx';
+import Unauthorized from './pages/Unauthorized.jsx';
 
+/**
+ * Route map for Task 4:
+ *  - /login          public
+ *  - /unauthorized   public (403 landing)
+ *  - /dashboard      any authenticated user (ProtectedRoute)
+ *  - /admin          admins only (ProtectedRoute + route-mode RoleGuard)
+ *  - /               redirect to dashboard
+ */
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-primary-600 mb-4">
-          FTI Welcome Hub
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Internal Onboarding & Information Portal
-        </p>
-        <div className="mt-8 p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            System Status
-          </h2>
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-            <span className="text-green-600 font-medium">Client Running</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/employees"
+            element={
+              <ProtectedRoute>
+                <Employees />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <RoleGuard roles={['super_admin', 'admin']}>
+                  <AdminArea />
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
