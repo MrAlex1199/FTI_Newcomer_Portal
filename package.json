@@ -1,0 +1,24 @@
+{
+  "name": "fti-welcome-hub",
+  "version": "1.0.0",
+  "description": "FTI Newcomer Portal - Internal onboarding and information system for Function International",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "build": "npm run build --prefix client",
+    "start:client": "npm run dev --prefix client",
+    "start:server": "npm run dev --prefix server"
+  },
+  "keywords": [
+    "onboarding",
+    "intern-management",
+    "employee-directory",
+    "organization-chart"
+  ],
+  "author": "FTI Internship Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
