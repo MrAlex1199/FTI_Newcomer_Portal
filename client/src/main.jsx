@@ -8,11 +8,17 @@ import { LanguageProvider } from './hooks/LanguageContext.jsx';
 import './index.css';
 
 // Single QueryClient for the app. Auth errors are handled by the axios
-// interceptor (silent refresh), so we don't retry aggressively here.
+// interceptor (silent refresh). Retry transient server/network failures, but
+// never repeat client errors or rate-limited requests automatically.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      staleTime: 30 * 1000,
+      retry: (failureCount, error) => {
+        const status = error?.response?.status;
+        if (status === 429 || (status >= 400 && status < 500)) return false;
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: false,
     },
   },

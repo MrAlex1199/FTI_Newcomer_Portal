@@ -36,9 +36,16 @@ app.use(
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  windowMs: 15 * 60 * 1000,
+  // The portal loads several read-only resources per page. Keep a lower
+  // production default while allowing normal local development navigation.
+  max: Number(process.env.API_RATE_LIMIT_MAX || (process.env.NODE_ENV === 'production' ? 200 : 300)),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many API requests. Please wait a few minutes and try again.',
+  },
 });
 app.use('/api', limiter);
 
