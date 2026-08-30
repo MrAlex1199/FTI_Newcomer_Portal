@@ -6,7 +6,11 @@ import { useEffect, useState } from 'react';
  * keystroke. Controlled by `value` so a parent "clear filters" action can
  * reset it.
  */
-export default function SearchBar({ value = '', onSearch, placeholder = 'Search...', delay = 300 }) {
+import useLanguage from '../../hooks/useLanguage.js';
+
+export default function SearchBar({ value = '', onSearch, placeholder, delay = 300, onFocus, onBlur, ariaLabel }) {
+  const { t } = useLanguage();
+  const resolvedPlaceholder = placeholder || t('search');
   const [text, setText] = useState(value);
 
   useEffect(() => {
@@ -26,7 +30,10 @@ export default function SearchBar({ value = '', onSearch, placeholder = 'Search.
       type="search"
       value={text}
       onChange={(e) => setText(e.target.value)}
-      placeholder={placeholder}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      aria-label={ariaLabel || resolvedPlaceholder}
+      placeholder={resolvedPlaceholder}
       className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
     />
   );

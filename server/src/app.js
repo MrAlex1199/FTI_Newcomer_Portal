@@ -11,6 +11,12 @@ import departmentRoutes from './routes/departments.js';
 import internRoutes from './routes/interns.js';
 import internBatchRoutes from './routes/internBatches.js';
 import organizationRoutes from './routes/organization.js';
+import knowledgeRoutes from './routes/knowledge.js';
+import companyRoutes from './routes/company.js';
+import policyRoutes from './routes/policies.js';
+import faqRoutes from './routes/faq.js';
+import announcementRoutes from './routes/announcements.js';
+import searchRoutes from './routes/search.js';
 
 const app = express();
 
@@ -55,6 +61,12 @@ app.use('/api/v1/departments', departmentRoutes);
 app.use('/api/v1/interns', internRoutes);
 app.use('/api/v1/intern-batches', internBatchRoutes);
 app.use('/api/v1/organization', organizationRoutes);
+app.use('/api/v1/knowledge', knowledgeRoutes);
+app.use('/api/v1/company', companyRoutes);
+app.use('/api/v1/policies', policyRoutes);
+app.use('/api/v1/faq', faqRoutes);
+app.use('/api/v1/announcements', announcementRoutes);
+app.use('/api/v1/search', searchRoutes);
 // etc.
 
 // Development-only routes for exercising the authorization layer. Never mounted

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App.jsx';
+import { LanguageProvider } from './hooks/LanguageContext.jsx';
 import './index.css';
 
 // Single QueryClient for the app. Auth errors are handled by the axios
@@ -18,7 +19,9 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <LanguageProvider>
+        <App />
+      </LanguageProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

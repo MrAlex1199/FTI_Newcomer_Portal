@@ -10,8 +10,11 @@ import useAuth from '../../hooks/useAuth.js';
  * On failure it redirects to /login and stashes the attempted location so the
  * login page can return the user there afterward.
  */
+import useLanguage from '../../hooks/useLanguage.js';
+
 export default function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
 
   if (loading) {
@@ -19,7 +22,7 @@ export default function ProtectedRoute({ children }) {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-3 text-gray-500">
           <span className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          Loading...
+          {t('loading')}
         </div>
       </div>
     );

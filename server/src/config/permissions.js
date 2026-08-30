@@ -50,6 +50,7 @@ export const PERMISSIONS = Object.freeze({
   'policies:view': ALL_ROLES,
   'faq:view': ALL_ROLES,
   'announcements:view': ALL_ROLES,
+  'search:view': ALL_ROLES,
 
   // Content management
   'employees:manage': ADMINS,

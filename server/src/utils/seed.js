@@ -22,6 +22,7 @@ import {
   Policy,
   FAQ,
   KnowledgeArticle,
+  CompanyInfo,
   Feedback,
   AuditLog,
 } from '../models/index.js';
@@ -48,6 +49,7 @@ const clearCollections = async () => {
     Policy,
     FAQ,
     KnowledgeArticle,
+    CompanyInfo,
     Feedback,
     AuditLog,
   ];
@@ -781,6 +783,8 @@ const seedArticles = async (users) => {
         'If the problem continues, contact IT Support at extension 1202.',
       tags: ['printer', 'troubleshooting', 'hardware'],
       sortOrder: 1,
+      isQuickLink: true,
+      quickLinkOrder: 1,
       helpfulCount: 12,
       notHelpfulCount: 1,
       viewCount: 87,
@@ -803,6 +807,8 @@ const seedArticles = async (users) => {
         'and the error message shown.',
       tags: ['wifi', 'network', 'connectivity'],
       sortOrder: 2,
+      isQuickLink: true,
+      quickLinkOrder: 2,
       helpfulCount: 9,
       notHelpfulCount: 2,
       viewCount: 64,
@@ -823,6 +829,8 @@ const seedArticles = async (users) => {
         'or email. Change any temporary password at your first login.',
       tags: ['password', 'account', 'security'],
       sortOrder: 3,
+      isQuickLink: true,
+      quickLinkOrder: 3,
       helpfulCount: 7,
       notHelpfulCount: 0,
       viewCount: 41,
@@ -874,6 +882,34 @@ const seedArticles = async (users) => {
 
   log(`  created ${articles.length} knowledge articles (3 guide, 5 IT help)`);
   return articles;
+};
+
+const seedCompanyInfo = async (users) => {
+  section('Seeding company information');
+  const company = await CompanyInfo.create({
+    key: 'default',
+    name: 'FTI Welcome Hub Demo Company',
+    tagline: 'A fictional company profile for development and demonstration.',
+    overview: 'This sample company profile is fictional. Replace it with approved company information before production use.',
+    mission: 'Support people and teams with reliable services, thoughtful collaboration, and continuous learning.',
+    vision: 'Create a welcoming workplace where newcomers can contribute with confidence.',
+    history: 'Founded as a development-data example for the FTI Welcome Hub project. Company milestones should be supplied by an authorized business owner.',
+    address: 'Building A, Demo Business Park, Bangkok 10000',
+    phone: '+66 2 000 0000',
+    email: 'hello@example.invalid',
+    website: 'https://example.invalid',
+    latitude: 13.7563,
+    longitude: 100.5018,
+    mapProvider: 'openstreetmap',
+    officePoints: [
+      { name: 'Reception', description: 'Main visitor registration point.', contact: 'Reception', extension: '1000', category: 'reception', latitude: 13.7563, longitude: 100.5018 },
+      { name: 'HR Desk', description: 'Internship documents and people support.', contact: 'Human Resources', extension: '1101', category: 'hr', latitude: 13.7568, longitude: 100.5022 },
+      { name: 'IT Support', description: 'Accounts, devices, and technical help.', contact: 'Information Technology', extension: '1201', category: 'it', latitude: 13.7559, longitude: 100.5012 },
+    ],
+    updatedBy: users.admin._id,
+  });
+  log(`  created company profile: ${company.name}`);
+  return company;
 };
 
 const seedAnnouncements = async (users) => {
@@ -1081,6 +1117,7 @@ const run = async () => {
     await seedPolicies(users);
     await seedFaqs();
     await seedArticles(users);
+    await seedCompanyInfo(users);
     await seedAnnouncements(users);
     await seedFeedback(users);
 

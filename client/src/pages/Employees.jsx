@@ -1,261 +1,29 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
-import {
-  useEmployees,
-  useDepartments,
-  useCreateEmployee,
-  useUpdateEmployee,
-  useDeleteEmployee,
-} from '../hooks/useEmployees.js';
+import useLanguage from '../hooks/useLanguage.js';
+import { useEmployees, useDepartments, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from '../hooks/useEmployees.js';
 import DataTable from '../components/common/DataTable.jsx';
 import SearchBar from '../components/common/SearchBar.jsx';
 import Pagination from '../components/common/Pagination.jsx';
 import Modal from '../components/common/Modal.jsx';
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
+import LanguageToggle from '../components/common/LanguageToggle.jsx';
+import GlobalSearch from '../components/common/GlobalSearch.jsx';
 import EmployeeForm from '../components/employees/EmployeeForm.jsx';
 import { ImageWithFallback } from '../components/common/ImageUpload.jsx';
 
 const PAGE_SIZE = 10;
-
-/**
- * Employee directory: search, department filter, pagination, and (for managers)
- * create/edit/delete via modals. Read-only roles see the list without the
- * management controls - mirroring the server, which would reject those calls
- * anyway.
- */
 export default function Employees() {
-  const { hasPermission } = useAuth();
-  const canManage = hasPermission('employees:manage');
-  const [searchParams] = useSearchParams();
-
-  // Filter state lives here and feeds the query key, so any change refetches.
-  const [search, setSearch] = useState('');
-  const [department, setDepartment] = useState(() => searchParams.get('department') || '');
-  const [page, setPage] = useState(1);
-
-  const params = { search, department, page, limit: PAGE_SIZE };
-  const { data, isLoading, isError, error, isFetching, refetch } = useEmployees(params);
-  const { data: departments = [] } = useDepartments();
-
-  const createMut = useCreateEmployee();
-  const updateMut = useUpdateEmployee();
-  const deleteMut = useDeleteEmployee();
-
-  // Modal state: `formOpen` with `editing` (null = create), `deleting` holds row.
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [serverErrors, setServerErrors] = useState({});
-  const [formError, setFormError] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const resetToFirstPage = (fn) => (value) => {
-    fn(value);
-    setPage(1);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setServerErrors({});
-    setFormError('');
-    setFormOpen(true);
-  };
-
-  const openEdit = (employee) => {
-    setEditing(employee);
-    setServerErrors({});
-    setFormError('');
-    setFormOpen(true);
-  };
-
-  const handleSubmit = async (payload, file) => {
-    setServerErrors({});
-    setFormError('');
-    setUploadProgress(0);
-    const onUploadProgress = (event) => {
-      if (event.total) setUploadProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    try {
-      if (editing) {
-        await updateMut.mutateAsync({ id: editing._id, payload, file, onUploadProgress });
-      } else {
-        await createMut.mutateAsync({ payload, file, onUploadProgress });
-      }
-      setFormOpen(false);
-      setUploadProgress(0);
-    } catch (err) {
-      const res = err.response?.data;
-      if (res?.errors) setServerErrors(res.errors);
-      setFormError(res?.message || 'Could not save the employee.');
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await deleteMut.mutateAsync(deleting._id);
-      setDeleting(null);
-    } catch {
-      // Keep dialog open; error surfaced below via deleteMut.isError.
-    }
-  };
-
-  const columns = [
-    { key: 'employeeCode', header: 'Code' },
-    {
-      key: 'name',
-      header: 'Name',
-      render: (e) => (
-        <div className="flex items-center gap-2">
-          <ImageWithFallback src={e.profileImage} alt={`${e.firstName} ${e.lastName}`} className="w-8 h-8 rounded-full object-cover" fallback={`${e.firstName?.[0] || ''}${e.lastName?.[0] || ''}`} />
-          <div>
-            <span className="font-medium text-gray-800">{e.firstName} {e.lastName}</span>
-            {e.nickname && <span className="text-gray-400"> ({e.nickname})</span>}
-          </div>
-        </div>
-      ),
-    },
-    { key: 'position', header: 'Position' },
-    { key: 'department', header: 'Department', render: (e) => e.departmentId?.name || '-' },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (e) => (
-        <div className="flex gap-1">
-          {!e.isActive && <Badge tone="gray">Inactive</Badge>}
-          {!e.isPublished && <Badge tone="amber">Hidden</Badge>}
-          {e.isActive && e.isPublished && <Badge tone="green">Active</Badge>}
-        </div>
-      ),
-    },
-  ];
-
-  if (canManage) {
-    columns.push({
-      key: 'actions',
-      header: '',
-      className: 'text-right',
-      render: (e) => (
-        <div className="flex justify-end gap-2">
-          <button onClick={() => openEdit(e)} className="text-primary-600 hover:underline text-sm">
-            Edit
-          </button>
-          <button onClick={() => setDeleting(e)} className="text-red-600 hover:underline text-sm">
-            Delete
-          </button>
-        </div>
-      ),
-    });
-  }
-
-  const pagination = data?.pagination;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary-600">Employee Directory</h1>
-          <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Dashboard
-          </Link>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-          <SearchBar value={search} onSearch={resetToFirstPage(setSearch)} placeholder="Search name, position, skills..." />
-          <select
-            value={department}
-            onChange={(e) => resetToFirstPage(setDepartment)(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d._id} value={d._id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          <div className="sm:ml-auto">
-            {canManage && (
-              <button
-                onClick={openCreate}
-                className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700"
-              >
-                + Add employee
-              </button>
-            )}
-          </div>
-        </div>
-
-        <DataTable
-          columns={columns}
-          rows={data?.data}
-          loading={isLoading}
-          error={isError ? error : null}
-          onRetry={refetch}
-          emptyTitle="No employees found"
-          emptyMessage={search || department ? 'Try adjusting your filters.' : 'Add the first employee to get started.'}
-        />
-
-        {pagination && (
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            limit={pagination.limit}
-            onPageChange={setPage}
-            disabled={isFetching}
-          />
-        )}
-      </main>
-
-      {/* Create / edit modal */}
-      <Modal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        title={editing ? 'Edit employee' : 'Add employee'}
-        size="lg"
-      >
-        {formError && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-            {formError}
-          </p>
-        )}
-        <EmployeeForm
-          initial={editing}
-          departments={departments}
-          onSubmit={handleSubmit}
-          onCancel={() => setFormOpen(false)}
-          submitting={createMut.isPending || updateMut.isPending}
-          uploadProgress={uploadProgress}
-          serverErrors={serverErrors}
-        />
-      </Modal>
-
-      {/* Delete confirmation */}
-      <ConfirmDialog
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={handleDelete}
-        title="Delete employee"
-        message={
-          deleting
-            ? `Delete ${deleting.firstName} ${deleting.lastName}? This cannot be undone.`
-            : ''
-        }
-        confirmLabel="Delete"
-        loading={deleteMut.isPending}
-      />
-    </div>
-  );
+  const { hasPermission } = useAuth(); const { t } = useLanguage(); const canManage = hasPermission('employees:manage'); const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(''); const [department, setDepartment] = useState(() => searchParams.get('department') || ''); const [page, setPage] = useState(1);
+  const { data, isLoading, isError, error, isFetching, refetch } = useEmployees({ search, department, page, limit: PAGE_SIZE }); const { data: departments = [] } = useDepartments(); const createMut = useCreateEmployee(); const updateMut = useUpdateEmployee(); const deleteMut = useDeleteEmployee();
+  const [formOpen, setFormOpen] = useState(false); const [editing, setEditing] = useState(null); const [deleting, setDeleting] = useState(null); const [serverErrors, setServerErrors] = useState({}); const [formError, setFormError] = useState(''); const [uploadProgress, setUploadProgress] = useState(0);
+  const reset = (setter) => (value) => { setter(value); setPage(1); }; const openCreate = () => { setEditing(null); setServerErrors({}); setFormError(''); setFormOpen(true); }; const openEdit = (item) => { setEditing(item); setServerErrors({}); setFormError(''); setFormOpen(true); };
+  const submit = async (payload, file) => { setServerErrors({}); setFormError(''); setUploadProgress(0); const onUploadProgress = (event) => { if (event.total) setUploadProgress(Math.round((event.loaded / event.total) * 100)); }; try { if (editing) await updateMut.mutateAsync({ id: editing._id, payload, file, onUploadProgress }); else await createMut.mutateAsync({ payload, file, onUploadProgress }); setFormOpen(false); } catch (requestError) { const response = requestError.response?.data; if (response?.errors) setServerErrors(response.errors); setFormError(response?.message || t('saveEmployeeError')); } };
+  const remove = async () => { try { await deleteMut.mutateAsync(deleting._id); setDeleting(null); } catch {} };
+  const columns = [{ key: 'employeeCode', header: t('code') }, { key: 'name', header: t('name'), render: (item) => <div className="flex items-center gap-2"><ImageWithFallback src={item.profileImage} alt={`${item.firstName} ${item.lastName}`} className="w-8 h-8 rounded-full object-cover" fallback={`${item.firstName?.[0] || ''}${item.lastName?.[0] || ''}`} /><div><span className="font-medium text-gray-800">{item.firstName} {item.lastName}</span>{item.nickname && <span className="text-gray-400"> ({item.nickname})</span>}</div></div> }, { key: 'position', header: t('position') }, { key: 'department', header: t('departments'), render: (item) => item.departmentId?.name || '-' }, { key: 'status', header: t('status'), render: (item) => <div className="flex gap-1">{!item.isActive && <Badge tone="gray">{t('inactive')}</Badge>}{!item.isPublished && <Badge tone="amber">{t('hidden')}</Badge>}{item.isActive && item.isPublished && <Badge tone="green">{t('active')}</Badge>}</div> }];
+  if (canManage) columns.push({ key: 'actions', header: '', className: 'text-right', render: (item) => <div className="flex justify-end gap-2"><button onClick={() => openEdit(item)} className="text-primary-600 hover:underline text-sm">{t('edit')}</button><button onClick={() => setDeleting(item)} className="text-red-600 hover:underline text-sm">{t('delete')}</button></div> });
+  return <div className="min-h-screen bg-gray-50"><header className="bg-white border-b border-gray-200"><div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between"><h1 className="text-xl font-bold text-primary-600">{t('employeeDirectory')}</h1><div className="flex items-center gap-3"><GlobalSearch /><Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">{t('backDashboard')}</Link><LanguageToggle /></div></div></header><main className="max-w-5xl mx-auto px-4 py-6"><div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4"><SearchBar value={search} onSearch={reset(setSearch)} placeholder={t('searchEmployees')} /><select value={department} onChange={(event) => reset(setDepartment)(event.target.value)} className="px-3 py-2 border border-gray-300 rounded-md"><option value="">{t('allDepartments')}</option>{departments.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>{canManage && <button onClick={openCreate} className="sm:ml-auto bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium">{t('addEmployee')}</button>}</div><DataTable columns={columns} rows={data?.data} loading={isLoading} error={isError ? error : null} onRetry={refetch} emptyTitle={t('noEmployees')} emptyMessage={search || department ? t('adjustFilters') : t('addFirstEmployee')} />{data?.pagination && <Pagination {...data.pagination} onPageChange={setPage} disabled={isFetching} />}</main><Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? t('editEmployee') : t('addEmployeeTitle')} size="lg">{formError && <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{formError}</p>}<EmployeeForm initial={editing} departments={departments} onSubmit={submit} onCancel={() => setFormOpen(false)} submitting={createMut.isPending || updateMut.isPending} uploadProgress={uploadProgress} serverErrors={serverErrors} /></Modal><ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={remove} title={t('deleteEmployee')} message={deleting ? t('deleteConfirm', { name: `${deleting.firstName} ${deleting.lastName}` }) : ''} confirmLabel={t('delete')} loading={deleteMut.isPending} /></div>;
 }
-
-function Badge({ tone, children }) {
-  const tones = {
-    green: 'bg-green-100 text-green-700',
-    amber: 'bg-amber-100 text-amber-700',
-    gray: 'bg-gray-100 text-gray-600',
-  };
-  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${tones[tone]}`}>{children}</span>;
-}
+function Badge({ tone, children }) { const tones = { green: 'bg-green-100 text-green-700', amber: 'bg-amber-100 text-amber-700', gray: 'bg-gray-100 text-gray-600' }; return <span className={`px-2 py-0.5 rounded text-xs font-medium ${tones[tone]}`}>{children}</span>; }

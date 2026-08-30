@@ -88,6 +88,15 @@ const knowledgeArticleSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isQuickLink: {
+      type: Boolean,
+      default: false,
+    },
+    quickLinkOrder: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     /** Simple helpfulness counters for the IT help centre. */
     helpfulCount: {
       type: Number,
@@ -130,6 +139,7 @@ knowledgeArticleSchema.index({
 });
 knowledgeArticleSchema.index({ category: 1, subcategory: 1, sortOrder: 1 });
 knowledgeArticleSchema.index({ status: 1, category: 1 });
+knowledgeArticleSchema.index({ category: 1, isQuickLink: 1, quickLinkOrder: 1 });
 
 /** Ratio of helpful votes, or null when nobody has voted yet. */
 knowledgeArticleSchema.virtual('helpfulRatio').get(function () {

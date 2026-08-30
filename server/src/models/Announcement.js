@@ -101,7 +101,7 @@ announcementSchema.virtual('isVisible').get(function () {
   const now = Date.now();
   if (this.status !== 'published') return false;
   if (this.publishAt && now < this.publishAt.getTime()) return false;
-  if (this.expireAt && now > this.expireAt.getTime()) return false;
+  if (this.expireAt && now >= this.expireAt.getTime()) return false;
   return true;
 });
 

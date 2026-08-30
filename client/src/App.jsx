@@ -12,6 +12,13 @@ import InternBatches from './pages/InternBatches.jsx';
 import InternDetail from './pages/InternDetail.jsx';
 import InternBatchDetail from './pages/InternBatchDetail.jsx';
 import Organization from './pages/Organization.jsx';
+import Policies from './pages/Policies.jsx';
+import FAQ from './pages/FAQ.jsx';
+import Announcements from './pages/Announcements.jsx';
+import GettingStarted from './pages/GettingStarted.jsx';
+import ItHelp from './pages/ItHelp.jsx';
+import SearchResults from './pages/SearchResults.jsx';
+import Company from './pages/Company.jsx';
 import AdminArea from './pages/AdminArea.jsx';
 import Unauthorized from './pages/Unauthorized.jsx';
 
@@ -108,6 +115,69 @@ function App() {
             element={
               <ProtectedRoute>
                 <Organization />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/policies"
+            element={
+              <ProtectedRoute>
+                <Policies />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/faq"
+            element={
+              <ProtectedRoute>
+                <FAQ />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/announcements"
+            element={
+              <ProtectedRoute>
+                <Announcements />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/getting-started"
+            element={
+              <ProtectedRoute>
+                <GettingStarted />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/it-help"
+            element={
+              <ProtectedRoute>
+                <ItHelp />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchResults />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/company"
+            element={
+              <ProtectedRoute>
+                <Company />
               </ProtectedRoute>
             }
           />
