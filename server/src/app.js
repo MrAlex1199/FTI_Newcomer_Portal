@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
 
@@ -41,8 +42,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API routes will be added here
-// app.use('/api/v1/auth', authRoutes);
+// API routes
+app.use('/api/v1/auth', authRoutes);
 // app.use('/api/v1/employees', employeeRoutes);
 // etc.
 

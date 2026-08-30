@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
 import app from './app.js';
 import connectDB from './config/database.js';
+// Registers every Mongoose model exactly once, on process start, regardless
+// of which controller happens to import which model first. Without this,
+// `populate('someRef')` can throw MissingSchemaError if the referenced
+// model's file was never imported by anything on the current request path.
+import './models/index.js';
 
 // Load environment variables
 dotenv.config();
