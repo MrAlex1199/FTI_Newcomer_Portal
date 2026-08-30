@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .control-button {
+    @apply rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
+  }
+
+  .zoom-button {
+    @apply flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg leading-none text-gray-600 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700;
+  }
+}

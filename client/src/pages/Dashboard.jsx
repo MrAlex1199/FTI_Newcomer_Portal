@@ -51,7 +51,18 @@ export default function Dashboard() {
           <Link to="/employees" className="block">
             <Card title="Employee Directory" desc="Browse and search employees." tone="neutral" />
           </Link>
-          <Card title="Organization Chart" desc="View the company structure." tone="neutral" />
+          <Link to="/departments" className="block">
+            <Card title="Departments" desc="Browse departments and team members." tone="neutral" />
+          </Link>
+          <Link to="/interns" className="block">
+            <Card title="Intern Directory" desc="Browse interns, mentors, batches, and timelines." tone="neutral" />
+          </Link>
+          <Link to="/intern-batches" className="block">
+            <Card title="Intern Batches" desc="View cohort schedules and batch members." tone="neutral" />
+          </Link>
+          <Link to="/organization" className="block">
+            <Card title="Organization Chart" desc="Explore the company reporting structure." tone="neutral" />
+          </Link>
           <Card title="Policies & FAQ" desc="Read company policies and FAQs." tone="neutral" />
 
           {/* Content managers: super_admin, admin, editor */}
@@ -62,6 +73,16 @@ export default function Dashboard() {
           {/* Admins: super_admin, admin */}
           <RoleGuard permission="employees:manage" mode="inline">
             <Card title="Manage Employees" desc="Add, edit, and remove employee records." tone="admin" />
+          </RoleGuard>
+          <RoleGuard permission="departments:manage" mode="inline">
+            <Link to="/departments" className="block">
+              <Card title="Manage Departments" desc="Create teams, assign managers, and review member counts." tone="admin" />
+            </Link>
+          </RoleGuard>
+          <RoleGuard permission="interns:manage" mode="inline">
+            <Link to="/intern-batches" className="block">
+              <Card title="Manage Interns & Batches" desc="Create cohorts, assign mentors, and manage intern records." tone="admin" />
+            </Link>
           </RoleGuard>
           <RoleGuard permission="users:manage" mode="inline">
             <Card title="User Management" desc="Manage user accounts and roles." tone="admin" />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import {
   useEmployees,
@@ -14,6 +14,7 @@ import Pagination from '../components/common/Pagination.jsx';
 import Modal from '../components/common/Modal.jsx';
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
 import EmployeeForm from '../components/employees/EmployeeForm.jsx';
+import { ImageWithFallback } from '../components/common/ImageUpload.jsx';
 
 const PAGE_SIZE = 10;
 
@@ -26,10 +27,11 @@ const PAGE_SIZE = 10;
 export default function Employees() {
   const { hasPermission } = useAuth();
   const canManage = hasPermission('employees:manage');
+  const [searchParams] = useSearchParams();
 
   // Filter state lives here and feeds the query key, so any change refetches.
   const [search, setSearch] = useState('');
-  const [department, setDepartment] = useState('');
+  const [department, setDepartment] = useState(() => searchParams.get('department') || '');
   const [page, setPage] = useState(1);
 
   const params = { search, department, page, limit: PAGE_SIZE };
@@ -46,6 +48,7 @@ export default function Employees() {
   const [deleting, setDeleting] = useState(null);
   const [serverErrors, setServerErrors] = useState({});
   const [formError, setFormError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const resetToFirstPage = (fn) => (value) => {
     fn(value);
@@ -66,16 +69,21 @@ export default function Employees() {
     setFormOpen(true);
   };
 
-  const handleSubmit = async (payload) => {
+  const handleSubmit = async (payload, file) => {
     setServerErrors({});
     setFormError('');
+    setUploadProgress(0);
+    const onUploadProgress = (event) => {
+      if (event.total) setUploadProgress(Math.round((event.loaded / event.total) * 100));
+    };
     try {
       if (editing) {
-        await updateMut.mutateAsync({ id: editing._id, payload });
+        await updateMut.mutateAsync({ id: editing._id, payload, file, onUploadProgress });
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ payload, file, onUploadProgress });
       }
       setFormOpen(false);
+      setUploadProgress(0);
     } catch (err) {
       const res = err.response?.data;
       if (res?.errors) setServerErrors(res.errors);
@@ -98,11 +106,12 @@ export default function Employees() {
       key: 'name',
       header: 'Name',
       render: (e) => (
-        <div>
-          <span className="font-medium text-gray-800">
-            {e.firstName} {e.lastName}
-          </span>
-          {e.nickname && <span className="text-gray-400"> ({e.nickname})</span>}
+        <div className="flex items-center gap-2">
+          <ImageWithFallback src={e.profileImage} alt={`${e.firstName} ${e.lastName}`} className="w-8 h-8 rounded-full object-cover" fallback={`${e.firstName?.[0] || ''}${e.lastName?.[0] || ''}`} />
+          <div>
+            <span className="font-medium text-gray-800">{e.firstName} {e.lastName}</span>
+            {e.nickname && <span className="text-gray-400"> ({e.nickname})</span>}
+          </div>
         </div>
       ),
     },
@@ -219,6 +228,7 @@ export default function Employees() {
           onSubmit={handleSubmit}
           onCancel={() => setFormOpen(false)}
           submitting={createMut.isPending || updateMut.isPending}
+          uploadProgress={uploadProgress}
           serverErrors={serverErrors}
         />
       </Modal>

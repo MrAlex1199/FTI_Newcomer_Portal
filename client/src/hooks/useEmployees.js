@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import employeeService from '../services/employeeService.js';
-import departmentService from '../services/departmentService.js';
+export { useDepartments } from './useDepartments.js';
 
 /**
  * TanStack Query layer for employees. The query key includes the params object
@@ -17,24 +17,19 @@ export function useEmployees(params) {
   });
 }
 
-export function useDepartments() {
-  return useQuery({
-    queryKey: ['departments'],
-    queryFn: () => departmentService.list(),
-    staleTime: 5 * 60 * 1000, // Departments rarely change; cache for 5 min.
-  });
-}
-
-/** Invalidate all employee list queries so they refetch after a mutation. */
+/** Invalidate all employee list queries and department labels/counts. */
 const useInvalidateEmployees = () => {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ['employees'] });
+  return () => {
+    qc.invalidateQueries({ queryKey: ['employees'] });
+    qc.invalidateQueries({ queryKey: ['departments'] });
+  };
 };
 
 export function useCreateEmployee() {
   const invalidate = useInvalidateEmployees();
   return useMutation({
-    mutationFn: (payload) => employeeService.create(payload),
+    mutationFn: ({ payload, file, onUploadProgress }) => employeeService.create(payload, file, onUploadProgress),
     onSuccess: invalidate,
   });
 }
@@ -42,7 +37,7 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
   const invalidate = useInvalidateEmployees();
   return useMutation({
-    mutationFn: ({ id, payload }) => employeeService.update(id, payload),
+    mutationFn: ({ id, payload, file, onUploadProgress }) => employeeService.update(id, payload, file, onUploadProgress),
     onSuccess: invalidate,
   });
 }

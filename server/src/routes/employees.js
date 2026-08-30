@@ -14,6 +14,7 @@ import {
 } from '../validators/employeeValidators.js';
 import validate from '../middleware/validate.js';
 import { authenticate, requirePermission } from '../middleware/auth.js';
+import { imageUpload } from '../middleware/imageUpload.js';
 
 const router = Router();
 
@@ -26,8 +27,8 @@ router.get('/', requirePermission('employees:view'), listEmployeesValidator, val
 router.get('/:id', requirePermission('employees:view'), employeeIdValidator, validate, getEmployee);
 
 // Write: admins only (employees:manage).
-router.post('/', requirePermission('employees:manage'), createEmployeeValidator, validate, createEmployee);
-router.patch('/:id', requirePermission('employees:manage'), updateEmployeeValidator, validate, updateEmployee);
+router.post('/', requirePermission('employees:manage'), imageUpload('profileImage'), createEmployeeValidator, validate, createEmployee);
+router.patch('/:id', requirePermission('employees:manage'), imageUpload('profileImage'), updateEmployeeValidator, validate, updateEmployee);
 router.delete('/:id', requirePermission('employees:manage'), employeeIdValidator, validate, deleteEmployee);
 
 export default router;

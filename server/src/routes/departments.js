@@ -1,11 +1,29 @@
 import { Router } from 'express';
-import { listDepartments } from '../controllers/departmentController.js';
-import { authenticate } from '../middleware/auth.js';
+import {
+  listDepartments,
+  getDepartment,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+} from '../controllers/departmentController.js';
+import {
+  createDepartmentValidator,
+  updateDepartmentValidator,
+  departmentIdValidator,
+} from '../validators/departmentValidators.js';
+import validate from '../middleware/validate.js';
+import { authenticate, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
 
-// Read-only for any authenticated user. Management endpoints added in Task 6.
+// Reads remain available to every authenticated role.
 router.use(authenticate);
 router.get('/', listDepartments);
+router.get('/:id', departmentIdValidator, validate, getDepartment);
+
+// Writes are restricted to the centralized departments:manage permission.
+router.post('/', requirePermission('departments:manage'), createDepartmentValidator, validate, createDepartment);
+router.patch('/:id', requirePermission('departments:manage'), updateDepartmentValidator, validate, updateDepartment);
+router.delete('/:id', requirePermission('departments:manage'), departmentIdValidator, validate, deleteDepartment);
 
 export default router;

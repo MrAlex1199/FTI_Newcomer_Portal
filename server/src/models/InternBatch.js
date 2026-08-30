@@ -69,6 +69,7 @@ const internBatchSchema = new mongoose.Schema(
 
 internBatchSchema.index({ year: -1, sequence: -1 });
 internBatchSchema.index({ startDate: 1, endDate: 1 });
+internBatchSchema.index({ code: 'text', title: 'text', description: 'text' });
 
 /**
  * Status is derived from the date range rather than stored, so it can never

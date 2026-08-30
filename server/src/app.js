@@ -8,6 +8,9 @@ import authRoutes from './routes/auth.js';
 import authCheckRoutes from './routes/authCheck.js';
 import employeeRoutes from './routes/employees.js';
 import departmentRoutes from './routes/departments.js';
+import internRoutes from './routes/interns.js';
+import internBatchRoutes from './routes/internBatches.js';
+import organizationRoutes from './routes/organization.js';
 
 const app = express();
 
@@ -49,6 +52,9 @@ app.get('/api/health', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/employees', employeeRoutes);
 app.use('/api/v1/departments', departmentRoutes);
+app.use('/api/v1/interns', internRoutes);
+app.use('/api/v1/intern-batches', internBatchRoutes);
+app.use('/api/v1/organization', organizationRoutes);
 // etc.
 
 // Development-only routes for exercising the authorization layer. Never mounted

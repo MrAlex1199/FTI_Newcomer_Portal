@@ -1,4 +1,6 @@
 import { Employee, Department, Intern, AuditLog } from '../models/index.js';
+import { deleteImage, uploadImage } from '../utils/imageUpload.js';
+import { assertManagerAssignment, invalidateOrganizationTreeCache } from '../services/reportingService.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
@@ -14,15 +16,6 @@ const assertDepartmentExists = async (departmentId) => {
   const exists = await Department.exists({ _id: departmentId });
   if (!exists) {
     throw ApiError.badRequest('The specified department does not exist');
-  }
-};
-
-/** Confirm a manager employee exists (when one is supplied). */
-const assertManagerExists = async (managerId) => {
-  if (!managerId) return;
-  const exists = await Employee.exists({ _id: managerId });
-  if (!exists) {
-    throw ApiError.badRequest('The specified manager does not exist');
   }
 };
 
@@ -88,6 +81,10 @@ export const getEmployee = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { employee } });
 });
 
+const pickEmployeeFields = (body) => Object.fromEntries(
+  UPDATABLE_FIELDS.filter((field) => field in body).map((field) => [field, body[field]])
+);
+
 /**
  * POST /employees
  * Validates referenced department/manager exist, then creates. Duplicate
@@ -95,23 +92,37 @@ export const getEmployee = asyncHandler(async (req, res) => {
  * global error handler.
  */
 export const createEmployee = asyncHandler(async (req, res) => {
-  await assertDepartmentExists(req.body.departmentId);
-  await assertManagerExists(req.body.managerId);
+  const payload = pickEmployeeFields(req.body);
+  await assertDepartmentExists(payload.departmentId);
+  await assertManagerAssignment({ managerId: payload.managerId });
 
-  const employee = await Employee.create(req.body);
-  await employee.populate('departmentId', 'name code');
+  let uploaded;
+  let employee;
+  try {
+    if (req.file) uploaded = await uploadImage(req.file.buffer, 'fti-welcome-hub/employees');
+    employee = await Employee.create({
+      ...payload,
+      ...(uploaded && { profileImage: uploaded.url, profileImagePublicId: uploaded.publicId }),
+    });
+    await employee.populate('departmentId', 'name code');
 
-  await AuditLog.record({
-    userId: req.user.id,
-    action: 'create',
-    entity: 'Employee',
-    entityId: employee._id,
-    after: employee.toObject(),
-    ip: req.ip,
-    userAgent: req.get('user-agent') || '',
-  });
+    await AuditLog.record({
+      userId: req.user.id,
+      action: 'create',
+      entity: 'Employee',
+      entityId: employee._id,
+      after: employee.toObject(),
+      ip: req.ip,
+      userAgent: req.get('user-agent') || '',
+    });
+    invalidateOrganizationTreeCache();
 
-  res.status(201).json({ success: true, data: { employee } });
+    res.status(201).json({ success: true, data: { employee } });
+  } catch (error) {
+    // If persistence never created a record, the uploaded asset is orphaned.
+    if (uploaded && !employee) await deleteImage(uploaded.publicId);
+    throw error;
+  }
 });
 
 // Fields a client is allowed to change. Anything else in the body is ignored,
@@ -140,45 +151,67 @@ const UPDATABLE_FIELDS = [
  * when they change, and blocks an employee being set as their own manager.
  */
 export const updateEmployee = asyncHandler(async (req, res) => {
-  const employee = await Employee.findById(req.params.id);
+  const employee = await Employee.findById(req.params.id).select('+profileImagePublicId');
   if (!employee) {
     throw ApiError.notFound('Employee not found');
   }
 
   const before = employee.toObject();
+  const previousDepartmentId = String(employee.departmentId);
+  const payload = pickEmployeeFields(req.body);
+  const nextManagerId = Object.prototype.hasOwnProperty.call(payload, 'managerId')
+    ? payload.managerId
+    : employee.managerId;
 
-  if (req.body.departmentId && req.body.departmentId !== String(employee.departmentId)) {
-    await assertDepartmentExists(req.body.departmentId);
+  if (payload.departmentId && payload.departmentId !== String(employee.departmentId)) {
+    await assertDepartmentExists(payload.departmentId);
   }
-  if (req.body.managerId) {
-    if (req.body.managerId === String(employee._id)) {
-      throw ApiError.badRequest('An employee cannot be their own manager');
-    }
-    await assertManagerExists(req.body.managerId);
-  }
+  await assertManagerAssignment({ employeeId: employee._id, managerId: nextManagerId });
 
   for (const field of UPDATABLE_FIELDS) {
-    if (field in req.body) {
-      employee[field] = req.body[field];
-    }
+    if (field in payload) employee[field] = payload[field];
   }
 
-  await employee.save();
-  await employee.populate('departmentId', 'name code');
-  await employee.populate('managerId', 'firstName lastName employeeCode');
+  let uploaded;
+  let saved = false;
+  try {
+    if (req.file) uploaded = await uploadImage(req.file.buffer, 'fti-welcome-hub/employees');
+    if (uploaded) {
+      employee.profileImage = uploaded.url;
+      employee.profileImagePublicId = uploaded.publicId;
+    }
 
-  await AuditLog.record({
-    userId: req.user.id,
-    action: 'update',
-    entity: 'Employee',
-    entityId: employee._id,
-    before,
-    after: employee.toObject(),
-    ip: req.ip,
-    userAgent: req.get('user-agent') || '',
-  });
+    await employee.save();
+    saved = true;
+    invalidateOrganizationTreeCache();
 
-  res.status(200).json({ success: true, data: { employee } });
+    if (String(employee.departmentId) !== previousDepartmentId) {
+      await Department.updateOne(
+        { _id: previousDepartmentId, managerId: employee._id },
+        { $set: { managerId: null } }
+      );
+    }
+
+    await employee.populate('departmentId', 'name code');
+    await employee.populate('managerId', 'firstName lastName employeeCode');
+
+    await AuditLog.record({
+      userId: req.user.id,
+      action: 'update',
+      entity: 'Employee',
+      entityId: employee._id,
+      before,
+      after: employee.toObject(),
+      ip: req.ip,
+      userAgent: req.get('user-agent') || '',
+    });
+
+    if (uploaded && before.profileImagePublicId) await deleteImage(before.profileImagePublicId);
+    res.status(200).json({ success: true, data: { employee } });
+  } catch (error) {
+    if (uploaded && !saved) await deleteImage(uploaded.publicId);
+    throw error;
+  }
 });
 
 /**
@@ -188,7 +221,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
  * which the intern schema permits).
  */
 export const deleteEmployee = asyncHandler(async (req, res) => {
-  const employee = await Employee.findById(req.params.id);
+  const employee = await Employee.findById(req.params.id).select('+profileImagePublicId');
   if (!employee) {
     throw ApiError.notFound('Employee not found');
   }
@@ -200,9 +233,12 @@ export const deleteEmployee = asyncHandler(async (req, res) => {
   await Promise.all([
     Intern.updateMany({ mentorId: employee._id }, { $set: { mentorId: null } }),
     Employee.updateMany({ managerId: employee._id }, { $set: { managerId: null } }),
+    Department.updateMany({ managerId: employee._id }, { $set: { managerId: null } }),
   ]);
 
   await employee.deleteOne();
+  await deleteImage(employee.profileImagePublicId);
+  invalidateOrganizationTreeCache();
 
   await AuditLog.record({
     userId: req.user.id,
