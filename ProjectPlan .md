@@ -1268,6 +1268,13 @@ You're on track in **Week 1** of the 4-6 week plan.
 | 4 | Tasks 13-17 | Announcements, IT Help Center, Global search, Admin dashboard, User mgmt + audit |
 | 5 | Tasks 18-20 | Feedback, UI/UX polish, Integration testing |
 | 6 | Tasks 21-24 | Production config, Deploy, Documentation, Demo prep |
+Task 18 — Feedback System
+Task 19 — UI/UX Polish & Responsive Design
+Task 20 — Integration Testing & Bug Fixes
+Task 21 — Production Environment Configuration
+Task 22 — Deploy to Cloud Platforms
+Task 23 — Documentation & Handover
+Task 24 — Final Demo & Presentation Prep
 
 ## Where the effort sits
 

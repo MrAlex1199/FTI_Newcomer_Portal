@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { AuthProvider } from './hooks/AuthContext.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
 import RoleGuard from './components/common/RoleGuard.jsx';
@@ -19,7 +20,10 @@ import GettingStarted from './pages/GettingStarted.jsx';
 import ItHelp from './pages/ItHelp.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
-import AdminArea from './pages/AdminArea.jsx';
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
+const AdminAuditLogs = lazy(() => import('./pages/AdminAuditLogs.jsx'));
+const AdminFeedback = lazy(() => import('./pages/AdminFeedback.jsx'));
 import Unauthorized from './pages/Unauthorized.jsx';
 
 /**
@@ -183,11 +187,55 @@ function App() {
           />
 
           <Route
+            path="/admin/feedback"
+            element={
+              <ProtectedRoute>
+                <RoleGuard permission="feedback:manage">
+                  <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 text-center text-gray-500">Loading feedback...</div>}><AdminFeedback /></Suspense>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <RoleGuard permission="users:manage">
+                  <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 text-center text-gray-500">Loading user management...</div>}><AdminUsers /></Suspense>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedRoute>
+                <RoleGuard permission="auditlog:view">
+                  <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 text-center text-gray-500">Loading audit logs...</div>}><AdminAuditLogs /></Suspense>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <RoleGuard roles={['super_admin', 'admin']}>
+                  <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 text-center text-gray-500">Loading admin dashboard...</div>}><AdminDashboard /></Suspense>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/admin"
             element={
               <ProtectedRoute>
                 <RoleGuard roles={['super_admin', 'admin']}>
-                  <AdminArea />
+                  <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 text-center text-gray-500">Loading admin dashboard...</div>}><AdminDashboard /></Suspense>
                 </RoleGuard>
               </ProtectedRoute>
             }

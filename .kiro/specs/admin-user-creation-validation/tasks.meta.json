@@ -1,0 +1,166 @@
+{
+  "pbtResults": {
+    "1. Write the bug-condition exploration test before implementing the fix": {
+      "status": "passed",
+      "failingExample": "Property failed after 1 tests; seed 1329588984; path \"0:0\"; counterexample: [{\"username\":\"\",\"email\":\"person@example.com\",\"password\":\"Validpass1\"}]. The unfixed flow sent the rejected request and left the modal open, but rendered only \"Validation failed\"; it did not render errors.username or errors.password beside their fields.",
+      "lastRunTimestamp": 1788100564945
+    }
+  },
+  "executionHistory": {
+    "1. Write the bug-condition exploration test before implementing the fix": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259468
+      },
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100287951
+      },
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100664846
+      }
+    ],
+    "2. Write preservation property tests before implementing the fix": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259534
+      },
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100679541
+      }
+    ],
+    "3.1 Define a complete and stable create-form value model in `client/src/pages/AdminUsers.jsx` (or an extracted create-user form component)": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259618
+      }
+    ],
+    "3.2 Add client-side validation aligned with the server contract": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259676
+      }
+    ],
+    "3.3 Implement deterministic normalization and request construction": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259735
+      }
+    ],
+    "4.1 Separate modal validation state from page/operation errors in `AdminUsers.jsx`": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259787
+      }
+    ],
+    "4.2 Extend the field rendering path for accessible field feedback": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259845
+      }
+    ],
+    "5.1 Map structured server validation errors in `AdminUsers.save`": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259916
+      }
+    ],
+    "5.2 Preserve successful create behavior": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100259977
+      }
+    ],
+    "6.1 Verify/update `client/src/services/adminUserService.js` and `client/src/hooks/useAdminUsers.js`": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260045
+      }
+    ],
+    "6.2 Preserve server validators in `server/src/validators/adminUserValidators.js`": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260104
+      }
+    ],
+    "6.3 Preserve structured response and authorization middleware behavior": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260153
+      }
+    ],
+    "6.4 Preserve controller, model, audit, and atomicity semantics": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260207
+      }
+    ],
+    "7.1 Add unit/property tests for controlled state, normalization, and payload synchronization": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260263
+      }
+    ],
+    "7.2 Add tests for field errors and response mapping": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260346
+      }
+    ],
+    "7.3 Add server validator/controller/security tests": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260395
+      }
+    ],
+    "8. Run end-to-end integration coverage for the create flow": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260455
+      }
+    ],
+    "9.1 Re-run the same exploration test from task 1": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260506
+      }
+    ],
+    "9.2 Re-run the same preservation tests from task 2": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260563
+      }
+    ],
+    "10. Checkpoint - run one-shot tests, build, and integration validation": [
+      {
+        "executionId": "ec7b92a3-70f0-44f3-888d-ecb8aa9ce75a",
+        "chatSessionId": "sess_331abefc-b9b1-4f0c-9513-ce991dafc532",
+        "timestamp": 1788100260606
+      }
+    ]
+  }
+}

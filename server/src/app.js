@@ -17,6 +17,9 @@ import policyRoutes from './routes/policies.js';
 import faqRoutes from './routes/faq.js';
 import announcementRoutes from './routes/announcements.js';
 import searchRoutes from './routes/search.js';
+import feedbackRoutes from './routes/feedback.js';
+import adminDashboardRoutes from './routes/adminDashboard.js';
+import adminUserRoutes from './routes/adminUsers.js';
 
 const app = express();
 
@@ -67,6 +70,9 @@ app.use('/api/v1/policies', policyRoutes);
 app.use('/api/v1/faq', faqRoutes);
 app.use('/api/v1/announcements', announcementRoutes);
 app.use('/api/v1/search', searchRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/admin', adminDashboardRoutes);
+app.use('/api/v1/admin', adminUserRoutes);
 // etc.
 
 // Development-only routes for exercising the authorization layer. Never mounted

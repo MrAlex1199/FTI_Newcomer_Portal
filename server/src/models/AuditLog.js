@@ -1,6 +1,19 @@
 import mongoose from 'mongoose';
 
-export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'login', 'logout', 'publish', 'unpublish'];
+export const AUDIT_ACTIONS = [
+  'create',
+  'update',
+  'delete',
+  'login',
+  'logout',
+  'publish',
+  'unpublish',
+  'activate',
+  'deactivate',
+  'role_change',
+  'password_reset',
+  'bulk_deactivate',
+];
 
 /**
  * Append-only record of sensitive admin activity (spec section 39).
