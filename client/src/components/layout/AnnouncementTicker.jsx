@@ -10,7 +10,7 @@ export default function AnnouncementTicker() {
   const announcements = data?.data || [];
 
   if (isLoading) {
-    return <div className="h-9 bg-primary-950" role="status" aria-label={t('loadingAnnouncements')} />;
+    return <div className="h-12 bg-primary-900" role="status" aria-label={t('loadingAnnouncements')} />;
   }
 
   if (isError || announcements.length === 0) {
@@ -20,7 +20,7 @@ export default function AnnouncementTicker() {
   const items = [...announcements, ...announcements];
   return (
     <div
-      className="overflow-hidden border-b-2 border-amber-300 bg-gradient-to-r from-primary-950 via-primary-900 to-primary-950 text-white shadow-sm"
+      className="overflow-hidden border-b-2 border-amber-300 bg-gradient-to-r from-primary-900 via-primary-800 to-primary-900 text-white shadow-sm"
       aria-label={t('tickerLabel')}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -30,7 +30,7 @@ export default function AnnouncementTicker() {
       }}
     >
       <div className="mx-auto flex min-h-12 max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-300 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-primary-950 shadow-sm">
+        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-300 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-primary-900 shadow-sm">
           <span aria-hidden="true">📣</span>
           <span className="hidden sm:inline">{t('tickerLabel')}</span>
         </span>

@@ -4,7 +4,6 @@ import useLanguage from '../hooks/useLanguage.js';
 import RoleGuard from '../components/common/RoleGuard.jsx';
 import FeedbackWidget from '../components/common/FeedbackWidget.jsx';
 import DashboardHeader from './DashboardHeader.jsx';
-import { ROLE_LABELS } from '../utils/permissions.js';
 import { useAnnouncements } from '../hooks/useAnnouncements.js';
 import { ErrorState } from '../components/common/states.jsx';
 import AnnouncementCarousel from '../components/content/AnnouncementCarousel.jsx';
@@ -18,14 +17,8 @@ const MANAGE_PERMISSIONS = [
   'auditlog:view',
 ];
 
-const greetingKey = (hour) => {
-  if (hour < 12) return 'goodMorning';
-  if (hour < 17) return 'goodAfternoon';
-  return 'goodEvening';
-};
-
 export default function Dashboard() {
-  const { user, hasPermission, hasRole } = useAuth();
+  const { hasPermission, hasRole } = useAuth();
   const { t } = useLanguage();
   const {
     data: announcementData,
@@ -35,8 +28,6 @@ export default function Dashboard() {
     refetch: refetchAnnouncements,
   } = useAnnouncements({ limit: 3 });
 
-  const role = ROLE_LABELS[user.role] || user.role;
-  const greeting = t(greetingKey(new Date().getHours()));
   const isAdmin = hasRole('super_admin') || hasRole('admin');
   const showManageSection = isAdmin || MANAGE_PERMISSIONS.some((permission) => hasPermission(permission));
 
@@ -44,29 +35,6 @@ export default function Dashboard() {
     <div className="min-h-screen overflow-x-hidden bg-gray-50">
       <DashboardHeader />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {/* Friendly hero: greeting, name, and role at a glance. */}
-        <section className="animate-fade-up overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-primary-600 to-primary-800 px-6 py-7 text-white shadow-lift sm:px-8 sm:py-9">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-sm font-medium text-primary-100">
-                <span aria-hidden="true">👋</span>
-                {greeting}
-              </p>
-              <h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">
-                {t('welcomeBack', { name: user.username })}
-              </h1>
-              <p className="mt-2 max-w-xl text-sm text-primary-100">{t('roleCards', { role })}</p>
-            </div>
-            <div className="shrink-0 rounded-xl bg-white/15 px-4 py-3 backdrop-blur-sm">
-              <p className="text-xs uppercase tracking-wide text-primary-100">{t('yourRole')}</p>
-              <p className="mt-1 flex items-center gap-2 font-semibold">
-                <span aria-hidden="true">🎯</span>
-                {role}
-              </p>
-            </div>
-          </div>
-        </section>
-
         <AnnouncementCarousel />
 
         <SectionHeading emoji="🧭" title={t('exploreSection')} desc={t('exploreSectionDesc')} />
@@ -133,20 +101,20 @@ const toneClasses = {
 };
 
 const MENU_VISUALS = {
-  '/employees': '/menu-visuals/people.svg',
-  '/departments': '/menu-visuals/departments.svg',
-  '/interns': '/menu-visuals/people.svg',
-  '/intern-batches': '/menu-visuals/learning.svg',
+  '/employees': '/menu-visuals/employee.jpg',
+  '/departments': '/menu-visuals/department.jpg',
+  '/interns': '/menu-visuals/intern.jpg',
+  '/intern-batches': '/menu-visuals/intern.jpg',
   '/organization': '/menu-visuals/organization.svg',
-  '/policies': '/menu-visuals/learning.svg',
+  '/policies': '/menu-visuals/policies.jpg',
   '/faq': '/menu-visuals/support.svg',
-  '/announcements': '/mock-posters/welcome.svg',
+  '/announcements': '/menu-visuals/announcement.jpg',
   '/getting-started': '/mock-posters/learning.svg',
-  '/it-help': '/menu-visuals/support.svg',
-  '/company': '/menu-visuals/company.svg',
+  '/it-help': '/menu-visuals/Itsupport.jpg',
+  '/company': '/menu-visuals/Company.jpg',
   '/admin/users': '/menu-visuals/organization.svg',
-  '/admin/audit-logs': '/menu-visuals/learning.svg',
-  '/admin': '/menu-visuals/company.svg',
+  '/admin/audit-logs': '/mock-posters/learning.svg',
+  '/admin': '/menu-visuals/Company.jpg',
 };
 
 function SectionHeading({ emoji, title, desc }) {
