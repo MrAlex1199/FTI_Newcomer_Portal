@@ -20,6 +20,7 @@ import GettingStarted from './pages/GettingStarted.jsx';
 import ItHelp from './pages/ItHelp.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
+import ProfileSettings from './pages/ProfileSettings.jsx';
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
 const AdminAuditLogs = lazy(() => import('./pages/AdminAuditLogs.jsx'));
@@ -182,6 +183,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Company />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfileSettings />
               </ProtectedRoute>
             }
           />

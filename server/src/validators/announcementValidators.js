@@ -41,6 +41,7 @@ export const listAnnouncementValidator = [
   query('search').optional().trim().isLength({ max: 100 }).withMessage('Search must not exceed 100 characters'),
   query('category').optional().isIn(ANNOUNCEMENT_CATEGORIES).withMessage('Invalid announcement category'),
   query('status').optional().isIn(derivedStatuses).withMessage('Invalid announcement status'),
+  query('audience').optional().isIn(['live']).withMessage('Invalid announcement audience'),
 ];
 
 export { derivedStatuses };

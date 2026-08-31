@@ -49,6 +49,14 @@
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition duration-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 active:scale-[0.98];
   }
 
+  .ticker-track {
+    animation: ticker-scroll 32s linear infinite;
+  }
+
+  .ticker-paused {
+    animation-play-state: paused;
+  }
+
   .field {
     @apply block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 disabled:bg-gray-100 disabled:text-gray-500;
   }
@@ -62,7 +70,16 @@
   }
 }
 
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {

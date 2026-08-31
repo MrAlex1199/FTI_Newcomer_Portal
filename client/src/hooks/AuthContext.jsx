@@ -51,6 +51,12 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const refreshed = await authService.getMe();
+    setUser(refreshed);
+    return refreshed;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -58,6 +64,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(user),
       login,
       logout,
+      refreshUser,
       /** UI-only permission check mirroring the server matrix. */
       hasPermission: (action) => (user ? can(user.role, action) : false),
       hasRole: (...roles) => (user ? roles.includes(user.role) : false),

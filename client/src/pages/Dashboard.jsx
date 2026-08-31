@@ -7,6 +7,7 @@ import DashboardHeader from './DashboardHeader.jsx';
 import { ROLE_LABELS } from '../utils/permissions.js';
 import { useAnnouncements } from '../hooks/useAnnouncements.js';
 import { ErrorState } from '../components/common/states.jsx';
+import AnnouncementCarousel from '../components/content/AnnouncementCarousel.jsx';
 
 const MANAGE_PERMISSIONS = [
   'policies:manage',
@@ -65,6 +66,8 @@ export default function Dashboard() {
             </div>
           </div>
         </section>
+
+        <AnnouncementCarousel />
 
         <SectionHeading emoji="🧭" title={t('exploreSection')} desc={t('exploreSectionDesc')} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -129,6 +132,23 @@ const toneClasses = {
   super: 'bg-purple-100',
 };
 
+const MENU_VISUALS = {
+  '/employees': '/menu-visuals/people.svg',
+  '/departments': '/menu-visuals/departments.svg',
+  '/interns': '/menu-visuals/people.svg',
+  '/intern-batches': '/menu-visuals/learning.svg',
+  '/organization': '/menu-visuals/organization.svg',
+  '/policies': '/menu-visuals/learning.svg',
+  '/faq': '/menu-visuals/support.svg',
+  '/announcements': '/mock-posters/welcome.svg',
+  '/getting-started': '/mock-posters/learning.svg',
+  '/it-help': '/menu-visuals/support.svg',
+  '/company': '/menu-visuals/company.svg',
+  '/admin/users': '/menu-visuals/organization.svg',
+  '/admin/audit-logs': '/menu-visuals/learning.svg',
+  '/admin': '/menu-visuals/company.svg',
+};
+
 function SectionHeading({ emoji, title, desc }) {
   return (
     <div className="mb-4 mt-8 flex items-start gap-3">
@@ -147,16 +167,18 @@ function SectionHeading({ emoji, title, desc }) {
  */
 function NavCard({ to, emoji, title, desc, tone = 'neutral', index = 0 }) {
   const { t } = useLanguage();
+  const visual = MENU_VISUALS[to];
   return (
     <Link
       to={to}
-      className="app-card-interactive group flex h-full animate-fade-up flex-col focus-visible:border-primary-400"
+      className="app-card-interactive group flex h-full animate-fade-up flex-col overflow-hidden focus-visible:border-primary-400"
       style={{ animationDelay: `${Math.min(index, 11) * 40}ms` }}
     >
+      <div className="relative -mx-5 -mt-5 mb-5 h-32 overflow-hidden bg-primary-50 sm:h-40">
+        {visual ? <img src={visual} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className={`flex h-full w-full items-center justify-center ${toneClasses[tone] || toneClasses.neutral}`}><span className="text-6xl" aria-hidden="true">{emoji}</span></div>}
+        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm" aria-hidden="true">{emoji}</span>
+      </div>
       <div className="flex items-start gap-3">
-        <span className={`icon-tile group-hover:scale-110 ${toneClasses[tone] || toneClasses.neutral}`} aria-hidden="true">
-          {emoji}
-        </span>
         <div className="min-w-0">
           <h3 className="font-semibold text-gray-800 group-hover:text-primary-700">{title}</h3>
           <p className="mt-1 text-sm text-gray-500">{desc}</p>

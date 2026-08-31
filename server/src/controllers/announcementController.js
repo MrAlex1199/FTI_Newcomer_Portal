@@ -61,9 +61,11 @@ const managerStatusFilter = (status) => {
   return {};
 };
 
-const visibleFilter = (req) => (canManage(req)
-  ? managerStatusFilter(req.query.status)
-  : Announcement.visibleToRoleFilter(req.user.role));
+const visibleFilter = (req) => (req.query.audience === 'live'
+  ? Announcement.visibleToRoleFilter(req.user.role)
+  : canManage(req)
+    ? managerStatusFilter(req.query.status)
+    : Announcement.visibleToRoleFilter(req.user.role));
 
 const applyFilters = (req) => {
   const filter = visibleFilter(req);

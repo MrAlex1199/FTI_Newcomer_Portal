@@ -55,6 +55,34 @@ const userSchema = new mongoose.Schema(
       ref: 'Intern',
       default: null,
     },
+    // Fallback profile fields for accounts that are not linked to a directory record.
+    firstName: {
+      type: String,
+      trim: true,
+      maxlength: [80, 'First name must not exceed 80 characters'],
+      default: '',
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      maxlength: [80, 'Last name must not exceed 80 characters'],
+      default: '',
+    },
+    nickname: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Nickname must not exceed 50 characters'],
+      default: '',
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    profileImagePublicId: {
+      type: String,
+      default: '',
+      select: false,
+    },
     isActive: {
       type: Boolean,
       default: true,

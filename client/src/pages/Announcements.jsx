@@ -151,7 +151,7 @@ function AnnouncementCard({ announcement, canManage, locale, onEdit, onToggle, o
   return (
     <article className={`bg-white border rounded-xl overflow-hidden shadow-sm ${announcement.isPinned ? 'border-amber-300' : 'border-gray-200'}`}>
       <div className="grid md:grid-cols-[12rem_1fr]">
-        {announcement.coverImage ? <ImageWithFallback src={announcement.coverImage} alt="" className="w-full h-40 md:h-full object-cover" fallback="ANN" /> : <div className="h-3 md:h-full bg-gradient-to-br from-primary-500 to-cyan-400" />}
+        {announcement.coverImage ? <ImageWithFallback src={announcement.coverImage} alt="" className="w-full h-56 md:h-full object-cover" fallback="ANN" /> : <div className="h-3 md:h-full bg-gradient-to-br from-primary-500 to-cyan-400" />}
         <div className="p-5">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">
             <div>
