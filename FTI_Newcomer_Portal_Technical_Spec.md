@@ -2435,3 +2435,14 @@ Then optional
 **Purpose:** AI-assisted full-stack development specification
 
 **Primary Audience:** นักศึกษาฝึกงาน / พนักงานใหม่ / HR / IT / Admin
+
+
+
+You can now log in with:
+
+Username	Password
+superadmin	ChangeMe123!
+admin	ChangeMe123!
+editor	ChangeMe123!
+staff	ChangeMe123!
+intern	ChangeMe123!

@@ -206,8 +206,9 @@ Expected response:
 ## 📖 Documentation
 
 - [MongoDB Setup Guide](docs/MONGODB_SETUP.md)
-- [API Documentation](docs/API.md) - Coming soon
-- [Deployment Guide](docs/DEPLOYMENT.md) - Coming soon
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- [Performance Optimization Report](docs/PERFORMANCE_OPTIMIZATION_REPORT.md)
+- [Localization Report](docs/LOCALIZATION_COMPLETION_REPORT.md)
 - [Technical Specification](FTI_Newcomer_Portal_Technical_Spec.md)
 - [Project Plan](ProjectPlan.md)
 
@@ -237,6 +238,20 @@ MIT License - This is an educational/internship project.
 
 ---
 
-**Status:** 🚧 In Development - Phase 1 (Project Bootstrap Complete)
+**Status:** ✅ Phase 1 Complete - Ready for Testing & Deployment
 
-**Last Updated:** August 29, 2024
+**Last Updated:** September 1, 2026
+
+## 🧪 Test Accounts
+
+After running `npm run seed`, use these accounts:
+
+| Role | Username | Password |
+|------|----------|----------|
+| Super Admin | superadmin | ChangeMe123! |
+| Admin | admin | ChangeMe123! |
+| Editor | editor | ChangeMe123! |
+| Staff | staff | ChangeMe123! |
+| Intern | intern | ChangeMe123! |
+
+⚠️ **Change all passwords in production!**

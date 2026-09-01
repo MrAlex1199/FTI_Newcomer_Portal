@@ -134,37 +134,71 @@ export default function OrganizationChart({ tree, departments = [], departmentId
     const hasChildren = Boolean(node.children?.length || node.childrenTruncated);
     const isExpanded = effectiveExpandedIds.has(node.id);
     const isMatch = matchingIds.has(node.id);
+    const childCount = node.children?.length || 0;
+    
     return (
-      <div key={node.id} className={depth > 0 ? 'ml-5 border-l-2 border-primary-100 pl-5 pt-3' : ''}>
-        <div className="flex items-start gap-2">
+      <div key={node.id} className="flex flex-col items-center">
+        {/* Node card */}
+        <div className="relative flex flex-col items-center">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setSelected(node)}
+            className={`w-56 text-left flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${isMatch ? 'border-amber-400 ring-2 ring-amber-200' : 'border-gray-200'} ${selected?.id === node.id ? 'ring-2 ring-primary-300 border-primary-400' : ''}`}
+          >
+            <NodeAvatar node={node} />
+            <span className="min-w-0 flex-1"><NodeMeta node={node} /></span>
+          </button>
+          
+          {/* Expand/collapse button below the card */}
           {hasChildren && (
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => toggleExpanded(node.id)}
-              className="mt-4 w-6 h-6 rounded-full border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 shrink-0"
+              className="mt-2 w-7 h-7 rounded-full border-2 border-primary-300 bg-white text-primary-700 hover:bg-primary-50 font-bold shadow-sm z-10 relative"
               aria-label={`${isExpanded ? t('collapse') : t('expand')} ${node.fullName}`}
               aria-expanded={isExpanded}
             >
               {isExpanded ? '−' : '+'}
             </button>
           )}
-          {!hasChildren && <span className="w-6 shrink-0" aria-hidden="true" />}
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setSelected(node)}
-            className={`w-64 text-left flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${isMatch ? 'border-amber-400 ring-2 ring-amber-200' : 'border-gray-200'} ${selected?.id === node.id ? 'ring-2 ring-primary-300 border-primary-400' : ''}`}
-          >
-            <NodeAvatar node={node} />
-            <span className="min-w-0 flex-1"><NodeMeta node={node} /></span>
-          </button>
         </div>
-        {isExpanded && node.children?.length > 0 && (
-          <div className="mt-1">{node.children.map((child) => renderDesktopNode(child, depth + 1))}</div>
+
+        {/* Vertical connecting line from button to children */}
+        {isExpanded && hasChildren && node.children?.length > 0 && (
+          <div className="w-0.5 h-8 bg-primary-200" />
         )}
+
+        {/* Children container */}
+        {isExpanded && node.children?.length > 0 && (
+          <div className="relative">
+            {/* Horizontal connector line spanning all children */}
+            {childCount > 1 && (
+              <div className="absolute left-0 right-0 flex justify-center" style={{ top: '0px' }}>
+                <div className="relative" style={{ width: `${(childCount - 1) * 405}px` }}>
+                  <div className="absolute h-0.5 bg-primary-200" style={{ left: '0', right: '0', top: '0' }} />
+                </div>
+              </div>
+            )}
+            
+            {/* Children nodes */}
+            <div className="flex items-start" style={{ gap: '80px' }}>
+              {node.children.map((child) => (
+                <div key={child.id} className="relative flex flex-col items-center">
+                  {/* Vertical line from horizontal connector to child node */}
+                  <div className="w-0.5 h-8 bg-primary-200" />
+                  {renderDesktopNode(child, depth + 1)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {isExpanded && node.childrenTruncated && (
-          <p className="ml-14 mt-2 text-xs text-amber-700">{t('reportsHidden', { count: node.directReportCount })}</p>
+          <p className="mt-3 text-xs text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+            {t('reportsHidden', { count: node.directReportCount })}
+          </p>
         )}
       </div>
     );
@@ -194,9 +228,11 @@ export default function OrganizationChart({ tree, departments = [], departmentId
   };
 
   const renderTopLevel = (nodes, orphan = false, mobile = false) => nodes?.map((node) => (
-    <section key={node.id} className={orphan ? 'border border-amber-200 bg-amber-50/40 rounded-xl p-3' : ''}>
-      {orphan && <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">{t('orphanedLink')} {node.orphanReason === 'circular_reference' ? t('circularReference') : t('managerUnavailable')}</p>}
-      {mobile ? renderMobileNode(node) : renderDesktopNode(node)}
+    <section key={node.id} className={orphan ? 'border-2 border-amber-300 bg-amber-50/40 rounded-2xl p-6' : ''}>
+      {orphan && <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-4 text-center">{t('orphanedLink')} {node.orphanReason === 'circular_reference' ? t('circularReference') : t('managerUnavailable')}</p>}
+      <div className="flex justify-center">
+        {mobile ? renderMobileNode(node) : renderDesktopNode(node)}
+      </div>
     </section>
   ));
 
@@ -249,8 +285,8 @@ export default function OrganizationChart({ tree, departments = [], departmentId
           <>
             <div className="hidden md:block relative h-[38rem] overflow-hidden bg-slate-50/70 cursor-grab active:cursor-grabbing" ref={viewportRef} onPointerDown={beginPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={(event) => { event.preventDefault(); changeZoom(event.deltaY > 0 ? -0.05 : 0.05); }}>
               <div className="absolute inset-0 pointer-events-none opacity-40" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-              <div className="relative min-w-max p-8 origin-top-left" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}>
-                <div className="space-y-5">
+              <div className="relative min-w-max p-12 origin-top-left" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}>
+                <div className="space-y-12">
                   {renderTopLevel(tree.roots)}
                   {renderTopLevel(tree.orphans, true)}
                 </div>
