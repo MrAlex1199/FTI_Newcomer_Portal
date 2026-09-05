@@ -5,8 +5,8 @@ import ApiError from './ApiError.js';
 const MAX_DIMENSION = 5000;
 const THUMBNAIL_SIZE = 400;
 
-/** Verify the binary, enforce dimensions, and normalize every image to a 400px WebP thumbnail. */
-export const prepareImage = async (buffer) => {
+/** Verify the binary, enforce dimensions, and normalize image (defaults to 400px WebP thumbnail, or max 1200px width with aspect ratio preserved). */
+export const prepareImage = async (buffer, options = {}) => {
   let metadata;
   try {
     metadata = await sharp(buffer).metadata();
@@ -18,11 +18,15 @@ export const prepareImage = async (buffer) => {
     throw ApiError.badRequest(`Image dimensions must be between 1 and ${MAX_DIMENSION}px`);
   }
 
-  return sharp(buffer)
-    .rotate()
-    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: 'cover', position: 'attention' })
-    .webp({ quality: 85 })
-    .toBuffer();
+  let transform = sharp(buffer).rotate();
+  if (options.fit === 'contain' || options.fit === 'inside' || options.maxWidth) {
+    const maxWidth = options.maxWidth || 1200;
+    transform = transform.resize({ width: maxWidth, withoutEnlargement: true });
+  } else {
+    transform = transform.resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: 'cover', position: 'attention' });
+  }
+
+  return transform.webp({ quality: options.quality || 85 }).toBuffer();
 };
 
 const uploadToCloudinary = (buffer, folder) => new Promise((resolve, reject) => {
@@ -33,11 +37,11 @@ const uploadToCloudinary = (buffer, folder) => new Promise((resolve, reject) => 
   stream.end(buffer);
 });
 
-export const uploadImage = async (buffer, folder) => {
+export const uploadImage = async (buffer, folder, options = {}) => {
   if (!isCloudinaryConfigured() || !configureCloudinary()) {
     throw new ApiError(503, 'Image uploads are not configured');
   }
-  const prepared = await prepareImage(buffer);
+  const prepared = await prepareImage(buffer, options);
   try {
     const result = await uploadToCloudinary(prepared, folder);
     return { url: result.secure_url, publicId: result.public_id };

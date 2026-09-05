@@ -16,14 +16,24 @@ const articleFields = (optional) => {
     }).withMessage('Invalid subcategory for the selected article category'),
     body('summary').optional().trim().isLength({ max: 500 }).withMessage('Summary must not exceed 500 characters'),
     opt(body('content').isString().notEmpty().withMessage('Content is required')).isLength({ max: 20000 }).withMessage('Content must not exceed 20000 characters'),
-    body('coverImage').optional().isURL({ protocols: ['http', 'https'], require_protocol: true }).withMessage('Cover image must be a valid HTTP(S) URL'),
-    body('tags').optional().isArray({ max: 20 }).withMessage('Tags must be an array with at most 20 items'),
+    body('coverImage').optional({ checkFalsy: true }).isURL({ protocols: ['http', 'https'], require_protocol: true }).withMessage('Cover image must be a valid HTTP(S) URL'),
+    body('tags').optional().customSanitizer((val) => {
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch { return val.split(',').map((s) => s.trim()).filter(Boolean); }
+      }
+      return val;
+    }).isArray({ max: 20 }).withMessage('Tags must be an array with at most 20 items'),
     body('tags.*').optional().isString().trim().isLength({ max: 50 }).withMessage('Each tag must not exceed 50 characters'),
-    body('targetRoles').optional().isArray().withMessage('Target roles must be an array'),
+    body('targetRoles').optional().customSanitizer((val) => {
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch { return val ? [val] : []; }
+      }
+      return val;
+    }).isArray().withMessage('Target roles must be an array'),
     body('targetRoles.*').optional().isIn(USER_ROLES).withMessage('Invalid target role'),
-    body('sortOrder').optional().isInt({ min: 0, max: 100000 }).withMessage('sortOrder must be a non-negative integer'),
-    body('isQuickLink').optional().isBoolean().withMessage('isQuickLink must be a boolean'),
-    body('quickLinkOrder').optional().isInt({ min: 0, max: 100000 }).withMessage('quickLinkOrder must be a non-negative integer'),
+    body('sortOrder').optional().toInt().isInt({ min: 0, max: 100000 }).withMessage('sortOrder must be a non-negative integer'),
+    body('isQuickLink').optional().toBoolean().isBoolean().withMessage('isQuickLink must be a boolean'),
+    body('quickLinkOrder').optional().toInt().isInt({ min: 0, max: 100000 }).withMessage('quickLinkOrder must be a non-negative integer'),
     body('status').optional().isIn(CONTENT_STATUSES).withMessage('Invalid article status'),
   ];
 };

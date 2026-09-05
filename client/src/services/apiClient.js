@@ -8,7 +8,7 @@ import axios from 'axios';
  * (Vite dev server on :5173 -> API on :5000).
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1',
   withCredentials: true,
 });
 

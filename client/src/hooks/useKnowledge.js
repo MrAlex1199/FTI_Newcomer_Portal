@@ -37,10 +37,84 @@ export function useCreateKnowledgeArticle() {
   return useMutation({ mutationFn: knowledgeService.create, onSuccess: invalidate });
 }
 export function useUpdateKnowledgeArticle() {
-  const invalidate = useInvalidateKnowledge();
-  return useMutation({ mutationFn: ({ id, payload }) => knowledgeService.update(id, payload), onSuccess: invalidate });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables) => knowledgeService.update(variables),
+    onSuccess: (_data, variables) => {
+      const id = variables.id || (typeof variables === 'string' ? variables : null);
+      if (id) queryClient.invalidateQueries({ queryKey: ['knowledge-article', id] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
 }
+
 export function useDeleteKnowledgeArticle() {
   const invalidate = useInvalidateKnowledge();
   return useMutation({ mutationFn: knowledgeService.remove, onSuccess: invalidate });
+}
+
+// Article Images
+export function useAddArticleImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ articleId, file, caption }) => knowledgeService.addImage(articleId, file, caption),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useRemoveArticleImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ articleId, imageId }) => knowledgeService.removeImage(articleId, imageId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useReorderArticleImages() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ articleId, imageIds }) => knowledgeService.reorderImages(articleId, imageIds),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', variables.articleId] });
+    },
+  });
+}
+
+// Comments
+export function useArticleComments(articleId, params = {}) {
+  return useQuery({
+    queryKey: ['knowledge-comments', articleId, params],
+    queryFn: () => knowledgeService.listComments(articleId, params),
+    enabled: Boolean(articleId),
+  });
+}
+
+export function useCreateComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ articleId, body }) => knowledgeService.createComment(articleId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-comments', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useDeleteComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ articleId, commentId }) => knowledgeService.deleteComment(articleId, commentId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-comments', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', variables.articleId] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
 }

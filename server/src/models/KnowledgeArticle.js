@@ -75,6 +75,17 @@ const knowledgeArticleSchema = new mongoose.Schema(
       default: '',
       select: false,
     },
+    images: [{
+      url: { type: String, required: true },
+      publicId: { type: String, required: true },
+      caption: { type: String, trim: true, maxlength: 200, default: '' },
+      sortOrder: { type: Number, default: 0 },
+    }],
+    commentCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     tags: {
       type: [String],
       default: [],

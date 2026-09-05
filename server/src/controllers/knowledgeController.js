@@ -1,9 +1,10 @@
-import { KnowledgeArticle, KnowledgeArticleVote, AuditLog, ARTICLE_CATEGORIES, GETTING_STARTED_SECTIONS, IT_HELP_TOPICS, CONTENT_STATUSES } from '../models/index.js';
+import { KnowledgeArticle, KnowledgeArticleVote, KnowledgeComment, AuditLog, ARTICLE_CATEGORIES, GETTING_STARTED_SECTIONS, IT_HELP_TOPICS, CONTENT_STATUSES } from '../models/index.js';
 import { USER_ROLES } from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { can } from '../config/permissions.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+import { uploadImage, deleteImage } from '../utils/imageUpload.js';
 
 const SORT_FIELDS = ['sortOrder', 'quickLinkOrder', 'title', 'createdAt', 'updatedAt'];
 const canManage = (req) => can(req.user.role, 'knowledge:manage');
@@ -14,6 +15,20 @@ const articlePayload = (body) => {
   if (typeof payload.isQuickLink === 'string') payload.isQuickLink = payload.isQuickLink === 'true';
   if (typeof payload.sortOrder === 'string') payload.sortOrder = Number(payload.sortOrder);
   if (typeof payload.quickLinkOrder === 'string') payload.quickLinkOrder = Number(payload.quickLinkOrder);
+  if (typeof payload.targetRoles === 'string') {
+    try {
+      payload.targetRoles = JSON.parse(payload.targetRoles);
+    } catch {
+      payload.targetRoles = payload.targetRoles ? [payload.targetRoles] : [];
+    }
+  }
+  if (typeof payload.tags === 'string') {
+    try {
+      payload.tags = JSON.parse(payload.tags);
+    } catch {
+      payload.tags = payload.tags.split(',').map((t) => t.trim()).filter(Boolean);
+    }
+  }
   return payload;
 };
 
@@ -130,36 +145,83 @@ export const createArticle = asyncHandler(async (req, res) => {
   if (!Object.prototype.hasOwnProperty.call(payload, 'status')) payload.status = 'draft';
   assertCategoryShape(payload);
   normalizeQuickLinkPayload(payload, payload.category);
-  const article = await KnowledgeArticle.create({ ...payload, authorId: req.user.id });
-  await article.populate('authorId', 'username');
-  await auditArticle({ req, action: article.status === 'published' ? 'publish' : 'create', article });
-  res.status(201).json({ success: true, data: { article: serializeArticle(article) } });
+
+  let uploaded;
+  let article;
+  try {
+    if (req.file) {
+      uploaded = await uploadImage(req.file.buffer, 'fti-welcome-hub/knowledge', { maxWidth: 1200 });
+    }
+    article = await KnowledgeArticle.create({
+      ...payload,
+      ...(uploaded && { coverImage: uploaded.url, coverImagePublicId: uploaded.publicId }),
+      authorId: req.user.id,
+    });
+    await article.populate('authorId', 'username');
+    await auditArticle({ req, action: article.status === 'published' ? 'publish' : 'create', article });
+    res.status(201).json({ success: true, data: { article: serializeArticle(article) } });
+  } catch (error) {
+    if (uploaded && !article) await deleteImage(uploaded.publicId);
+    throw error;
+  }
 });
 
 export const updateArticle = asyncHandler(async (req, res) => {
-  const article = await KnowledgeArticle.findById(req.params.id);
+  const article = await KnowledgeArticle.findById(req.params.id).select('+coverImagePublicId');
   if (!article) throw ApiError.notFound('Knowledge article not found');
   const before = article.toObject();
+  const previousCoverImagePublicId = article.coverImagePublicId;
   const payload = articlePayload(req.body);
   assertCategoryShape(payload, article.category, article.subcategory);
   normalizeQuickLinkPayload(payload, payload.category || article.category);
-  Object.assign(article, payload);
-  await article.save();
-  await article.populate('authorId', 'username');
-  const action = before.status !== article.status && article.status === 'published'
-    ? 'publish'
-    : before.status === 'published' && article.status !== 'published'
-      ? 'unpublish'
-      : 'update';
-  await auditArticle({ req, action, article, before });
-  res.status(200).json({ success: true, data: { article: serializeArticle(article) } });
+
+  let uploaded;
+  let saved = false;
+  try {
+    if (req.file) {
+      uploaded = await uploadImage(req.file.buffer, 'fti-welcome-hub/knowledge', { maxWidth: 1200 });
+    }
+    Object.assign(article, payload);
+    if (uploaded) {
+      article.coverImage = uploaded.url;
+      article.coverImagePublicId = uploaded.publicId;
+    }
+    await article.save();
+    saved = true;
+    await article.populate('authorId', 'username');
+    const action = before.status !== article.status && article.status === 'published'
+      ? 'publish'
+      : before.status === 'published' && article.status !== 'published'
+        ? 'unpublish'
+        : 'update';
+    await auditArticle({ req, action, article, before });
+
+    if ((uploaded || Object.prototype.hasOwnProperty.call(payload, 'coverImage')) && previousCoverImagePublicId) {
+      await deleteImage(previousCoverImagePublicId);
+    }
+    res.status(200).json({ success: true, data: { article: serializeArticle(article) } });
+  } catch (error) {
+    if (uploaded && !saved) await deleteImage(uploaded.publicId);
+    throw error;
+  }
 });
 
 export const deleteArticle = asyncHandler(async (req, res) => {
-  const article = await KnowledgeArticle.findById(req.params.id);
+  const article = await KnowledgeArticle.findById(req.params.id).select('+coverImagePublicId');
   if (!article) throw ApiError.notFound('Knowledge article not found');
   const before = article.toObject();
+
+  if (article.coverImagePublicId) {
+    await deleteImage(article.coverImagePublicId);
+  }
+  if (article.images && article.images.length > 0) {
+    await Promise.allSettled(
+      article.images.filter((img) => img.publicId).map((img) => deleteImage(img.publicId))
+    );
+  }
+
   await KnowledgeArticleVote.deleteMany({ articleId: article._id });
+  await KnowledgeComment.deleteMany({ articleId: article._id });
   await article.deleteOne();
   await auditArticle({ req, action: 'delete', article, before });
   res.status(200).json({ success: true, message: 'Knowledge article deleted' });
