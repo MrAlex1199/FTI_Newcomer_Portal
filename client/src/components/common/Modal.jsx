@@ -53,7 +53,14 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
   }, [open]);
 
   if (!open) return null;
-  const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
+  const sizes = {
+    sm: 'max-w-sm',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-5xl',
+    '2xl': 'max-w-6xl',
+    full: 'max-w-[96vw]',
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6" onClick={onClose}>

@@ -22,3 +22,8 @@ export { default as SearchEvent } from './SearchEvent.js';
 export { default as CompanyInfo } from './CompanyInfo.js';
 export { default as Feedback, FEEDBACK_CATEGORIES, FEEDBACK_STATUSES } from './Feedback.js';
 export { default as AuditLog, AUDIT_ACTIONS } from './AuditLog.js';
+export { default as Conversation, CONVERSATION_TYPES } from './Conversation.js';
+export { default as ChatMessage } from './ChatMessage.js';
+export { default as FloorPlan } from './FloorPlan.js';
+export { default as Facility } from './Facility.js';
+

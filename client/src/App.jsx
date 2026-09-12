@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AuthProvider } from './hooks/AuthContext.jsx';
+import { ChatProvider } from './hooks/ChatContext.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
 import RoleGuard from './components/common/RoleGuard.jsx';
 import Login from './pages/Login.jsx';
@@ -20,7 +21,10 @@ import GettingStarted from './pages/GettingStarted.jsx';
 import ItHelp from './pages/ItHelp.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
+import FloorPlanPage from './pages/FloorPlanPage.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
+import Chat from './pages/Chat.jsx';
+import FloatingChatWidget from './components/chat/FloatingChatWidget.jsx';
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
 const AdminAuditLogs = lazy(() => import('./pages/AdminAuditLogs.jsx'));
@@ -39,9 +43,10 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+        <ChatProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route
             path="/dashboard"
@@ -188,10 +193,28 @@ function App() {
           />
 
           <Route
+            path="/floor-plan"
+            element={
+              <ProtectedRoute>
+                <FloorPlanPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/profile"
             element={
               <ProtectedRoute>
                 <ProfileSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <Chat />
               </ProtectedRoute>
             }
           />
@@ -254,8 +277,10 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        <FloatingChatWidget />
+      </ChatProvider>
+    </BrowserRouter>
+  </AuthProvider>
   );
 }
 
