@@ -51,25 +51,25 @@ export default function CopyLayoutModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+            <div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl">
               <span className="text-xl">📋</span>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              <h2 className="text-base font-bold text-slate-900">
                 คัดลอกโครงร่างแปลนและผนัง (Duplicate Layout)
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500">
                 ปลายทาง: {targetPlan.name || `ชั้น ${targetPlan.floorNumber}`}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
           >
             ✕
           </button>
@@ -78,13 +78,13 @@ export default function CopyLayoutModal({
         {/* Content */}
         <div className="p-6 space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
               <span>⚠️</span>
               <span>{errorMsg}</span>
             </div>
           )}
 
-          <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs text-blue-900 dark:text-blue-300 space-y-1">
+          <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
             <p className="font-semibold">💡 ประโยชน์ของการคัดลอกแปลน:</p>
             <p>
               ระบบจะคัดลอกผนังรอบนอก (Outer Walls), ผนังกั้นห้อง, ประตู, และสเกลกริดจากแปลนต้นทางมายังชั้นนี้ทันที ทำให้ไม่ต้องวาดโครงสร้างผนังซ้ำใหม่จากศูนย์!
@@ -92,7 +92,7 @@ export default function CopyLayoutModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-2">
               เลือกแปลนต้นทางที่ต้องการคัดลอก (Source Floor Plan):
             </label>
             <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
@@ -108,8 +108,8 @@ export default function CopyLayoutModal({
                     onClick={() => setSelectedSourceId(plan._id)}
                     className={`p-3 rounded-xl border cursor-pointer transition flex items-center justify-between ${
                       isSelected
-                        ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/60 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        ? 'border-blue-600 bg-blue-50/80 shadow-xs'
+                        : 'border-slate-200 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -117,15 +117,15 @@ export default function CopyLayoutModal({
                         {plan.buildingType === 'warehouse' ? '🏭' : '🏢'}
                       </span>
                       <div>
-                        <div className="font-bold text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                           <span>{plan.name || `${plan.buildingName} ชั้น ${plan.floorNumber}`}</span>
                           {isSameBuilding && (
-                            <span className="px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] rounded font-medium">
+                            <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 text-[10px] rounded font-medium">
                               อาคารเดียวกัน
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="text-[11px] text-slate-500">
                           {roomCount} ห้อง • {wallCount} ผนัง • {plan.buildingId.toUpperCase()}
                         </div>
                       </div>
@@ -146,11 +146,11 @@ export default function CopyLayoutModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition"
           >
             ยกเลิก
           </button>

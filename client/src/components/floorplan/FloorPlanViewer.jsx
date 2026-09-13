@@ -876,7 +876,13 @@ export default function FloorPlanViewer({
 
         {/* Selected Asset Slide-over Detail Drawer */}
         {selectedAsset && (
-          <div className="absolute top-4 right-4 z-20 w-84 max-w-sm rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-xl text-xs space-y-3 animate-in fade-in slide-in-from-top-2">
+          <div
+            className={`absolute top-4 z-30 w-84 max-w-sm rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-2xl text-xs space-y-3 animate-in fade-in slide-in-from-top-2 max-h-[85vh] overflow-y-auto ${
+              currentBuilding && currentBuilding.id !== 'campus'
+                ? 'right-20 sm:right-24'
+                : 'right-4 sm:right-6'
+            }`}
+          >
             <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
               <div>
                 <div className="flex items-center gap-1.5">
@@ -1066,7 +1072,13 @@ export default function FloorPlanViewer({
 
         {/* Selected Room Popup */}
         {selectedRoom && (
-          <div className="absolute top-4 right-4 z-20 w-80 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-xl">
+          <div
+            className={`absolute top-4 z-30 w-80 max-w-sm rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-2xl animate-in fade-in slide-in-from-top-2 max-h-[85vh] overflow-y-auto ${
+              currentBuilding && currentBuilding.id !== 'campus'
+                ? 'right-20 sm:right-24'
+                : 'right-4 sm:right-6'
+            }`}
+          >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <span

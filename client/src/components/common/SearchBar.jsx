@@ -8,7 +8,18 @@ import { useEffect, useState } from 'react';
  */
 import useLanguage from '../../hooks/useLanguage.js';
 
-export default function SearchBar({ value = '', onSearch, placeholder, delay = 300, onFocus, onBlur, ariaLabel }) {
+export default function SearchBar({
+  value = '',
+  onSearch,
+  placeholder,
+  delay = 300,
+  onFocus,
+  onBlur,
+  ariaLabel,
+  className,
+  inputRef,
+  ...rest
+}) {
   const { t } = useLanguage();
   const resolvedPlaceholder = placeholder || t('search');
   const [text, setText] = useState(value);
@@ -25,8 +36,11 @@ export default function SearchBar({ value = '', onSearch, placeholder, delay = 3
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
+  const defaultClasses = 'w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500';
+
   return (
     <input
+      ref={inputRef}
       type="search"
       value={text}
       onChange={(e) => setText(e.target.value)}
@@ -34,7 +48,8 @@ export default function SearchBar({ value = '', onSearch, placeholder, delay = 3
       onBlur={onBlur}
       aria-label={ariaLabel || resolvedPlaceholder}
       placeholder={resolvedPlaceholder}
-      className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+      className={className || defaultClasses}
+      {...rest}
     />
   );
 }

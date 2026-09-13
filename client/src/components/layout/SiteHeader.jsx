@@ -87,62 +87,92 @@ export default function SiteHeader({ rightContent }) {
       <div className="bg-primary-900 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex min-h-[4.25rem] items-center justify-between gap-3 py-2">
-            <Link
-              to="/dashboard"
-              onClick={closeDrawer}
-              className="flex shrink-0 items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-800 p-1.5 shadow-xs">
-                <img src="/logo-ft-white.png" alt="FTI" className="h-auto w-full object-contain" />
-              </span>
-              <span className="text-base font-bold tracking-wide text-white sm:text-lg">
-                {t('brand')}
-              </span>
-            </Link>
-
-            <nav aria-label={t('navigation')} className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex lg:gap-4">
-              <Link to="/dashboard" className={navClass(pathname === '/dashboard')}>{t('dashboard')}</Link>
-              <Link to="/floor-plan" className={`flex items-center gap-1.5 ${navClass(pathname === '/floor-plan')}`}>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <span>{t('floorPlan') || 'ผังอาคาร & ทรัพย์สิน'}</span>
+            {/* Left Section: Brand & Core Links */}
+            <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+              <Link
+                to="/dashboard"
+                onClick={closeDrawer}
+                className="flex shrink-0 items-center gap-2.5 rounded-xl transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900"
+              >
+                <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary-800 p-1.5 shadow-sm border border-primary-700/60">
+                  <img src="/logo-ft-white.png" alt="FTI" className="h-auto w-full object-contain" />
+                </span>
+                <span className="text-base font-bold tracking-wide text-white sm:text-lg">
+                  {t('brand')}
+                </span>
               </Link>
-              <Link to="/chat" className={`relative flex items-center gap-1.5 ${navClass(pathname === '/chat')}`}>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+              <div className="hidden md:flex items-center gap-1.5">
+                <Link
+                  to="/dashboard"
+                  className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+                    pathname === '/dashboard'
+                      ? 'bg-primary-800 text-white shadow-xs font-semibold'
+                      : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
+                  }`}
+                >
+                  {t('dashboard')}
+                </Link>
+
+                <ServicesDropdown pathname={pathname} />
+              </div>
+            </div>
+
+            {/* Center Section: Spacious Command Center Global Search */}
+            <div className="hidden md:flex flex-1 justify-center px-2 lg:px-6 max-w-lg lg:max-w-xl">
+              <GlobalSearch variant="header" className="w-full" />
+            </div>
+
+            {/* Right Section: Quick Utilities & Account */}
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {/* Chat Button with Unread Badge */}
+              <Link
+                to="/chat"
+                title={t('chat')}
+                aria-label={t('chat')}
+                className={`relative hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary-700/70 bg-primary-800/70 text-white transition hover:bg-primary-700 hover:border-primary-600 active:scale-95 ${
+                  pathname === '/chat' ? 'ring-2 ring-blue-400 bg-primary-700' : ''
+                }`}
+              >
+                <svg className="h-5 w-5 text-primary-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span>{t('chat')}</span>
                 {totalUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow">
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-primary-900 animate-pulse">
                     {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                   </span>
                 )}
               </Link>
-              <GlobalSearch />
-              {rightContent}
-              <LanguageToggle />
-              <ProfileMenu
-                profileRef={profileRef}
-                user={user}
-                name={name}
-                image={image}
-                role={role}
-                open={profileOpen}
-                setOpen={setProfileOpen}
-                onLogout={handleLogout}
-              />
-            </nav>
 
-            <div className="flex shrink-0 items-center gap-2 md:hidden">
-              <LanguageToggle />
+              {/* Language Switcher Pill */}
+              <LanguageToggle variant="header" />
+
+              {rightContent}
+
+              {/* Compact User Profile Menu */}
+              <div className="hidden sm:block">
+                <ProfileMenu
+                  profileRef={profileRef}
+                  user={user}
+                  name={name}
+                  image={image}
+                  role={role}
+                  open={profileOpen}
+                  setOpen={setProfileOpen}
+                  onLogout={handleLogout}
+                  showAdminNav={showAdminNav}
+                  isAdmin={isAdmin}
+                />
+              </div>
+
+              {/* Mobile Hamburger Button */}
               <button
                 type="button"
                 onClick={() => setMobileOpen((open) => !open)}
                 aria-expanded={mobileOpen}
                 aria-controls="site-mobile-navigation"
                 aria-label={mobileOpen ? t('closeMenu') : t('openMenu')}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary-700 bg-primary-800/80 text-white transition hover:bg-primary-700 active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary-700/80 bg-primary-800/80 text-white transition hover:bg-primary-700 active:scale-95 focus-visible:ring-2 focus-visible:ring-white md:hidden"
               >
                 <span className="sr-only">{mobileOpen ? t('closeMenu') : t('openMenu')}</span>
                 {mobileOpen ? <CloseIcon /> : <MenuIcon />}
@@ -414,7 +444,140 @@ function DrawerLink({ to, active, icon, label, badge, onClick }) {
   );
 }
 
-function ProfileMenu({ user, name, image, role, open, setOpen, onLogout, profileRef }) {
+function ServicesDropdown({ pathname }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const isServicesActive = [
+    '/floor-plan',
+    '/employees',
+    '/departments',
+    '/organization',
+    '/it-help',
+    '/policies',
+    '/interns',
+    '/company',
+  ].some((path) => pathname.startsWith(path));
+
+  useEffect(() => {
+    const handlePointer = (e) => {
+      if (open && !dropdownRef.current?.contains(e.target)) setOpen(false);
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+          isServicesActive || open
+            ? 'bg-primary-800 text-white shadow-xs font-semibold'
+            : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
+        }`}
+      >
+        <span>{t('servicesMenu') || 'บริการและผังอาคาร'}</span>
+        <ChevronIcon open={open} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-50 mt-2 w-72 origin-top-left overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-2xl ring-1 ring-black/5"
+        >
+          {/* Featured: Floor Plan & Campus */}
+          <Link
+            to="/floor-plan"
+            role="menuitem"
+            className="flex items-start gap-3 rounded-xl p-2.5 transition hover:bg-blue-50/80 group"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 text-base group-hover:scale-105 transition-transform">
+              🏢
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-700">
+                {t('floorPlan') || 'ผังอาคารและทรัพย์สิน'}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                แปลนวิทยาเขต 20 ไร่, 10 สิ่งปลูกสร้าง, ทรัพย์สิน & CCTV
+              </p>
+            </div>
+          </Link>
+
+          <div className="my-1 border-t border-slate-100" />
+
+          {/* Directory & Services */}
+          <div className="space-y-0.5">
+            <ServicesMenuItem
+              to="/employees"
+              icon="👥"
+              title={t('employeeDirectory')}
+              subtitle="รายชื่อและช่องทางติดต่อเพื่อนร่วมงาน"
+            />
+            <ServicesMenuItem
+              to="/departments"
+              icon="🏛️"
+              title={t('departments')}
+              subtitle="ฝ่ายและแผนกทั้งหมดใน FTI"
+            />
+            <ServicesMenuItem
+              to="/organization"
+              icon="🗂️"
+              title={t('organizationChart')}
+              subtitle="ผังสายบังคับบัญชาและโครงสร้างทีม"
+            />
+            <ServicesMenuItem
+              to="/it-help"
+              icon="🛠️"
+              title={t('itHelp')}
+              subtitle="แจ้งปัญหาคอมพิวเตอร์และระบบไอที"
+            />
+            <ServicesMenuItem
+              to="/policies"
+              icon="📋"
+              title={t('policies')}
+              subtitle="ระเบียบและแนวทางปฏิบัติต่างๆ"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServicesMenuItem({ to, icon, title, subtitle }) {
+  return (
+    <Link
+      to={to}
+      role="menuitem"
+      className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-slate-700 hover:bg-slate-100/80 transition group"
+    >
+      <span className="text-base shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-slate-800 group-hover:text-primary-700 truncate">{title}</p>
+        {subtitle && <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>}
+      </div>
+    </Link>
+  );
+}
+
+function ProfileMenu({ user, name, image, role, open, setOpen, onLogout, profileRef, showAdminNav }) {
   const { t } = useLanguage();
   return (
     <div ref={profileRef} className="relative">
@@ -424,25 +587,67 @@ function ProfileMenu({ user, name, image, role, open, setOpen, onLogout, profile
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={t('profileMenu')}
-        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-white hover:bg-primary-800 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900"
+        className="flex items-center gap-1.5 rounded-xl p-1 text-left text-white hover:bg-primary-800/80 focus-visible:ring-2 focus-visible:ring-white transition"
       >
-        <Avatar image={image} name={name} />
-        <span className="hidden max-w-28 lg:block">
-          <span className="block truncate text-sm font-medium">{name}</span>
-          <span className="block truncate text-xs text-primary-200">{role}</span>
-        </span>
+        <div className="relative">
+          <Avatar image={image} name={name} />
+          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-primary-900" />
+        </div>
         <ChevronIcon open={open} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white py-2 text-gray-800 shadow-xl">
-          <div className="border-b border-gray-100 px-4 py-3">
-            <p className="truncate text-sm font-semibold">{name}</p>
-            <p className="truncate text-xs text-gray-500">{user?.email}</p>
-            <p className="mt-1 text-xs text-primary-600">{role}</p>
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-2xl ring-1 ring-black/5"
+        >
+          <div className="border-b border-slate-100 px-3 py-2.5 bg-slate-50/70 rounded-xl mb-1">
+            <p className="truncate text-sm font-bold text-slate-900">{name}</p>
+            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+            <span className="mt-1.5 inline-block rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700 border border-primary-100">
+              {role}
+            </span>
           </div>
-          <Link role="menuitem" to="/profile" className="mx-2 mt-2 block rounded-lg px-3 py-2 text-sm hover:bg-primary-50 hover:text-primary-700">👤 {t('profileSettings')}</Link>
-          <Link role="menuitem" to="/floor-plan" className="mx-2 mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-primary-50 hover:text-primary-700">🏢 {t('floorPlan') || 'ผังอาคาร & ทรัพย์สิน'}</Link>
-          <button role="menuitem" type="button" onClick={onLogout} className="mx-2 mt-1 block w-[calc(100%-1rem)] rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">↪ {t('logout')}</button>
+
+          <div className="space-y-0.5">
+            <Link
+              role="menuitem"
+              to="/profile"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <span>👤</span>
+              <span>{t('profileSettings')}</span>
+            </Link>
+            <Link
+              role="menuitem"
+              to="/floor-plan"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <span>🏢</span>
+              <span>{t('floorPlan') || 'ผังอาคาร & ทรัพย์สิน'}</span>
+            </Link>
+            {showAdminNav && (
+              <Link
+                role="menuitem"
+                to="/admin"
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition"
+              >
+                <span>📊</span>
+                <span>{t('adminDashboard')}</span>
+              </Link>
+            )}
+          </div>
+
+          <div className="my-1 border-t border-slate-100" />
+
+          <button
+            role="menuitem"
+            type="button"
+            onClick={onLogout}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+          >
+            <span>↪</span>
+            <span>{t('logout')}</span>
+          </button>
         </div>
       )}
     </div>

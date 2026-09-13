@@ -157,38 +157,38 @@ export default function FacilityManageModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
+            <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl">
               <span className="text-xl">🏗️</span>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">
                 จัดการข้อมูลอาคารและโกดัง (Campus Facilities)
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500">
                 เพิ่ม ลบ หรือแก้ไขอาคารและจำนวนชั้นบนพื้นที่ 20 ไร่
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
           >
             ✕
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-center px-6 border-b border-slate-200 bg-white">
           <button
             onClick={() => setActiveTab('list')}
             className={`py-3 px-4 text-sm font-semibold border-b-2 transition ${
               activeTab === 'list'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             📋 รายการอาคาร ({facilities.length})
@@ -197,14 +197,14 @@ export default function FacilityManageModal({
             onClick={handleStartCreate}
             className={`py-3 px-4 text-sm font-semibold border-b-2 transition ${
               activeTab === 'create'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             ➕ เพิ่มอาคาร / โกดังใหม่
           </button>
           {activeTab === 'edit' && (
-            <button className="py-3 px-4 text-sm font-semibold border-b-2 border-amber-500 text-amber-600 dark:text-amber-400">
+            <button className="py-3 px-4 text-sm font-semibold border-b-2 border-amber-500 text-amber-600">
               ✏️ แก้ไขข้อมูลอาคาร
             </button>
           )}
@@ -213,7 +213,7 @@ export default function FacilityManageModal({
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
               <span>⚠️</span>
               <span>{errorMsg}</span>
             </div>
@@ -223,7 +223,7 @@ export default function FacilityManageModal({
           {activeTab === 'list' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                <span className="text-xs text-slate-500 font-medium">
                   อาคารทั้งหมดบนพื้นที่ FTI Campus (คลิกเพื่อเลือกดูหรือจัดการ)
                 </span>
                 <button
@@ -239,39 +239,39 @@ export default function FacilityManageModal({
                 {facilities.map((f) => (
                   <div
                     key={f.facilityId || f.id || f._id}
-                    className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-600 transition group"
+                    className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between hover:border-blue-300 transition group"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{f.icon || (f.type === 'warehouse' ? '🏭' : '🏢')}</span>
                           <div>
-                            <div className="font-semibold text-sm text-slate-800 dark:text-slate-100">
+                            <div className="font-semibold text-sm text-slate-900">
                               {f.name}
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            <div className="text-[11px] text-slate-500">
                               รหัส: <span className="font-mono font-medium">{f.shortName || f.id}</span> • {f.type === 'warehouse' ? 'โกดังสินค้า' : f.type === 'parking' ? 'ลานจอดรถ' : 'อาคารสำนักงาน'}
                             </div>
                           </div>
                         </div>
-                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[11px] font-bold rounded-full">
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-full">
                           {f.actualFloorCount || f.totalFloors || 1} ชั้น
                         </span>
                       </div>
                       {f.description && (
-                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-1">
+                        <p className="text-xs text-slate-600 line-clamp-2 mt-1">
                           {f.description}
                         </p>
                       )}
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200 dark:border-slate-700/60">
+                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200">
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => handleAddFloor(f)}
-                          className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:border-blue-400 text-slate-700 dark:text-slate-200 text-[11px] rounded font-medium transition"
+                          className="px-2 py-1 bg-white border border-slate-300 hover:border-blue-400 text-slate-700 text-[11px] rounded font-medium transition"
                           title="เพิ่มชั้นใหม่ให้อาคารนี้"
                         >
                           + ชั้น
@@ -279,7 +279,7 @@ export default function FacilityManageModal({
                         <button
                           type="button"
                           onClick={() => handleStartEdit(f)}
-                          className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:border-amber-400 text-slate-700 dark:text-slate-200 text-[11px] rounded font-medium transition"
+                          className="px-2 py-1 bg-white border border-slate-300 hover:border-amber-400 text-slate-700 text-[11px] rounded font-medium transition"
                           title="แก้ไขชื่อและรายละเอียด"
                         >
                           ✏️ แก้ไข
@@ -287,7 +287,7 @@ export default function FacilityManageModal({
                         <button
                           type="button"
                           onClick={() => handleDelete(f)}
-                          className="px-2 py-1 bg-white dark:bg-slate-700 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 text-rose-600 dark:text-rose-400 text-[11px] rounded font-medium transition"
+                          className="px-2 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] rounded font-medium transition"
                           title="ลบอาคารนี้และแปลนทุกชั้น"
                         >
                           🗑️ ลบ
@@ -300,7 +300,7 @@ export default function FacilityManageModal({
                           if (onSelectFacility) onSelectFacility(f);
                           onClose();
                         }}
-                        className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white rounded text-[11px] font-semibold transition"
+                        className="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded text-[11px] font-semibold transition"
                       >
                         ดูแปลน ↗
                       </button>
@@ -313,10 +313,10 @@ export default function FacilityManageModal({
 
           {/* TAB: CREATE */}
           {activeTab === 'create' && (
-            <form onSubmit={handleSubmitCreate} className="space-y-4">
+            <form onSubmit={handleSubmitCreate} className="space-y-4 text-slate-800">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ประเภทสิ่งปลูกสร้าง
                   </label>
                   <select
@@ -329,7 +329,7 @@ export default function FacilityManageModal({
                         icon: tVal === 'warehouse' ? '🏭' : tVal === 'parking' ? '🅿️' : '🏢',
                       });
                     }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                   >
                     <option value="office">🏢 อาคารสำนักงาน (Building)</option>
                     <option value="warehouse">🏭 โกดังสินค้า / คลัง (Warehouse)</option>
@@ -338,7 +338,7 @@ export default function FacilityManageModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ไอคอนแสดงผล
                   </label>
                   <div className="flex items-center gap-2">
@@ -349,8 +349,8 @@ export default function FacilityManageModal({
                         onClick={() => setFormData({ ...formData, icon: ic })}
                         className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border transition ${
                           formData.icon === ic
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 scale-110'
-                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'border-blue-600 bg-blue-50 scale-110 shadow-xs'
+                            : 'border-slate-200 hover:bg-slate-100 text-slate-800'
                         }`}
                       >
                         {ic}
@@ -362,7 +362,7 @@ export default function FacilityManageModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ชื่ออาคาร / โกดัง <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -371,12 +371,12 @@ export default function FacilityManageModal({
                     placeholder="เช่น อาคารบริหาร 6, คลังสินค้า F"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ชื่อย่อ (Short Code)
                   </label>
                   <input
@@ -384,13 +384,13 @@ export default function FacilityManageModal({
                     placeholder="เช่น B6, W6"
                     value={formData.shortName}
                     onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   จำนวนชั้นเริ่มต้น (Total Floors)
                 </label>
                 <div className="flex items-center gap-3">
@@ -402,16 +402,16 @@ export default function FacilityManageModal({
                     onChange={(e) =>
                       setFormData({ ...formData, totalFloors: Math.max(1, parseInt(e.target.value) || 1) })
                     }
-                    className="w-28 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-28 px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-500">
                     💡 ระบบจะสร้างแปลนพร้อมผนังภายนอกให้ทุกชั้นโดยอัตโนมัติ (สามารถเพิ่มชั้นภายหลังได้)
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   คำอธิบาย หรือ แผนกที่ประจำการ
                 </label>
                 <textarea
@@ -419,15 +419,15 @@ export default function FacilityManageModal({
                   placeholder="เช่น ฝ่ายซ่อมบำรุง, คลังสินค้าสำเร็จรูป, จุดชาร์จ EV..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setActiveTab('list')}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 transition"
                 >
                   ยกเลิก
                 </button>
@@ -454,14 +454,14 @@ export default function FacilityManageModal({
 
           {/* TAB: EDIT */}
           {activeTab === 'edit' && editingFacility && (
-            <form onSubmit={handleSubmitEdit} className="space-y-4">
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+            <form onSubmit={handleSubmitEdit} className="space-y-4 text-slate-800">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
                 กำลังแก้ไขข้อมูลของ: <strong>{editingFacility.name}</strong> ({editingFacility.shortName || editingFacility.id})
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ชื่ออาคาร / โกดัง <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -469,25 +469,25 @@ export default function FacilityManageModal({
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     ชื่อย่อ (Short Code)
                   </label>
                   <input
                     type="text"
                     value={formData.shortName}
                     onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   ไอคอนแสดงผล
                 </label>
                 <div className="flex items-center gap-2">
@@ -498,8 +498,8 @@ export default function FacilityManageModal({
                       onClick={() => setFormData({ ...formData, icon: ic })}
                       className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border transition ${
                         formData.icon === ic
-                          ? 'border-amber-600 bg-amber-50 dark:bg-amber-950 scale-110'
-                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          ? 'border-amber-600 bg-amber-50 scale-110 shadow-xs'
+                          : 'border-slate-200 hover:bg-slate-100 text-slate-800'
                       }`}
                     >
                       {ic}
@@ -509,22 +509,22 @@ export default function FacilityManageModal({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   คำอธิบาย หรือ ข้อมูลประจำอาคาร
                 </label>
                 <textarea
                   rows="2"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setActiveTab('list')}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 transition"
                 >
                   ยกเลิก
                 </button>
