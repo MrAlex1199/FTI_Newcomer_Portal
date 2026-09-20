@@ -72,3 +72,54 @@ export function getWallCoords(wall) {
   };
 }
 
+/**
+ * Calculates area of polygon (in square meters) from flat points [x1, y1, x2, y2, ...]
+ * using the Shoelace formula
+ */
+export function calculatePolygonArea(
+  flatPoints = [],
+  gridSize = DEFAULT_GRID_SIZE,
+  metersPerGrid = DEFAULT_METERS_PER_GRID
+) {
+  if (!flatPoints || flatPoints.length < 6) return 0;
+  let area = 0;
+  const numPoints = flatPoints.length / 2;
+  for (let i = 0; i < numPoints; i++) {
+    const x1 = flatPoints[i * 2];
+    const y1 = flatPoints[i * 2 + 1];
+    const nextIdx = (i + 1) % numPoints;
+    const x2 = flatPoints[nextIdx * 2];
+    const y2 = flatPoints[nextIdx * 2 + 1];
+    area += x1 * y2 - x2 * y1;
+  }
+  const pixelArea = Math.abs(area) / 2;
+  const squareMeters = pixelArea * Math.pow(metersPerGrid / gridSize, 2);
+  return Number(squareMeters.toFixed(1));
+}
+
+/**
+ * Calculates center coordinate and bounding dimensions of polygon for labels
+ */
+export function getPolygonCenter(flatPoints = []) {
+  if (!flatPoints || flatPoints.length < 2) return { x: 0, y: 0, width: 0, height: 0 };
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < flatPoints.length; i += 2) {
+    const x = flatPoints[i];
+    const y = flatPoints[i + 1];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return {
+    x: Math.round((minX + maxX) / 2),
+    y: Math.round((minY + maxY) / 2),
+    width: Math.round(maxX - minX),
+    height: Math.round(maxY - minY),
+  };
+}
+
+

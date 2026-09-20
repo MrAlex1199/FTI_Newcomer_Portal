@@ -16,6 +16,7 @@ export {
 export { default as Policy, POLICY_CATEGORIES } from './Policy.js';
 export { default as FAQ, FAQ_CATEGORIES } from './FAQ.js';
 export { default as KnowledgeArticle, ARTICLE_CATEGORIES, GETTING_STARTED_SECTIONS, IT_HELP_TOPICS } from './KnowledgeArticle.js';
+export { default as KnowledgeTopic } from './KnowledgeTopic.js';
 export { default as KnowledgeArticleVote } from './KnowledgeArticleVote.js';
 export { default as KnowledgeComment } from './KnowledgeComment.js';
 export { default as SearchEvent } from './SearchEvent.js';
@@ -26,4 +27,4 @@ export { default as Conversation, CONVERSATION_TYPES } from './Conversation.js';
 export { default as ChatMessage } from './ChatMessage.js';
 export { default as FloorPlan } from './FloorPlan.js';
 export { default as Facility } from './Facility.js';
-
+export { default as MaintenanceTicket } from './MaintenanceTicket.js';

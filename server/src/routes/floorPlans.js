@@ -7,8 +7,10 @@ import {
   deleteFloorPlan,
   searchCampusAssets,
   duplicateFloorLayout,
+  uploadFloorPlanBackground,
 } from '../controllers/floorPlanController.js';
 import { authenticate, requirePermission, authorize } from '../middleware/auth.js';
+import { floorPlanImageUpload } from '../middleware/floorPlanUpload.js';
 
 const router = Router();
 
@@ -19,9 +21,15 @@ router.get('/', requirePermission('organization:view'), getFloorPlans);
 router.get('/assets/search', requirePermission('organization:view'), searchCampusAssets);
 router.get('/:id', requirePermission('organization:view'), getFloorPlanById);
 
-// Create / Edit / Duplicate floor plans
+// Create / Edit / Duplicate floor plans / Background image upload
 router.post('/', requirePermission('knowledge:manage'), createFloorPlan);
 router.post('/:id/duplicate-layout', requirePermission('knowledge:manage'), duplicateFloorLayout);
+router.post(
+  '/:id/background-image',
+  requirePermission('knowledge:manage'),
+  floorPlanImageUpload('backgroundImage'),
+  uploadFloorPlanBackground
+);
 router.put('/:id', requirePermission('knowledge:manage'), updateFloorPlan);
 
 // Delete floor plan (Super admin / Admin only)

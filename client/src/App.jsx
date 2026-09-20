@@ -22,9 +22,11 @@ import ItHelp from './pages/ItHelp.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
 import FloorPlanPage from './pages/FloorPlanPage.jsx';
+import EquipmentMaintenancePage from './pages/EquipmentMaintenancePage.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
 import Chat from './pages/Chat.jsx';
 import FloatingChatWidget from './components/chat/FloatingChatWidget.jsx';
+import CopyProtection from './components/common/CopyProtection.jsx';
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
 const AdminAuditLogs = lazy(() => import('./pages/AdminAuditLogs.jsx'));
@@ -202,6 +204,24 @@ function App() {
           />
 
           <Route
+            path="/maintenance"
+            element={
+              <ProtectedRoute>
+                <EquipmentMaintenancePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/equipment-report"
+            element={
+              <ProtectedRoute>
+                <EquipmentMaintenancePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/profile"
             element={
               <ProtectedRoute>
@@ -278,6 +298,7 @@ function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         <FloatingChatWidget />
+        <CopyProtection />
       </ChatProvider>
     </BrowserRouter>
   </AuthProvider>

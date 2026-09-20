@@ -8,6 +8,11 @@ import {
   listArticleCategories,
   listQuickLinks,
   voteArticle,
+  listKnowledgeTopics,
+  createKnowledgeTopic,
+  updateKnowledgeTopic,
+  deleteKnowledgeTopic,
+  seedMockItKnowledge,
 } from '../controllers/knowledgeController.js';
 import {
   addArticleImage,
@@ -24,6 +29,9 @@ import {
   updateArticleValidator,
   articleIdValidator,
   listArticleValidator,
+  createTopicValidator,
+  updateTopicValidator,
+  topicIdValidator,
 } from '../validators/knowledgeValidators.js';
 import { knowledgeVoteValidator } from '../validators/knowledgeVoteValidators.js';
 import {
@@ -40,6 +48,13 @@ import { imageUpload } from '../middleware/imageUpload.js';
 
 const router = Router();
 router.use(authenticate);
+
+// Topics & Folders (Obsidian-Style Hierarchical Organization)
+router.get('/topics', requirePermission('policies:view'), listKnowledgeTopics);
+router.post('/topics', requirePermission('knowledge:manage'), createTopicValidator, validate, createKnowledgeTopic);
+router.patch('/topics/:id', requirePermission('knowledge:manage'), updateTopicValidator, validate, updateKnowledgeTopic);
+router.delete('/topics/:id', requirePermission('knowledge:manage'), topicIdValidator, validate, deleteKnowledgeTopic);
+router.post('/seed-mock-it', requirePermission('knowledge:manage'), seedMockItKnowledge);
 
 // Categories & Quick links
 router.get('/categories', requirePermission('policies:view'), listArticleCategories);

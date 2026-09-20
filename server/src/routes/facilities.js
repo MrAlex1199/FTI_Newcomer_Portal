@@ -5,6 +5,7 @@ import {
   updateFacility,
   deleteFacility,
   addFloor,
+  deleteFloor,
 } from '../controllers/facilityController.js';
 import { authenticate, requirePermission, authorize } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ router.get('/', requirePermission('organization:view'), getFacilities);
 router.post('/', requirePermission('knowledge:manage'), createFacility);
 router.put('/:id', requirePermission('knowledge:manage'), updateFacility);
 router.post('/:id/floors', requirePermission('knowledge:manage'), addFloor);
+router.delete('/:id/floors/:floorNumber', requirePermission('knowledge:manage'), deleteFloor);
 
 // Delete facility (Super admin / Admin only)
 router.delete('/:id', authorize('admin', 'super_admin'), deleteFacility);

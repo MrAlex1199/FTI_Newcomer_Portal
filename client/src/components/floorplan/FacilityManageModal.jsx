@@ -4,8 +4,10 @@ import {
   useUpdateFacility,
   useDeleteFacility,
   useAddFacilityFloor,
+  useDeleteFacilityFloor,
 } from '../../hooks/useFacilities.js';
 import useLanguage from '../../hooks/useLanguage.js';
+import ConfirmDialog from '../common/ConfirmDialog.jsx';
 
 export default function FacilityManageModal({
   isOpen,
@@ -18,9 +20,11 @@ export default function FacilityManageModal({
   const updateFacilityMutation = useUpdateFacility();
   const deleteFacilityMutation = useDeleteFacility();
   const addFloorMutation = useAddFacilityFloor();
+  const deleteFloorMutation = useDeleteFacilityFloor();
 
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'create' | 'edit'
   const [editingFacility, setEditingFacility] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -155,6 +159,32 @@ export default function FacilityManageModal({
     }
   };
 
+  const handleDeleteFloor = (facility) => {
+    const currentTotal = facility.actualFloorCount || facility.totalFloors || 1;
+    if (currentTotal <= 1) {
+      setErrorMsg('ไม่สามารถลบได้ เนื่องจากอาคารต้องมีอย่างน้อย 1 ชั้น');
+      return;
+    }
+
+    setConfirmDialog({
+      title: 'ยืนยันการลบชั้นแปลนอาคาร',
+      message: `⚠️ คุณต้องการลบ "ชั้น ${currentTotal}" (ชั้นบนสุด) ของ "${facility.name}" ใช่หรือไม่?\n\nข้อมูลโครงสร้างห้องและอุปกรณ์ในชั้นนี้จะถูกลบออกอย่างถาวร!`,
+      confirmLabel: 'ยืนยันลบชั้นนี้',
+      onConfirm: async () => {
+        try {
+          await deleteFloorMutation.mutateAsync({
+            id: facility.facilityId || facility._id,
+            floorNumber: currentTotal,
+          });
+        } catch (err) {
+          setErrorMsg(err.response?.data?.message || err.message || 'ไม่สามารถลบชั้นได้');
+        } finally {
+          setConfirmDialog(null);
+        }
+      },
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
@@ -276,6 +306,16 @@ export default function FacilityManageModal({
                         >
                           + ชั้น
                         </button>
+                        {(f.actualFloorCount || f.totalFloors || 1) > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFloor(f)}
+                            className="px-2 py-1 bg-white border border-rose-200 hover:border-rose-400 text-rose-600 text-[11px] rounded font-medium transition"
+                            title={`ลบชั้น ${f.actualFloorCount || f.totalFloors} (ชั้นบนสุด)`}
+                          >
+                            - ชั้น
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleStartEdit(f)}
@@ -540,6 +580,20 @@ export default function FacilityManageModal({
           )}
         </div>
       </div>
+
+      {/* In-App Confirmation Modal */}
+      {confirmDialog && (
+        <ConfirmDialog
+          open={Boolean(confirmDialog)}
+          onClose={() => setConfirmDialog(null)}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          danger={true}
+          loading={deleteFloorMutation.isPending}
+        />
+      )}
     </div>
   );
 }

@@ -9,9 +9,9 @@ const articleFields = (optional) => {
     opt(body('title').trim().notEmpty().withMessage('Title is required')).isLength({ max: 200 }).withMessage('Title must not exceed 200 characters'),
     opt(body('slug').trim().notEmpty().withMessage('Slug is required')).matches(/^[a-z0-9-]+$/).withMessage('Slug may only contain lowercase letters, numbers and hyphens'),
     opt(body('category').isIn(ARTICLE_CATEGORIES).withMessage('Invalid article category')),
+    body('topicId').optional({ checkFalsy: true }).isMongoId().withMessage('topicId must be a valid id'),
     body('subcategory').optional().trim().isLength({ max: 80 }).withMessage('Subcategory must not exceed 80 characters').custom((value, { req }) => {
-      if (req.body.category === 'it_help') return IT_HELP_TOPICS.includes(value);
-      if (req.body.category === 'getting_started') return GETTING_STARTED_SECTIONS.includes(value);
+      if (req.body?.category === 'getting_started') return GETTING_STARTED_SECTIONS.includes(value);
       return true;
     }).withMessage('Invalid subcategory for the selected article category'),
     body('summary').optional().trim().isLength({ max: 500 }).withMessage('Summary must not exceed 500 characters'),
@@ -46,7 +46,34 @@ export const listArticleValidator = [
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
   query('search').optional().trim().isLength({ max: 100 }).withMessage('Search must not exceed 100 characters'),
   query('category').optional().isIn(ARTICLE_CATEGORIES).withMessage('Invalid article category'),
-  query('subcategory').optional().custom((value) => [...GETTING_STARTED_SECTIONS, ...IT_HELP_TOPICS].includes(value) || typeof value === 'string').withMessage('Invalid subcategory'),
+  query('subcategory').optional().isString().trim(),
+  query('topicId').optional().isMongoId().withMessage('topicId must be a valid id'),
   query('status').optional().isIn(CONTENT_STATUSES).withMessage('Invalid article status'),
   query('quickLinks').optional().isBoolean().withMessage('quickLinks must be a boolean'),
 ];
+
+export const topicIdValidator = [param('id').isMongoId().withMessage('id must be a valid id')];
+
+export const createTopicValidator = [
+  body('name').trim().notEmpty().withMessage('Topic name is required').isLength({ max: 100 }).withMessage('Topic name must not exceed 100 characters'),
+  body('icon').optional().trim().isLength({ max: 30 }),
+  body('parentId').optional({ checkFalsy: true }).isMongoId().withMessage('parentId must be a valid id'),
+  body('category').optional().isIn(['it_help', 'getting_started', 'company_info', 'general']).withMessage('Invalid category'),
+  body('sortOrder').optional().toInt().isInt({ min: 0 }),
+  body('description').optional().trim().isLength({ max: 300 }),
+];
+
+export const updateTopicValidator = [
+  param('id').isMongoId().withMessage('id must be a valid id'),
+  body('name').optional().trim().notEmpty().withMessage('Topic name cannot be empty').isLength({ max: 100 }).withMessage('Topic name must not exceed 100 characters'),
+  body('icon').optional().trim().isLength({ max: 30 }),
+  body('parentId').optional({ nullable: true }).custom((value, { req }) => {
+    if (value && value === req.params.id) {
+      throw new Error('A topic cannot be its own parent');
+    }
+    return true;
+  }),
+  body('sortOrder').optional().toInt().isInt({ min: 0 }),
+  body('description').optional().trim().isLength({ max: 300 }),
+];
+

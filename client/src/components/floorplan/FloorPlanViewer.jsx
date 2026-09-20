@@ -13,11 +13,15 @@ import {
 import {
   calculateAreaMeters,
   calculateLengthMeters,
+  calculatePolygonArea,
+  getPolygonCenter,
   getWallCoords,
 } from './snapUtils.js';
 import useLanguage from '../../hooks/useLanguage.js';
 import FloorElevatorControl from './FloorElevatorControl.jsx';
 import VehicleShape from './VehicleShape.jsx';
+import FloorPlanImageOverlay from './FloorPlanImageOverlay.jsx';
+import { exportToPng, exportToPdf } from '../../utils/exportFloorPlan.js';
 
 export default function FloorPlanViewer({
   floorPlan,
@@ -26,6 +30,8 @@ export default function FloorPlanViewer({
   initialFocusAssetId = null,
   onSelectBuilding,
   onOpenCampusSearch,
+  onOpenAssetInventory,
+  onRequestMaintenance,
   currentBuilding,
   currentFloorNumber,
   onSelectFloor,
@@ -33,12 +39,14 @@ export default function FloorPlanViewer({
   floorPlansInBuilding = [],
   onOpenCopyLayoutModal,
   onAddFloor,
+  onDeleteFloor,
 }) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [highlightedAssetId, setHighlightedAssetId] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Canvas Viewport & Zoom/Pan
   const [stageScale, setStageScale] = useState(1.0);
@@ -245,6 +253,18 @@ export default function FloorPlanViewer({
               <span className="hidden sm:inline">ค้นหาทั้ง 20 ไร่</span>
             </button>
           )}
+
+          {onOpenAssetInventory && (
+            <button
+              type="button"
+              onClick={onOpenAssetInventory}
+              className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 hover:border-indigo-300 transition whitespace-nowrap"
+              title="เปิดตารางรายการทรัพย์สินทั้งหมด พร้อมค้นหาและชี้เป้า"
+            >
+              <span>📋</span>
+              <span className="hidden sm:inline">ตารางทรัพย์สิน</span>
+            </button>
+          )}
         </div>
 
         {/* Right: Layer Filtering Switches & Zoom Controls */}
@@ -375,6 +395,54 @@ export default function FloorPlanViewer({
             </button>
           </div>
 
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+              title="ส่งออกผังอาคาร (PNG, PDF)"
+            >
+              📤 ส่งออก ▾
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    exportToPng(stageRef.current, {
+                      fileName: `${floorPlan?.buildingName || 'FTI'}-${floorPlan?.floorName || 'Plan'}.png`.replace(/\s+/g, '_'),
+                    });
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                >
+                  <span className="text-base">📸</span>
+                  <div className="text-left">
+                    <div className="font-bold">บันทึกเป็นรูปภาพ (PNG)</div>
+                    <div className="text-[10px] text-slate-400">ภาพคมชัดสูง Retina</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    exportToPdf(stageRef.current, floorPlan || {});
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                >
+                  <span className="text-base">📄</span>
+                  <div className="text-left">
+                    <div className="font-bold">พิมพ์เอกสาร PDF (A4)</div>
+                    <div className="text-[10px] text-slate-400">พร้อมข้อมูลโครงการและสเกล</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Edit Plan Button for Admin */}
           {canEdit && onEditPlan && (
             <button
@@ -405,7 +473,7 @@ export default function FloorPlanViewer({
             }
           }}
         >
-          {/* Base Floor Canvas Background */}
+          {/* Base Floor Canvas Background & Blueprint Overlay */}
           <Layer listening={false}>
             <Rect
               x={0}
@@ -416,7 +484,72 @@ export default function FloorPlanViewer({
               stroke="#e2e8f0"
               strokeWidth={1.5}
             />
+            {floorPlan?.backgroundImage?.url && floorPlan?.backgroundImage?.visible !== false && (
+              <FloorPlanImageOverlay
+                config={floorPlan.backgroundImage}
+                isSelected={false}
+              />
+            )}
           </Layer>
+
+          {/* CAD DXF Layer */}
+          {floorPlan?.dxfLayer?.visible !== false && floorPlan?.dxfLayer?.entities?.length > 0 && (
+            <Layer opacity={floorPlan.dxfLayer.opacity ?? 0.65} listening={false}>
+              {floorPlan.dxfLayer.entities.map((shape) => {
+                if (shape.type === 'line') {
+                  return (
+                    <Line
+                      key={shape.id}
+                      points={shape.points}
+                      closed={shape.closed}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'circle') {
+                  return (
+                    <Circle
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      radius={shape.radius}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'arc') {
+                  return (
+                    <Arc
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      innerRadius={shape.innerRadius}
+                      outerRadius={shape.outerRadius}
+                      angle={shape.angle}
+                      rotation={shape.rotation}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'text') {
+                  return (
+                    <Text
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      text={shape.text}
+                      fontSize={shape.fontSize || 12}
+                      fill={shape.fill || '#334155'}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </Layer>
+          )}
 
           {/* Architectural Layer: Rooms, Walls, Doors */}
           {layers.rooms && (
@@ -424,12 +557,62 @@ export default function FloorPlanViewer({
               {/* Rooms */}
               {rooms.map((room) => {
                 const isSelected = selectedRoom?.id === room.id;
-                const area = calculateAreaMeters(
-                  room.width,
-                  room.height,
-                  gridSize,
-                  scaleMetersPerGrid
-                );
+                const isPolygon = room.shapeType === 'polygon' && Array.isArray(room.points) && room.points.length >= 6;
+                const area = isPolygon
+                  ? calculatePolygonArea(room.points, gridSize, scaleMetersPerGrid)
+                  : calculateAreaMeters(
+                      room.width,
+                      room.height,
+                      gridSize,
+                      scaleMetersPerGrid
+                    );
+                const polyCenter = isPolygon ? getPolygonCenter(room.points) : null;
+
+                if (isPolygon) {
+                  return (
+                    <Group
+                      key={room.id}
+                      onClick={() => {
+                        setSelectedRoom(room);
+                        setSelectedAsset(null);
+                      }}
+                      onTouchEnd={() => {
+                        setSelectedRoom(room);
+                        setSelectedAsset(null);
+                      }}
+                    >
+                      <Line
+                        points={room.points}
+                        closed={true}
+                        fill={room.color || '#dbeafe'}
+                        stroke={isSelected ? '#2563eb' : '#64748b'}
+                        strokeWidth={isSelected ? 3 : 1.5}
+                        opacity={0.88}
+                        shadowColor="rgba(0,0,0,0.04)"
+                        shadowBlur={isSelected ? 12 : 3}
+                      />
+                      <Text
+                        text={room.name || 'ห้องรูปหลายเหลี่ยม'}
+                        x={polyCenter.x - 45}
+                        y={polyCenter.y - 12}
+                        fontSize={13}
+                        fontFamily="Inter, Noto Sans Thai, sans-serif"
+                        fontStyle="bold"
+                        fill="#1e293b"
+                        listening={false}
+                      />
+                      <Text
+                        text={`${room.department ? room.department + ' • ' : ''}${area}m²`}
+                        x={polyCenter.x - 45}
+                        y={polyCenter.y + 6}
+                        fontSize={10}
+                        fontFamily="Inter, Noto Sans Thai, sans-serif"
+                        fill="#475569"
+                        listening={false}
+                      />
+                    </Group>
+                  );
+                }
 
                 return (
                   <Group
@@ -1048,9 +1231,15 @@ export default function FloorPlanViewer({
               <button
                 type="button"
                 onClick={() => {
-                  alert(
-                    `ส่งคำขอแจ้งซ่อมสำหรับ [${selectedAsset.code}] ${selectedAsset.name} เรียบร้อยแล้ว! ฝ่ายไอทีจะติดต่อกลับ`
-                  );
+                  if (onRequestMaintenance) {
+                    onRequestMaintenance({
+                      ...selectedAsset,
+                      buildingId: currentBuilding?.id || floorPlan?.buildingId || 'b1',
+                      buildingName: currentBuilding?.name || floorPlan?.buildingName || 'อาคาร',
+                      floorNumber: currentFloorNumber || floorPlan?.floorNumber || 1,
+                      floorPlanId: floorPlan?._id,
+                    });
+                  }
                 }}
                 className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-600 transition"
               >
@@ -1068,6 +1257,7 @@ export default function FloorPlanViewer({
           onReturnToCampus={onReturnToCampus}
           floorPlansInBuilding={floorPlansInBuilding}
           onAddFloor={canEdit ? onAddFloor : undefined}
+          onDeleteFloor={canEdit ? onDeleteFloor : undefined}
         />
 
         {/* Selected Room Popup */}

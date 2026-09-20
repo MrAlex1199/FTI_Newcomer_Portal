@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell.jsx';
-import Modal from '../components/common/Modal.jsx';
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
-import ImageUpload from '../components/common/ImageUpload.jsx';
-import ContentBadge from '../components/content/ContentBadge.jsx';
-import ImageGallery from '../components/content/ImageGallery.jsx';
-import CommentSection from '../components/content/CommentSection.jsx';
-import { RichTextEditor, RichTextRenderer } from '../components/content/RichText.jsx';
+import ObsidianTree from '../components/knowledge/ObsidianTree.jsx';
+import KnowledgeReader from '../components/knowledge/KnowledgeReader.jsx';
+import ObsidianGraphView from '../components/knowledge/ObsidianGraphView.jsx';
+import TopicModal from '../components/knowledge/TopicModal.jsx';
+import MarkdownEditorModal from '../components/knowledge/MarkdownEditorModal.jsx';
 import useAuth from '../hooks/useAuth.js';
 import useLanguage from '../hooks/useLanguage.js';
 import { useDepartments } from '../hooks/useDepartments.js';
@@ -20,581 +19,641 @@ import {
   useKnowledgeCategories,
   useUpdateKnowledgeArticle,
   useVoteKnowledgeArticle,
+  useKnowledgeTopics,
+  useCreateKnowledgeTopic,
+  useUpdateKnowledgeTopic,
+  useDeleteKnowledgeTopic,
+  useSeedMockItKnowledge,
 } from '../hooks/useKnowledge.js';
 
-const DEFAULT_TOPICS = ['windows', 'printer', 'network', 'wifi', 'email', 'password', 'office_suite', 'vpn', 'shared_folder', 'browser', 'software_request'];
-const EMPTY_ARTICLE = { title: '', slug: '', subcategory: 'windows', summary: '', content: '', coverImage: '', tags: '', targetRoles: [], sortOrder: 0, quickLinkOrder: 0, isQuickLink: false, status: 'draft' };
-const errorMessage = (error, fallback) => error?.response?.data?.message || fallback;
+const errorMessage = (error, fallback) =>
+  error?.response?.data?.errors?.[0]?.message || error?.response?.data?.message || fallback;
 
 export default function ItHelp() {
   const { user, hasPermission } = useAuth();
-  const { t, label } = useLanguage();
-  const [searchParams] = useSearchParams();
-  const canManage = hasPermission('knowledge:manage');
-  const [topic, setTopic] = useState('');
+  const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Permission check: Admin, superadmin, knowledge:manage or IT department members
+  const canManage =
+    hasPermission('knowledge:manage') ||
+    user?.role === 'admin' ||
+    user?.role === 'superadmin' ||
+    user?.department?.code === 'IT';
+
+  // State
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedId, setSelectedId] = useState(() => searchParams.get('article') || null);
-  const [status, setStatus] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [formError, setFormError] = useState('');
+  const [selectedArticleId, setSelectedArticleId] = useState(() => searchParams.get('article') || null);
+  const [selectedTopicId, setSelectedTopicId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const [activeViewTab, setActiveViewTab] = useState('notes'); // 'notes' | 'graph'
+  const [confirmSeedModalOpen, setConfirmSeedModalOpen] = useState(false);
+  const [seedSuccessBanner, setSeedSuccessBanner] = useState(false);
 
+  // Modals state
+  const [topicModalOpen, setTopicModalOpen] = useState(false);
+  const [topicEditing, setTopicEditing] = useState(null);
+  const [topicDefaultParentId, setTopicDefaultParentId] = useState(null);
+
+  const [editorModalOpen, setEditorModalOpen] = useState(false);
+  const [articleEditing, setArticleEditing] = useState(null);
+  const [articleDefaultTopicId, setArticleDefaultTopicId] = useState(null);
+
+  const [deletingArticle, setDeletingArticle] = useState(null);
+  const [deletingTopic, setDeletingTopic] = useState(null);
+  const [actionError, setActionError] = useState('');
+
+  // Debounce search
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [search]);
 
+  // Data queries
+  const { data: topics = [], isLoading: topicsLoading } = useKnowledgeTopics({ category: 'it_help' });
   const { data: catalog } = useKnowledgeCategories();
-  const topics = catalog?.topics?.length ? catalog.topics : DEFAULT_TOPICS;
-  const query = {
+  const { data: quickLinkData } = useITQuickLinks({ limit: 8 });
+  const quickLinks = quickLinkData?.data || [];
+
+  const articlesQuery = {
     category: 'it_help',
     limit: 100,
-    ...(topic ? { subcategory: topic } : {}),
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    ...(canManage && status ? { status } : {}),
+    ...(canManage && statusFilter ? { status: statusFilter } : {}),
   };
+  const { data: articlesData, isLoading: articlesLoading, isError, error } = useKnowledgeArticles(articlesQuery);
+  const articles = articlesData?.data || [];
 
-  const { data, isLoading, isError, error } = useKnowledgeArticles(query);
-  const { data: quickLinkData } = useITQuickLinks({ limit: 8 });
-  const { data: selected, isLoading: detailLoading } = useKnowledgeArticle(selectedId);
+  // Query all IT articles for the Obsidian graph view
+  const { data: allArticlesGraphData } = useKnowledgeArticles({ category: 'it_help', limit: 100 });
+  const graphArticles = allArticlesGraphData?.data || articles;
+
+  const { data: selectedArticle, isLoading: articleLoading } = useKnowledgeArticle(selectedArticleId);
   const { data: departments } = useDepartments();
-  const createMutation = useCreateKnowledgeArticle();
-  const updateMutation = useUpdateKnowledgeArticle();
-  const deleteMutation = useDeleteKnowledgeArticle();
+
+  // Mutations
+  const createArticleMutation = useCreateKnowledgeArticle();
+  const updateArticleMutation = useUpdateKnowledgeArticle();
+  const deleteArticleMutation = useDeleteKnowledgeArticle();
   const voteMutation = useVoteKnowledgeArticle();
 
-  const articles = data?.data || [];
-  const quickLinks = quickLinkData?.data || [];
+  const createTopicMutation = useCreateKnowledgeTopic();
+  const updateTopicMutation = useUpdateKnowledgeTopic();
+  const deleteTopicMutation = useDeleteKnowledgeTopic();
+  const seedMockMutation = useSeedMockItKnowledge();
+
   const itDepartment = useMemo(
     () => (departments || []).find((item) => item.code === 'IT' || item.name?.toLowerCase().includes('information technology')),
     [departments]
   );
 
+  // Synchronize URL search params with selected article
   useEffect(() => {
-    if (!selectedId && articles[0]) setSelectedId(articles[0]._id);
-    if (selectedId && articles.length && !articles.some((item) => item._id === selectedId)) {
-      setSelectedId(articles[0]?._id || null);
+    if (selectedArticleId) {
+      setSearchParams({ article: selectedArticleId }, { replace: true });
     }
-  }, [articles, selectedId]);
+  }, [selectedArticleId, setSearchParams]);
 
-  const save = async ({ payload, file }) => {
-    setFormError('');
-    try {
-      if (editing) await updateMutation.mutateAsync({ id: editing._id, payload, file });
-      else await createMutation.mutateAsync({ payload, file });
-      setFormOpen(false);
-      setEditing(null);
-    } catch (requestError) {
-      setFormError(errorMessage(requestError, t('saveItHelpError')));
+  // Auto-select first article if none selected
+  useEffect(() => {
+    if (!selectedArticleId && articles.length > 0) {
+      setSelectedArticleId(articles[0]._id);
+    }
+  }, [articles, selectedArticleId]);
+
+  // When selected article loads, sync its topic ID
+  useEffect(() => {
+    if (selectedArticle?.topicId) {
+      const tid = typeof selectedArticle.topicId === 'object' ? selectedArticle.topicId._id : selectedArticle.topicId;
+      setSelectedTopicId(tid);
+    }
+  }, [selectedArticle]);
+
+  // Compute topic hierarchy breadcrumbs for the selected article
+  const topicHierarchy = useMemo(() => {
+    if (!selectedArticle?.topicId) return [];
+    const topicId = typeof selectedArticle.topicId === 'object' ? selectedArticle.topicId._id : selectedArticle.topicId;
+    const map = new Map(topics.map((t) => [String(t._id), t]));
+    const path = [];
+    let curr = map.get(String(topicId));
+    while (curr) {
+      path.unshift(curr);
+      curr = curr.parentId ? map.get(String(curr.parentId)) : null;
+    }
+    return path;
+  }, [selectedArticle, topics]);
+
+  const selectedTopic = useMemo(() => {
+    if (!selectedTopicId) return null;
+    return topics.find((t) => String(t._id) === String(selectedTopicId)) || null;
+  }, [topics, selectedTopicId]);
+
+  // Article handlers
+  const handleSelectArticle = (article) => {
+    setSelectedArticleId(article._id);
+    if (article.topicId) {
+      const tid = typeof article.topicId === 'object' ? article.topicId._id : article.topicId;
+      setSelectedTopicId(tid);
+    }
+    // Close mobile drawer on selection
+    setSidebarOpenMobile(false);
+  };
+
+  const handleSelectTopic = (topic) => {
+    setSelectedTopicId(topic._id);
+    // Find first article in this topic
+    const matchedArticle = articles.find(
+      (a) => String(a.topicId) === String(topic._id) || a.subcategory === topic.slug
+    );
+    if (matchedArticle) {
+      setSelectedArticleId(matchedArticle._id);
     }
   };
 
-  const toggleStatus = async (article) => {
+  const handleSaveArticle = async ({ payload, file }) => {
+    setActionError('');
     try {
-      await updateMutation.mutateAsync({
+      if (articleEditing) {
+        await updateArticleMutation.mutateAsync({ id: articleEditing._id, payload, file });
+      } else {
+        const created = await createArticleMutation.mutateAsync({ payload, file });
+        if (created?._id) setSelectedArticleId(created._id);
+      }
+      setEditorModalOpen(false);
+      setArticleEditing(null);
+    } catch (err) {
+      setActionError(errorMessage(err, t('saveItHelpError') || 'Failed to save note'));
+    }
+  };
+
+  const handleToggleArticleStatus = async (article) => {
+    try {
+      await updateArticleMutation.mutateAsync({
         id: article._id,
         payload: { status: article.status === 'published' ? 'draft' : 'published' },
       });
-    } catch (requestError) {
-      setFormError(errorMessage(requestError, t('itHelpPublicationError')));
+    } catch (err) {
+      setActionError(errorMessage(err, t('itHelpPublicationError') || 'Failed to update publication status'));
     }
   };
 
-  const remove = async () => {
+  const handleConfirmDeleteArticle = async () => {
+    if (!deletingArticle) return;
     try {
-      await deleteMutation.mutateAsync(deleting._id);
-      setDeleting(null);
-      setSelectedId(null);
-    } catch (requestError) {
-      setFormError(errorMessage(requestError, t('deleteItHelpError')));
+      await deleteArticleMutation.mutateAsync(deletingArticle._id);
+      setDeletingArticle(null);
+      if (selectedArticleId === deletingArticle._id) {
+        setSelectedArticleId(null);
+      }
+    } catch (err) {
+      setActionError(errorMessage(err, t('deleteItHelpError') || 'Failed to delete note'));
     }
   };
 
-  const vote = async (value) => {
-    if (selectedId) await voteMutation.mutateAsync({ id: selectedId, vote: value });
+  const handleVote = async (value) => {
+    if (selectedArticleId) {
+      await voteMutation.mutateAsync({ id: selectedArticleId, vote: value });
+    }
+  };
+
+  // Topic / Folder handlers
+  const handleSaveTopic = async (payload) => {
+    setActionError('');
+    try {
+      if (topicEditing) {
+        await updateTopicMutation.mutateAsync({ id: topicEditing._id, payload });
+      } else {
+        await createTopicMutation.mutateAsync(payload);
+      }
+      setTopicModalOpen(false);
+      setTopicEditing(null);
+    } catch (err) {
+      setActionError(errorMessage(err, t('saveTopicError') || 'Failed to save folder'));
+    }
+  };
+
+  const handleConfirmDeleteTopic = async () => {
+    if (!deletingTopic) return;
+    try {
+      await deleteTopicMutation.mutateAsync(deletingTopic._id);
+      setDeletingTopic(null);
+      if (selectedTopicId === deletingTopic._id) {
+        setSelectedTopicId(null);
+      }
+    } catch (err) {
+      setActionError(errorMessage(err, t('deleteTopicError') || 'Failed to delete folder'));
+    }
+  };
+
+  const handleSeedMock = async () => {
+    try {
+      await seedMockMutation.mutateAsync();
+      setConfirmSeedModalOpen(false);
+      setSeedSuccessBanner(true);
+      setTimeout(() => setSeedSuccessBanner(false), 6000);
+    } catch (err) {
+      setActionError(errorMessage(err, 'Failed to seed mock IT knowledge base'));
+    }
   };
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-start sm:justify-between">
+      {/* Top Banner / Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-gray-500">{t('dashboard')} / {t('itHelp')}</p>
-          <h1 className="text-2xl font-bold text-gray-800 mt-1">{t('itHelpTitle')}</h1>
-          <p className="text-gray-500 mt-1">{t('itHelpSubtitle')}</p>
+          <nav className="text-xs text-slate-400">
+            {t('dashboard') || 'Dashboard'} / <span className="text-slate-600 font-medium">{t('itKnowledgeBase') || 'IT Knowledge Base'}</span>
+          </nav>
+          <div className="mt-1 flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              {t('itKnowledgeBaseTitle') || 'IT & Systems Knowledge Base'}
+            </h1>
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+              <span>⚡</span>
+              <span>Obsidian Vault</span>
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            {t('itKnowledgeBaseSubtitle') || 'Centralized technical documentation, troubleshooting workflows, software guides, and IT support.'}
+          </p>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setFormError('');
-              setFormOpen(true);
-            }}
-            className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 shrink-0"
-          >
-            {t('addItHelp')}
-          </button>
-        )}
-      </div>
 
-      <div className="flex flex-col gap-3 mb-6 sm:flex-row">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t('searchItHelp')}
-          aria-label={t('searchItHelp')}
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        {canManage && (
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">{t('allStatuses')}</option>
-            <option value="published">{t('published')}</option>
-            <option value="draft">{t('draft')}</option>
-            <option value="archived">{t('archived')}</option>
-          </select>
-        )}
-      </div>
+        {/* Header Right Actions: View Tabs & Manager Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* View Switcher: Notes View vs Graph View */}
+          <div className="flex items-center gap-1 rounded-2xl bg-slate-100 p-1 border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setActiveViewTab('notes')}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeViewTab === 'notes'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>📄</span>
+              <span>{t('notesView')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveViewTab('graph')}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeViewTab === 'graph'
+                  ? 'bg-white text-blue-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🕸️</span>
+              <span>{t('graphView')}</span>
+              <span className="rounded-md bg-blue-100 px-1.5 py-0.2 text-[10px] text-blue-700 font-bold">New</span>
+            </button>
+          </div>
 
-      <div className="flex flex-wrap gap-2 mb-6" role="tablist" aria-label={t('itHelpTopics')}>
-        <button
-          type="button"
-          onClick={() => setTopic('')}
-          className={`px-3 py-1.5 rounded-full text-sm ${!topic ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-        >
-          {t('allTopics')}
-        </button>
-        {topics.map((item) => (
-          <button
-            type="button"
-            key={item}
-            onClick={() => setTopic(item)}
-            className={`px-3 py-1.5 rounded-full text-sm ${topic === item ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-          >
-            {label(item)}
-          </button>
-        ))}
-      </div>
-
-      {quickLinks.length > 0 && (
-        <section className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-          <h2 className="font-semibold text-gray-800">{t('quickLinks')}</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {quickLinks.map((item) => (
+          {/* Action Buttons for Managers */}
+          {canManage && (
+            <div className="flex items-center gap-2">
+              {/* Seed Mock IT Knowledge Button */}
               <button
                 type="button"
-                key={item._id}
-                onClick={() => setSelectedId(item._id)}
-                className="rounded-md bg-white px-3 py-2 text-sm text-primary-700 shadow-sm hover:bg-primary-50"
+                onClick={() => setConfirmSeedModalOpen(true)}
+                disabled={seedMockMutation.isPending}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs font-semibold text-amber-900 shadow-2xs hover:bg-amber-100 transition-colors disabled:opacity-50"
+                title={t('seedMockDataConfirm')}
               >
-                {item.title}
+                <span>⚡</span>
+                <span>{seedMockMutation.isPending ? t('seeding') : t('seedMockData')}</span>
               </button>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTopicEditing(null);
+                  setTopicDefaultParentId(selectedTopicId || null);
+                  setTopicModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+              >
+                <span>📁</span>
+                <span>{t('newFolder') || '+ New Folder'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setArticleEditing(null);
+                  setArticleDefaultTopicId(selectedTopicId || null);
+                  setEditorModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+              >
+                <span>✏️</span>
+                <span>{t('newNote') || '+ New Note'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mock Seeding Success Banner */}
+      {seedSuccessBanner && (
+        <div className="mb-5 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/95 p-3.5 text-xs text-emerald-900 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <span className="text-base">🎉</span>
+            <span className="font-medium">{t('seedMockSuccess')}</span>
           </div>
-        </section>
-      )}
-
-      {formError && (
-        <p className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {formError}
-        </p>
-      )}
-
-      {isLoading && (
-        <div className="rounded-lg border border-gray-200 bg-white p-10 text-center text-gray-500">
-          {t('loadingItHelp')}
+          <button
+            type="button"
+            onClick={() => setSeedSuccessBanner(false)}
+            className="rounded-lg p-1 text-emerald-700 hover:bg-emerald-100 font-bold"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {isError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-700">
-          {errorMessage(error, t('unableLoadItHelp'))}
+      {/* Global Error Banner */}
+      {actionError && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError('')} className="font-bold">✕</button>
         </div>
       )}
 
-      {!isLoading && !isError && (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
-          <section className="space-y-3">
-            {articles.length === 0 ? (
-              <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-500">
-                {t('noItHelp')}
-              </div>
-            ) : (
-              articles.map((article) => (
-                <ArticleCard
-                  key={article._id}
-                  article={article}
-                  selected={selectedId === article._id}
-                  canManage={canManage}
-                  onSelect={setSelectedId}
-                  onEdit={(item) => {
-                    setEditing(item);
-                    setFormError('');
-                    setFormOpen(true);
-                  }}
-                  onToggle={toggleStatus}
-                  onDelete={setDeleting}
-                />
-              ))
-            )}
-          </section>
-
-          <ArticleDetail
-            article={selected}
-            loading={detailLoading}
-            canManage={canManage}
-            currentUser={user}
-            onVote={vote}
-            voting={voteMutation.isPending}
-            onSelect={setSelectedId}
+      {/* View Switch Rendering: Graph View vs Notes View */}
+      {activeViewTab === 'graph' ? (
+        <div className="mb-8">
+          <ObsidianGraphView
+            topics={topics}
+            articles={graphArticles}
+            onOpenArticle={(articleId) => {
+              setSelectedArticleId(articleId);
+              setActiveViewTab('notes');
+            }}
+            initialSelectedArticleId={selectedArticleId}
           />
         </div>
+      ) : (
+        /* Notes View */
+        <>
+          {/* Quick Links Strip */}
+          {quickLinks.length > 0 && (
+            <section className="mb-5 rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/90 to-indigo-50/70 p-3.5 shadow-2xs">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm">⭐</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                  {t('quickLinks') || 'Quick Links & Common Help'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quickLinks.map((item) => (
+                  <button
+                    type="button"
+                    key={item._id}
+                    onClick={() => setSelectedArticleId(item._id)}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                      selectedArticleId === item._id
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-blue-100 hover:border-blue-300 hover:bg-blue-50/50 shadow-2xs'
+                    }`}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Status Filter for Managers & Search on Mobile Toggle */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Mobile Toggle Button for Tree */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpenMobile(!sidebarOpenMobile)}
+              className="lg:hidden inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs"
+            >
+              <span>📁</span>
+              <span>{sidebarOpenMobile ? (t('hideSidebar') || 'Hide Folders') : (t('showSidebar') || 'Browse Folders')}</span>
+            </button>
+
+            {/* Manager Status Filter */}
+            {canManage && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs font-medium text-slate-500">{t('status') || 'Status'}:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">{t('allStatuses') || 'All Statuses'}</option>
+                  <option value="published">🚀 {t('published') || 'Published'}</option>
+                  <option value="draft">📝 {t('draft') || 'Draft'}</option>
+                  <option value="archived">📦 {t('archived') || 'Archived'}</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Loading / Error States */}
+          {topicsLoading && articlesLoading && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-slate-400">
+              <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent mx-auto mb-3" />
+              <p className="text-xs font-medium">{t('loadingItHelp') || 'Loading knowledge base...'}</p>
+            </div>
+          )}
+
+          {isError && (
+            <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center text-xs text-red-700">
+              {errorMessage(error, t('unableLoadItHelp') || 'Unable to load knowledge base')}
+            </div>
+          )}
+
+          {/* Main 2-Pane Obsidian Layout */}
+          {!topicsLoading && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Left Pane: Obsidian Tree (3.5 / 12 columns on large screens) */}
+              <div
+                className={`lg:col-span-4 xl:col-span-3 transition-all ${
+                  sidebarOpenMobile ? 'block' : 'hidden lg:block'
+                }`}
+              >
+                <ObsidianTree
+                  topics={topics}
+                  articles={articles}
+                  selectedArticleId={selectedArticleId}
+                  selectedTopicId={selectedTopicId}
+                  onSelectArticle={handleSelectArticle}
+                  onSelectTopic={handleSelectTopic}
+                  canManage={canManage}
+                  onOpenCreateTopic={(parentId) => {
+                    setTopicEditing(null);
+                    setTopicDefaultParentId(parentId || null);
+                    setTopicModalOpen(true);
+                  }}
+                  onOpenEditTopic={(topic) => {
+                    setTopicEditing(topic);
+                    setTopicModalOpen(true);
+                  }}
+                  onDeleteTopic={(topic) => setDeletingTopic(topic)}
+                  onOpenCreateArticle={(topicId) => {
+                    setArticleEditing(null);
+                    setArticleDefaultTopicId(topicId || null);
+                    setEditorModalOpen(true);
+                  }}
+                />
+              </div>
+
+              {/* Right Pane: Reading & Content Canvas (8.5 / 12 columns) */}
+              <div className="lg:col-span-8 xl:col-span-9 min-w-0">
+                <KnowledgeReader
+                  article={selectedArticle}
+                  loading={articleLoading}
+                  selectedTopic={selectedTopic}
+                  topicHierarchy={topicHierarchy}
+                  canManage={canManage}
+                  currentUser={user}
+                  onEditArticle={(art) => {
+                    setArticleEditing(art);
+                    setEditorModalOpen(true);
+                  }}
+                  onToggleStatus={handleToggleArticleStatus}
+                  onDeleteArticle={(art) => setDeletingArticle(art)}
+                  onVote={handleVote}
+                  voting={voteMutation.isPending}
+                  onOpenCreateArticle={(topicId) => {
+                    setArticleEditing(null);
+                    setArticleDefaultTopicId(topicId || null);
+                    setEditorModalOpen(true);
+                  }}
+                  onOpenCreateTopic={(parentId) => {
+                    setTopicEditing(null);
+                    setTopicDefaultParentId(parentId || null);
+                    setTopicModalOpen(true);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      <ContactIt department={itDepartment} />
+      {/* IT Helpdesk Contact Card */}
+      <ContactItCard department={itDepartment} />
 
-      <Modal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        title={editing ? t('editItHelp') : t('createItHelp')}
-        size="lg"
-      >
-        <ItHelpForm
-          initial={editing}
-          topics={topics}
-          roles={catalog?.roles || []}
-          onSubmit={save}
-          onCancel={() => setFormOpen(false)}
-          submitting={createMutation.isPending || updateMutation.isPending}
-          formError={formError}
-        />
-      </Modal>
+      {/* Modals & Dialogs */}
+      {/* 1. Topic / Folder Modal */}
+      <TopicModal
+        open={topicModalOpen}
+        onClose={() => {
+          setTopicModalOpen(false);
+          setTopicEditing(null);
+        }}
+        initial={topicEditing}
+        defaultParentId={topicDefaultParentId}
+        topics={topics}
+        onSubmit={handleSaveTopic}
+        submitting={createTopicMutation.isPending || updateTopicMutation.isPending}
+        formError={actionError}
+      />
 
+      {/* 2. Note / Markdown Editor Modal */}
+      <MarkdownEditorModal
+        open={editorModalOpen}
+        onClose={() => {
+          setEditorModalOpen(false);
+          setArticleEditing(null);
+        }}
+        initial={articleEditing}
+        defaultTopicId={articleDefaultTopicId}
+        topics={topics}
+        roles={catalog?.roles || []}
+        onSubmit={handleSaveArticle}
+        submitting={createArticleMutation.isPending || updateArticleMutation.isPending}
+        formError={actionError}
+      />
+
+      {/* 3. Delete Article Confirm Dialog */}
       <ConfirmDialog
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={remove}
-        title={t('deleteItHelp')}
-        message={deleting ? t('deleteConfirm', { name: deleting.title }) : ''}
-        confirmLabel={t('delete')}
-        loading={deleteMutation.isPending}
+        open={!!deletingArticle}
+        onClose={() => setDeletingArticle(null)}
+        onConfirm={handleConfirmDeleteArticle}
+        title={t('deleteItHelp') || 'Delete Note'}
+        message={deletingArticle ? (t('deleteConfirm', { name: deletingArticle.title }) || `Are you sure you want to delete "${deletingArticle.title}"?`) : ''}
+        confirmLabel={t('delete') || 'Delete'}
+        loading={deleteArticleMutation.isPending}
+      />
+
+      {/* 4. Delete Topic / Folder Confirm Dialog */}
+      <ConfirmDialog
+        open={!!deletingTopic}
+        onClose={() => setDeletingTopic(null)}
+        onConfirm={handleConfirmDeleteTopic}
+        title={t('deleteTopic') || 'Delete Folder'}
+        message={
+          deletingTopic
+            ? `${t('deleteTopicConfirm') || 'Are you sure you want to delete folder'} "${deletingTopic.name}"? ${
+                deletingTopic.articleCount > 0 ? `(${deletingTopic.articleCount} notes will become unassigned)` : ''
+              }`
+            : ''
+        }
+        confirmLabel={t('delete') || 'Delete'}
+        loading={deleteTopicMutation.isPending}
+      />
+
+      {/* 5. Seed Mock IT Data Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmSeedModalOpen}
+        onClose={() => setConfirmSeedModalOpen(false)}
+        onConfirm={handleSeedMock}
+        title={t('seedMockData') || 'Seed Mock IT Knowledge Base'}
+        message={t('seedMockDataConfirm') || 'Populate the knowledge base with 8 realistic IT categories and 21 interlinked articles?'}
+        confirmLabel={seedMockMutation.isPending ? (t('seeding') || 'Seeding...') : (t('seedMockData') || 'Seed Mock Data')}
+        loading={seedMockMutation.isPending}
+        danger={false}
       />
     </AppShell>
   );
 }
 
-function ArticleCard({ article, selected, canManage, onSelect, onEdit, onToggle, onDelete }) {
-  const { t, label } = useLanguage();
-  const [imageFailed, setImageFailed] = useState(false);
-
-  return (
-    <article className={`rounded-xl border bg-white p-4 shadow-sm transition-all ${selected ? 'border-primary-500 ring-1 ring-primary-100' : 'border-gray-200 hover:border-gray-300'}`}>
-      {article.coverImage && !imageFailed && (
-        <img
-          src={article.coverImage}
-          alt=""
-          onError={() => setImageFailed(true)}
-          className="mb-4 h-48 w-full rounded-lg object-cover"
-        />
-      )}
-      <button type="button" onClick={() => onSelect(article._id)} className="block text-left w-full">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-semibold text-gray-800 hover:text-primary-600 transition-colors">{article.title}</h2>
-          {canManage && <ContentBadge value={article.status} />}
-        </div>
-        {article.summary && (
-          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{article.summary}</p>
-        )}
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-          <span className="text-primary-600 font-medium">{label(article.subcategory)}</span>
-          <div className="flex items-center gap-3">
-            {article.images && article.images.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-gray-500" title={t('infographicImages')}>
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {article.images.length}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 text-gray-500" title={t('comments')}>
-              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              {article.commentCount || 0}
-            </span>
-          </div>
-        </div>
-      </button>
-      {canManage && (
-        <div className="mt-3 flex gap-3 border-t border-gray-100 pt-3 text-sm">
-          <button type="button" onClick={() => onEdit(article)} className="text-primary-600 hover:underline">
-            {t('edit')}
-          </button>
-          <button type="button" onClick={() => onToggle(article)} className="text-amber-700 hover:underline">
-            {article.status === 'published' ? t('unpublish') : t('publish')}
-          </button>
-          <button type="button" onClick={() => onDelete(article)} className="text-red-600 hover:underline">
-            {t('delete')}
-          </button>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function ArticleDetail({ article, loading, canManage, currentUser, onVote, voting, onSelect }) {
-  const { t, label } = useLanguage();
-  if (loading) return <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-500">{t('loadingDetails')}</div>;
-  if (!article) return <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-500">{t('selectItHelp')}</div>;
-
-  return (
-    <article className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      {/* Cover image if available */}
-      {article.coverImage && (
-        <div className="mb-5 overflow-hidden rounded-xl bg-gray-50 border border-gray-100">
-          <img
-            src={article.coverImage}
-            alt={article.title}
-            className="max-h-72 w-full object-cover rounded-xl"
-          />
-        </div>
-      )}
-
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-primary-600 font-semibold">{label(article.subcategory)}</p>
-          <h2 className="text-xl font-bold text-gray-800 mt-1">{article.title}</h2>
-        </div>
-        {canManage && <ContentBadge value={article.status} />}
-      </div>
-
-      {article.summary && <p className="mt-3 text-gray-600">{article.summary}</p>}
-
-      {/* Main Troubleshooting Content */}
-      <div className="mt-5">
-        <RichTextRenderer content={article.content} />
-      </div>
-
-      {/* Infographics & Diagrams Gallery */}
-      <ImageGallery
-        articleId={article._id}
-        images={article.images || []}
-        canManage={canManage}
-      />
-
-      {/* Helpfulness Voting */}
-      <div className="mt-6 border-t border-gray-100 pt-4">
-        <p className="text-sm font-medium text-gray-700">{t('wasHelpful')}</p>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            disabled={voting}
-            onClick={() => onVote('helpful')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              article.currentUserVote === 'helpful' ? 'bg-green-100 text-green-800 font-medium' : 'border border-gray-200 text-gray-700'
-            }`}
-          >
-            {t('helpful')} ({article.helpfulCount || 0})
-          </button>
-          <button
-            type="button"
-            disabled={voting}
-            onClick={() => onVote('not_helpful')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              article.currentUserVote === 'not_helpful' ? 'bg-red-100 text-red-800 font-medium' : 'border border-gray-200 text-gray-700'
-            }`}
-          >
-            {t('notHelpful')} ({article.notHelpfulCount || 0})
-          </button>
-        </div>
-      </div>
-
-      {/* Related Articles */}
-      {article.relatedArticles?.length > 0 && (
-        <div className="mt-6 border-t border-gray-100 pt-4">
-          <h3 className="font-semibold text-gray-800">{t('relatedArticles')}</h3>
-          <div className="mt-2 space-y-2">
-            {article.relatedArticles.map((item) => (
-              <button
-                type="button"
-                key={item._id}
-                onClick={() => onSelect(item._id)}
-                className="block text-left text-sm text-primary-700 hover:underline"
-              >
-                {item.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Q&A / Comments Discussion Section */}
-      <CommentSection
-        articleId={article._id}
-        currentUser={currentUser}
-        canManage={canManage}
-      />
-    </article>
-  );
-}
-
-function ContactIt({ department }) {
+function ContactItCard({ department }) {
   const { t } = useLanguage();
+
   return (
-    <section className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
-      <h2 className="font-semibold text-gray-800">{t('contactIt')}</h2>
-      <p className="text-sm text-gray-500 mt-1">{t('contactItHelp')}</p>
+    <section className="mt-8 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600">
+          🎧
+        </div>
+        <div>
+          <h2 className="font-bold text-sm text-slate-800">
+            {t('contactIt') || 'Direct IT Helpdesk & Support'}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {t('contactItHelp') || 'Need hands-on hardware assistance, account unlocking, or emergency support? Contact the IT team directly.'}
+          </p>
+        </div>
+      </div>
+
       {department ? (
-        <div className="mt-3 grid gap-2 text-sm text-gray-700 sm:grid-cols-3">
-          <span>{department.location || t('notProvided')}</span>
-          <span>{t('extension')}: {department.extension || t('notProvided')}</span>
-          <span>{(department.contactTopics || []).join(', ') || t('notProvided')}</span>
+        <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3 border-t border-slate-100 pt-4">
+          <div className="flex items-center gap-2 text-slate-700">
+            <span className="text-slate-400">📍 {t('location') || 'Location'}:</span>
+            <span className="font-semibold text-slate-800">{department.location || t('notProvided')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-700">
+            <span className="text-slate-400">📞 {t('extension') || 'Ext'}:</span>
+            <span className="font-semibold text-blue-600 font-mono">{department.extension || t('notProvided')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-700">
+            <span className="text-slate-400">🏷️ {t('topics') || 'Topics'}:</span>
+            <span className="font-medium text-slate-800">{(department.contactTopics || []).join(', ') || t('notProvided')}</span>
+          </div>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-gray-500">{t('contactItUnavailable')}</p>
+        <p className="mt-3 text-xs text-slate-400">
+          {t('contactItUnavailable') || 'IT Department details are currently unavailable.'}
+        </p>
       )}
     </section>
-  );
-}
-
-function ItHelpForm({ initial, topics, roles, onSubmit, onCancel, submitting, formError }) {
-  const { t, label } = useLanguage();
-  const [form, setForm] = useState(() => toForm(initial, topics));
-  const [coverFile, setCoverFile] = useState(null);
-
-  useEffect(() => {
-    setForm(toForm(initial, topics));
-    setCoverFile(null);
-  }, [initial, topics]);
-
-  const set = (field, value) => setForm((current) => ({ ...current, [field]: value }));
-  const toggleRole = (role) =>
-    set('targetRoles', form.targetRoles.includes(role) ? form.targetRoles.filter((item) => item !== role) : [...form.targetRoles, role]);
-
-  const submit = (event) => {
-    event.preventDefault();
-    onSubmit({
-      payload: {
-        ...form,
-        category: 'it_help',
-        tags: typeof form.tags === 'string' ? form.tags.split(',').map((tag) => tag.trim()).filter(Boolean) : form.tags,
-        sortOrder: Number(form.sortOrder),
-        quickLinkOrder: Number(form.quickLinkOrder),
-        targetRoles: form.targetRoles,
-      },
-      file: coverFile,
-    });
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      {formError && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{formError}</p>}
-      <Field label={t('title')} value={form.title} onChange={(value) => set('title', value)} required />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('slug')} value={form.slug} onChange={(value) => set('slug', value)} required />
-        <SelectField label={t('itTopic')} value={form.subcategory} onChange={(value) => set('subcategory', value)} options={topics} />
-      </div>
-      <Field label={t('summary')} value={form.summary} onChange={(value) => set('summary', value)} />
-      <RichTextEditor label={t('itHelpContent')} value={form.content} onChange={(value) => set('content', value)} />
-      
-      {/* Cover Image Upload */}
-      <ImageUpload
-        label={t('coverImage')}
-        value={form.coverImage}
-        onChange={(file) => setCoverFile(file)}
-        disabled={submitting}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('tags')} value={form.tags} onChange={(value) => set('tags', value)} />
-        <Field label={t('sortOrder')} type="number" value={form.sortOrder} onChange={(value) => set('sortOrder', value)} />
-      </div>
-
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" checked={form.isQuickLink} onChange={(event) => set('isQuickLink', event.target.checked)} />
-        {t('makeQuickLink')}
-      </label>
-      {form.isQuickLink && (
-        <Field label={t('quickLinkOrder')} type="number" value={form.quickLinkOrder} onChange={(value) => set('quickLinkOrder', value)} />
-      )}
-
-      <SelectField label={t('status')} value={form.status} onChange={(value) => set('status', value)} options={['draft', 'published', 'archived']} />
-
-      <div>
-        <span className="block text-sm font-medium text-gray-700 mb-2">{t('targetRoles')}</span>
-        <div className="flex flex-wrap gap-3">
-          {roles.map((role) => (
-            <label key={role} className="text-sm text-gray-600">
-              <input type="checkbox" checked={form.targetRoles.includes(role)} onChange={() => toggleRole(role)} className="mr-1" />
-              {label(role)}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50">
-          {t('cancel')}
-        </button>
-        <button type="submit" disabled={submitting} className="px-4 py-2 text-sm rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
-          {submitting ? t('saving') : t('saveArticle')}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function toForm(article, topics) {
-  return article
-    ? {
-        ...EMPTY_ARTICLE,
-        ...article,
-        subcategory: article.subcategory || topics[0],
-        tags: (article.tags || []).join(', '),
-        targetRoles: article.targetRoles || [],
-      }
-    : { ...EMPTY_ARTICLE, subcategory: topics[0] };
-}
-
-function Field({ label: fieldLabel, value, onChange, type = 'text', required = false }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-gray-700 mb-1">
-        {fieldLabel}
-        {required && ' *'}
-      </span>
-      <input
-        type={type}
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-      />
-    </label>
-  );
-}
-
-function SelectField({ label: fieldLabel, value, onChange, options }) {
-  const { label } = useLanguage();
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-gray-700 mb-1">{fieldLabel}</span>
-      <select
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {label(option)}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

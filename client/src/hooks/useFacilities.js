@@ -52,3 +52,14 @@ export function useAddFacilityFloor() {
     },
   });
 }
+
+export function useDeleteFacilityFloor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, floorNumber }) => facilityService.deleteFloor(id, floorNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facilities'] });
+      queryClient.invalidateQueries({ queryKey: ['floor-plans'] });
+    },
+  });
+}

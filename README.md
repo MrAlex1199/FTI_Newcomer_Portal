@@ -27,10 +27,13 @@ FTI Welcome Hub provides:
 
 **Tech Stack:**
 - **Frontend:** React 18 + Vite + Tailwind CSS
+- **2D Canvas & Floor Plan:** React-Konva, Konva.js
+- **CAD & Document Generation:** dxf-parser, jsPDF, html2canvas, xlsx (SheetJS)
 - **Backend:** Node.js + Express.js
 - **Database:** MongoDB + Mongoose
 - **Authentication:** JWT with HttpOnly cookies
-- **File Storage:** Cloudinary
+- **File Storage:** Cloudinary + Local Disk (`uploads/floorplans`)
+- **Testing:** Vitest, Supertest
 - **Deployment:** Vercel (Frontend) + Render (Backend) + MongoDB Atlas
 
 **Project Structure:**
@@ -150,11 +153,19 @@ This will start:
 - ✅ Admin Dashboard with statistics
 - ✅ File Upload (profile photos)
 
-### Phase 2: Enhanced Features (Weeks 4-5)
-- 🔄 Announcements System
-- 🔄 IT Help Center
-- 🔄 Global Search
-- 🔄 Feedback System
+### Phase 2: Enhanced Features (Completed)
+- ✅ Announcements System
+- ✅ IT Help Center
+- ✅ Global Search
+- ✅ Feedback System
+- ✅ Smart Campus Floor Plan Designer & Viewer (React-Konva)
+- ✅ Interactive CCTV Aiming Gizmo with Real-time FOV Cone
+- ✅ Campus Asset Inventory Management & Direct Target Locator
+- ✅ Maintenance Ticket System with Bi-directional Canvas Sync
+- ✅ AutoCAD (.DXF) Import (Layer Inspection, Reference Overlay & Auto-convert)
+- ✅ Blueprint Image Underlay Overlay (Opacity, Scale, Drag & Lock)
+- ✅ Freeform Polygon Room Creation Tool (`⬡`) with Shoelace Area Calculation
+- ✅ Multi-Format Architectural Export (Retina PNG 2x, Architectural A4 PDF with Title Block, AutoCAD DXF)
 
 ### Phase 3: Future Enhancements
 - ⏳ Intern Alumni & Knowledge Archive
@@ -177,6 +188,9 @@ This will start:
 9. **KnowledgeArticle** - Guides and IT help articles
 10. **Feedback** - User feedback system
 11. **AuditLog** - Activity tracking
+12. **FloorPlan** - Multi-building interactive floor plans, polygon/rect rooms, DXF CAD layers, and blueprint image underlays
+13. **Facility** - Smart campus assets (CCTV cameras with FOV rotation/range, computers, printers, vehicles, parking)
+14. **MaintenanceTicket** - Equipment repair tickets, urgency levels, technician assignment, and status lifecycle tracking
 
 ## 🧪 Testing
 
@@ -205,6 +219,7 @@ Expected response:
 
 ## 📖 Documentation
 
+- [Smart Campus Floor Plan & Asset Report](docs/SMART_CAMPUS_FLOORPLAN_AND_ASSET_REPORT.md)
 - [MongoDB Setup Guide](docs/MONGODB_SETUP.md)
 - [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
 - [Performance Optimization Report](docs/PERFORMANCE_OPTIMIZATION_REPORT.md)
@@ -238,9 +253,9 @@ MIT License - This is an educational/internship project.
 
 ---
 
-**Status:** ✅ Phase 1 Complete - Ready for Testing & Deployment
+**Status:** ✅ Phase 2 Complete (Smart Campus, Floor Plan & Asset Suite) - Production Ready
 
-**Last Updated:** September 1, 2026
+**Last Updated:** September 16, 2026
 
 ## 🧪 Test Accounts
 
@@ -302,6 +317,12 @@ After running `npm run seed`, use these accounts:
 | **[MONGODB_SETUP.md](./docs/MONGODB_SETUP.md)** | MongoDB Atlas setup (dev & production) |
 | **[PRODUCTION_SECRETS_SETUP.md](./docs/PRODUCTION_SECRETS_SETUP.md)** | JWT secrets, passwords, security best practices |
 | **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** | Quick reference checklist |
+
+### Smart Campus & Engineering
+
+| Document | Purpose |
+|----------|---------|
+| **[SMART_CAMPUS_FLOORPLAN_AND_ASSET_REPORT.md](./docs/SMART_CAMPUS_FLOORPLAN_AND_ASSET_REPORT.md)** | 📐 Smart Campus floor plan, CAD (.DXF) import/export, asset inventory, CCTV gizmo & maintenance tickets |
 
 ### Security & Performance
 

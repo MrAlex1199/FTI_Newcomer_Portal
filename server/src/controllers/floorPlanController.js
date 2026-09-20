@@ -174,6 +174,8 @@ export const createFloorPlan = asyncHandler(async (req, res) => {
     assets,
     canvasWidth,
     canvasHeight,
+    backgroundImage,
+    dxfLayer,
   } = req.body;
   if (!name?.trim()) {
     throw ApiError.badRequest('Floor plan name is required');
@@ -193,6 +195,8 @@ export const createFloorPlan = asyncHandler(async (req, res) => {
     walls: walls || [],
     doors: doors || [],
     assets: assets || [],
+    backgroundImage: backgroundImage || {},
+    dxfLayer: dxfLayer || {},
     canvasWidth: Number(canvasWidth) || 1000,
     canvasHeight: Number(canvasHeight) || 650,
     updatedBy: req.user.id,
@@ -237,6 +241,8 @@ export const updateFloorPlan = asyncHandler(async (req, res) => {
     'walls',
     'doors',
     'assets',
+    'backgroundImage',
+    'dxfLayer',
     'canvasWidth',
     'canvasHeight',
   ];
@@ -290,5 +296,30 @@ export const deleteFloorPlan = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Floor plan deleted successfully',
+  });
+});
+
+export const uploadFloorPlanBackground = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const plan = await FloorPlan.findById(id);
+  if (!plan) {
+    throw ApiError.notFound('Floor plan not found');
+  }
+
+  if (!req.file) {
+    throw ApiError.badRequest('กรุณาเลือกไฟล์ภาพผังอาคาร');
+  }
+
+  const fileUrl = `/uploads/floorplans/${req.file.filename}`;
+
+  res.status(200).json({
+    success: true,
+    message: 'อัปโหลดภาพผังอาคารสำเร็จ',
+    data: {
+      url: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+    },
   });
 });

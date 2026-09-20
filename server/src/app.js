@@ -22,12 +22,21 @@ import adminDashboardRoutes from './routes/adminDashboard.js';
 import adminUserRoutes from './routes/adminUsers.js';
 import chatRoutes from './routes/chat.js';
 import floorPlanRoutes from './routes/floorPlans.js';
+import path from 'path';
 import facilitiesRoutes from './routes/facilities.js';
+import maintenanceTicketRoutes from './routes/maintenanceTickets.js';
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware (cross-origin resource policy for canvas image loading)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// Serve uploads directory
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 // CORS configuration
 app.use(
@@ -86,6 +95,7 @@ app.use('/api/v1/admin', adminUserRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/floor-plans', floorPlanRoutes);
 app.use('/api/v1/facilities', facilitiesRoutes);
+app.use('/api/v1/maintenance-tickets', maintenanceTicketRoutes);
 
 // Development-only routes for exercising the authorization layer. Never mounted
 // in production so they can't be reached on a deployed instance.

@@ -21,6 +21,7 @@ const MENU_VISUALS = {
   '/announcements': '/menu-visuals/announcement.jpg',
   '/getting-started': '/mock-posters/learning.svg',
   '/it-help': '/menu-visuals/Itsupport.jpg',
+  '/maintenance': '/menu-visuals/Itsupport.jpg',
   '/company': '/menu-visuals/Company.jpg',
   '/admin/users': '/menu-visuals/organization.svg',
   '/admin/audit-logs': '/mock-posters/learning.svg',
@@ -141,7 +142,7 @@ export default function Dashboard() {
             <NavCard
               index={4}
               to="/it-help"
-              emoji="🛠️"
+              emoji="📖"
               title={t('itHelp')}
               desc={t('itHelpDesc')}
             />
@@ -156,8 +157,15 @@ export default function Dashboard() {
               index={6}
               to="/floor-plan"
               emoji="🏢"
-              title={t('floorPlanTitle') || 'ผังอาคาร & ทรัพย์สิน (20 ไร่)'}
-              desc={t('floorPlanSubtitle') || 'ผังโครงการ 10 สิ่งปลูกสร้าง, จำลองมุมกล้อง CCTV และระบบชี้เป้าโต๊ะทำงาน'}
+              title={t('floorPlanTitle')}
+              desc={t('floorPlanSubtitle')}
+            />
+            <NavCard
+              index={7}
+              to="/maintenance"
+              emoji="🔧"
+              title={t('equipmentMaintenance')}
+              desc={t('equipmentMaintenanceDesc')}
             />
           </div>
         </section>
@@ -207,8 +215,8 @@ export default function Dashboard() {
                   index={3}
                   to="/floor-plan"
                   emoji="📐"
-                  title="ออกแบบผังอาคารและทรัพย์สิน"
-                  desc="เครื่องมือวาดผัง 10 อาคาร วางตำแหน่งโต๊ะทำงาน กล้องวงจรปิด และคัดลอกโครงร่างข้ามชั้น"
+                  title={t('manageFloorPlan')}
+                  desc={t('manageFloorPlanDesc')}
                   tone="admin"
                 />
               </RoleGuard>
@@ -308,9 +316,8 @@ function NavCard({ to, emoji, title, desc, tone = 'neutral', index = 0 }) {
           />
         ) : (
           <div
-            className={`flex h-full w-full items-center justify-center ${
-              toneClasses[tone] || toneClasses.neutral
-            }`}
+            className={`flex h-full w-full items-center justify-center ${toneClasses[tone] || toneClasses.neutral
+              }`}
           >
             <span className="text-5xl" aria-hidden="true">{emoji}</span>
           </div>

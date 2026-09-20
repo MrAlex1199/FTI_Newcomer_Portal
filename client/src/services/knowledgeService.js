@@ -105,7 +105,29 @@ const knowledgeService = {
   async deleteComment(articleId, commentId) {
     await apiClient.delete(`/knowledge/${articleId}/comments/${commentId}`);
   },
+
+  // Topics / Folders (Obsidian-Style Hierarchical Organization)
+  async listTopics(params = {}) {
+    const { data } = await apiClient.get('/knowledge/topics', { params: cleanParams(params) });
+    return data.data;
+  },
+  async createTopic(payload) {
+    const { data } = await apiClient.post('/knowledge/topics', payload);
+    return data.data;
+  },
+  async updateTopic(id, payload) {
+    const { data } = await apiClient.patch(`/knowledge/topics/${id}`, payload);
+    return data.data;
+  },
+  async removeTopic(id) {
+    await apiClient.delete(`/knowledge/topics/${id}`);
+  },
+  async seedMockIt() {
+    const { data } = await apiClient.post('/knowledge/seed-mock-it');
+    return data;
+  },
 };
 
 export default knowledgeService;
+
 

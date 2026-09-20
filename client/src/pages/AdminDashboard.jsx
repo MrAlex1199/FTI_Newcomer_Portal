@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppShell from '../components/layout/AppShell.jsx';
 import useLanguage from '../hooks/useLanguage.js';
 import { useAdminDashboardStatistics } from '../hooks/useAdminDashboard.js';
+import maintenanceService from '../services/maintenanceService.js';
+import { exportMaintenanceTicketsToExcel } from '../utils/exportMaintenanceExcel.js';
 
 const PALETTE = ['#2563eb', '#0891b2', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -13,6 +15,43 @@ export default function AdminDashboard() {
   const { t, locale, language } = useLanguage();
   const { data, isLoading, isError, error, refetch, isFetching } = useAdminDashboardStatistics();
   const [activeTab, setActiveTab] = useState('department');
+  const [kpiData, setKpiData] = useState(null);
+  const [kpiLoading, setKpiLoading] = useState(true);
+  const [maintenanceTickets, setMaintenanceTickets] = useState([]);
+
+  // Fetch Maintenance KPI Summary
+  useEffect(() => {
+    let mounted = true;
+    const fetchKpi = async () => {
+      try {
+        setKpiLoading(true);
+        const [kpiRes, ticketsRes] = await Promise.all([
+          maintenanceService.getKpiSummary(),
+          maintenanceService.getAll({ limit: 100 }),
+        ]);
+        if (mounted) {
+          setKpiData(kpiRes?.data || null);
+          setMaintenanceTickets(ticketsRes?.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load maintenance KPI summary on Admin Dashboard:', err);
+      } finally {
+        if (mounted) setKpiLoading(false);
+      }
+    };
+    fetchKpi();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleExportMaintenanceExcel = () => {
+    exportMaintenanceTicketsToExcel({
+      tickets: maintenanceTickets,
+      kpiData,
+      buildingFilterName: 'ทุกอาคารในวิทยาเขต FTI',
+    });
+  };
 
   if (isLoading) {
     return (
@@ -419,6 +458,293 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
+        </section>
+
+        {/* ============================================================== */}
+        {/* SMART CAMPUS MAINTENANCE & SLA KPI SECTION                     */}
+        {/* ============================================================== */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-5">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600">
+                <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                <span>{t('adminKpiSectionBadge')}</span>
+              </div>
+              <h2 className="mt-1 text-xl font-bold text-slate-900">
+                {t('adminKpiSectionTitle')}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t('adminKpiSectionSubtitle')}
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportMaintenanceExcel}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500 active:scale-95"
+              >
+                <span>📥</span>
+                <span>{t('exportExcelReport')}</span>
+              </button>
+
+              <Link
+                to="/maintenance"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 active:scale-95"
+              >
+                <span>📋</span>
+                <span>{t('manageTicketsLink')}</span>
+              </Link>
+            </div>
+          </div>
+
+          {kpiLoading ? (
+            <div className="py-12 text-center">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mb-2" />
+              <p className="text-xs text-slate-400">{t('loading') || 'Loading...'}</p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {/* 4 Scorecards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Resolution Rate */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition hover:bg-slate-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">{t('kpiResolutionRate')}</span>
+                    <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+                      Resolved Rate
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-900">
+                      {kpiData?.kpiMetrics?.resolutionRate || 0}%
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      ({kpiData?.statusCounts?.resolved || 0}/{kpiData?.totalTickets || 0} {t('ticketsUnit')})
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, kpiData?.kpiMetrics?.resolutionRate || 0)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 2. MTTR */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition hover:bg-slate-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">{t('kpiMttr')}</span>
+                    <span className="rounded-md bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
+                      MTTR
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-purple-900">
+                      {kpiData?.kpiMetrics?.mttrHours || 0}
+                    </span>
+                    <span className="text-xs font-bold text-purple-700">{t('hoursPerTicket')}</span>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-500">
+                    {t('targetStd')}: ≤ 24 {t('hours') || 'hrs'}
+                  </p>
+                </div>
+
+                {/* 3. SLA Compliance */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition hover:bg-slate-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">{t('kpiSlaCompliance')}</span>
+                    <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                      (kpiData?.kpiMetrics?.slaComplianceRate || 0) >= 80
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      SLA Target
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-emerald-900">
+                      {kpiData?.kpiMetrics?.slaComplianceRate || 0}%
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      ({kpiData?.kpiMetrics?.slaMetCount || 0} {t('metSla')})
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, kpiData?.kpiMetrics?.slaComplianceRate || 0)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Active Critical */}
+                <div className={`rounded-xl border p-4 transition ${
+                  (kpiData?.kpiMetrics?.activeCriticalCount || 0) > 0
+                    ? 'border-red-200 bg-red-50/70'
+                    : 'border-slate-100 bg-slate-50/60'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">{t('kpiActiveCritical')}</span>
+                    <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                      (kpiData?.kpiMetrics?.activeCriticalCount || 0) > 0
+                        ? 'bg-red-600 text-white animate-pulse'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      Urgent Alert
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className={`text-2xl font-black ${
+                      (kpiData?.kpiMetrics?.activeCriticalCount || 0) > 0 ? 'text-red-700' : 'text-slate-900'
+                    }`}>
+                      {kpiData?.kpiMetrics?.activeCriticalCount || 0}
+                    </span>
+                    <span className="text-xs text-slate-500">{t('ticketsUnit')}</span>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-500">
+                    {(kpiData?.kpiMetrics?.activeCriticalCount || 0) === 0
+                      ? t('noCriticalAlert')
+                      : t('hasCriticalAlert')}
+                  </p>
+                </div>
+              </div>
+
+              {/* SLA Matrix Breakdown by Urgency */}
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+                  {t('kpiUrgencyMatrix')}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Critical */}
+                  <div className="rounded-lg border border-red-200 bg-white p-3 shadow-xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-red-700">
+                      <span>🚨 {t('urgencyCritical')}</span>
+                      <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px]">SLA ≤ 4h</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-lg font-black text-slate-800">
+                        {kpiData?.urgencyCounts?.critical || 0} {t('ticketsUnit')}
+                      </span>
+                      <span className="text-xs font-semibold text-emerald-600">
+                        {t('metSla')} {kpiData?.urgencyCounts?.critical ? Math.round(((kpiData.kpiMetrics?.slaMetCount || 0) / Math.max(1, kpiData.totalTickets)) * 100) : 100}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* High */}
+                  <div className="rounded-lg border border-amber-200 bg-white p-3 shadow-xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-amber-700">
+                      <span>⚠️ {t('urgencyHigh')}</span>
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px]">SLA ≤ 24h</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-lg font-black text-slate-800">
+                        {kpiData?.urgencyCounts?.high || 0} {t('ticketsUnit')}
+                      </span>
+                      <span className="text-xs text-slate-400">{t('urgencyHighDesc')}</span>
+                    </div>
+                  </div>
+
+                  {/* Medium */}
+                  <div className="rounded-lg border border-blue-200 bg-white p-3 shadow-xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-blue-700">
+                      <span>🟡 {t('urgencyMedium')}</span>
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px]">SLA ≤ 48h</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-lg font-black text-slate-800">
+                        {kpiData?.urgencyCounts?.medium || 0} {t('ticketsUnit')}
+                      </span>
+                      <span className="text-xs text-slate-400">{t('urgencyMediumDesc')}</span>
+                    </div>
+                  </div>
+
+                  {/* Low */}
+                  <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>🟢 {t('urgencyLow')}</span>
+                      <span className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px]">SLA ≤ 72h</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-lg font-black text-slate-800">
+                        {kpiData?.urgencyCounts?.low || 0} {t('ticketsUnit')}
+                      </span>
+                      <span className="text-xs text-slate-400">{t('urgencyLowDesc')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Building Performance Table */}
+              {kpiData?.buildingBreakdown && kpiData.buildingBreakdown.length > 0 && (
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {t('kpiBuildingBreakdown')}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {kpiData.buildingBreakdown.length} {t('buildings') || 'buildings'}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100/70 text-slate-600 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-2.5">{t('buildingNameCol')}</th>
+                          <th className="px-4 py-2.5 text-center">{t('totalTicketsCol')}</th>
+                          <th className="px-4 py-2.5 text-center">{t('pendingTicketsCol')}</th>
+                          <th className="px-4 py-2.5 text-center">{t('resolvedTicketsCol')}</th>
+                          <th className="px-4 py-2.5 text-center">{t('mttrAvgCol')}</th>
+                          <th className="px-4 py-2.5 text-center">{t('slaComplianceCol')}</th>
+                          <th className="px-4 py-2.5 text-right">{t('actionCol')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {kpiData.buildingBreakdown.map((b) => (
+                          <tr key={b.buildingId} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 font-semibold text-slate-800 flex items-center gap-2">
+                              <span>🏢</span>
+                              <span>{b.buildingName || b.buildingId}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-900">{b.total}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="rounded bg-amber-100 px-2 py-0.5 font-bold text-amber-800">
+                                {b.pending}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">
+                                {b.resolved}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-slate-600">
+                              {b.mttrHours ? `${b.mttrHours} h` : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold">
+                              <span className={b.slaRate >= 80 ? 'text-emerald-600' : 'text-amber-600'}>
+                                {b.slaRate}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <Link
+                                to={`/maintenance?buildingId=${encodeURIComponent(b.buildingId)}`}
+                                className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                              >
+                                {t('viewTicketsLink')}
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Lower Section: Recent Activity + Action Required */}

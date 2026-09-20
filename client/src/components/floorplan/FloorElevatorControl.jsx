@@ -7,6 +7,7 @@ export default function FloorElevatorControl({
   onReturnToCampus,
   floorPlansInBuilding = [],
   onAddFloor,
+  onDeleteFloor,
 }) {
   if (!currentBuilding || currentBuilding.id === 'campus') {
     return null;
@@ -36,17 +37,30 @@ export default function FloorElevatorControl({
         </div>
       </div>
 
-      {/* Add Floor Button (if onAddFloor provided) */}
-      {onAddFloor && (
-        <div className="mb-1.5 w-full">
-          <button
-            type="button"
-            onClick={onAddFloor}
-            className="w-full flex items-center justify-center rounded-lg bg-blue-900/50 hover:bg-blue-800 text-blue-300 hover:text-white py-1 text-[10px] font-bold border border-blue-700/50 transition"
-            title="เพิ่มชั้นใหม่ให้อาคารนี้"
-          >
-            + ชั้น
-          </button>
+      {/* Admin Action Buttons (Add / Delete floor) */}
+      {(onAddFloor || onDeleteFloor) && (
+        <div className="mb-2 flex flex-col gap-1 w-full">
+          {onAddFloor && (
+            <button
+              type="button"
+              onClick={onAddFloor}
+              className="w-full flex items-center justify-center rounded-lg bg-blue-900/60 hover:bg-blue-800 text-blue-300 hover:text-white py-1 text-[10px] font-bold border border-blue-700/50 transition"
+              title="เพิ่มชั้นใหม่ให้อาคารนี้"
+            >
+              + ชั้น
+            </button>
+          )}
+
+          {onDeleteFloor && totalFloors > 1 && (
+            <button
+              type="button"
+              onClick={() => onDeleteFloor(currentFloorNumber)}
+              className="w-full flex items-center justify-center rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 hover:text-white py-1 text-[9.5px] font-bold border border-red-800/50 transition"
+              title={`ลบแปลนชั้นปัจจุบัน (ชั้น ${currentFloorNumber})`}
+            >
+              🗑️ ลบชั้นนี้
+            </button>
+          )}
         </div>
       )}
 

@@ -56,6 +56,13 @@ const knowledgeArticleSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    /** Hierarchical topic/folder reference for Obsidian-style nested organization */
+    topicId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'KnowledgeTopic',
+      default: null,
+      index: true,
+    },
     summary: {
       type: String,
       trim: true,

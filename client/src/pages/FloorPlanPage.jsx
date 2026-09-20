@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import useLanguage from '../hooks/useLanguage.js';
 import { useFloorPlans, useUpdateFloorPlan } from '../hooks/useFloorPlans.js';
-import { useFacilities, useAddFacilityFloor } from '../hooks/useFacilities.js';
+import { useFacilities, useAddFacilityFloor, useDeleteFacilityFloor } from '../hooks/useFacilities.js';
 import { useDepartments } from '../hooks/useDepartments.js';
 import { useToast } from '../hooks/ToastContext.jsx';
 import AppShell from '../components/layout/AppShell.jsx';
@@ -12,11 +13,16 @@ import BuildingSelector from '../components/floorplan/BuildingSelector.jsx';
 import CampusAssetSearchModal from '../components/floorplan/CampusAssetSearchModal.jsx';
 import FacilityManageModal from '../components/floorplan/FacilityManageModal.jsx';
 import CopyLayoutModal from '../components/floorplan/CopyLayoutModal.jsx';
+import AssetInventoryModal from '../components/floorplan/AssetInventoryModal.jsx';
+import MaintenanceReportModal from '../components/floorplan/MaintenanceReportModal.jsx';
+import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
 
 export default function FloorPlanPage() {
   const { hasPermission, hasRole } = useAuth();
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const location = useLocation();
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
   const isAdmin =
     hasRole('super_admin') ||
@@ -27,12 +33,25 @@ export default function FloorPlanPage() {
   const [mode, setMode] = useState('view');
 
   // Selected building and floor
-  const [selectedBuildingId, setSelectedBuildingId] = useState('campus');
-  const [currentFloorNumber, setCurrentFloorNumber] = useState(0); // 0 for campus, 1+ for building floors
-  const [initialFocusAssetId, setInitialFocusAssetId] = useState(null);
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => queryParams.get('buildingId') || 'campus');
+  const [currentFloorNumber, setCurrentFloorNumber] = useState(() => Number(queryParams.get('floor')) || 0); // 0 for campus, 1+ for building floors
+  const [initialFocusAssetId, setInitialFocusAssetId] = useState(() => queryParams.get('highlight') || null);
   const [isCampusSearchOpen, setIsCampusSearchOpen] = useState(false);
   const [isFacilityManageOpen, setIsFacilityManageOpen] = useState(false);
   const [isCopyLayoutOpen, setIsCopyLayoutOpen] = useState(false);
+  const [isAssetInventoryOpen, setIsAssetInventoryOpen] = useState(false);
+  const [reportingAsset, setReportingAsset] = useState(null);
+  const [floorToDelete, setFloorToDelete] = useState(null);
+
+  // Sync when query params change (e.g. redirected from Maintenance Page)
+  useEffect(() => {
+    const bId = queryParams.get('buildingId');
+    const fNum = queryParams.get('floor');
+    const hl = queryParams.get('highlight');
+    if (bId) setSelectedBuildingId(bId);
+    if (fNum !== null && fNum !== undefined) setCurrentFloorNumber(Number(fNum));
+    if (hl) setInitialFocusAssetId(hl);
+  }, [queryParams]);
 
   // Facilities & Floor plans query
   const { data: facilitiesData = [] } = useFacilities();
@@ -41,6 +60,7 @@ export default function FloorPlanPage() {
   const facilities = facilitiesData.length > 0 ? facilitiesData : (plansData?.facilities || []);
   const updateFloorPlanMutation = useUpdateFloorPlan();
   const addFloorMutation = useAddFacilityFloor();
+  const deleteFloorMutation = useDeleteFacilityFloor();
   const { data: departments = [] } = useDepartments();
 
   // Calculate building stats (issue count and asset counts) across all plans
@@ -133,6 +153,39 @@ export default function FloorPlanPage() {
     }
   };
 
+  // Quick delete floor click handler
+  const handleQuickDeleteFloor = (floorNum) => {
+    if (!currentFacility || currentFacility.id === 'campus') return;
+    const fNum = floorNum || currentFloorNumber;
+    
+    if (floorPlansInBuilding.length <= 1) {
+      showToast('ไม่สามารถลบได้ เนื่องจากอาคารต้องมีอย่างน้อย 1 ชั้น', 'error');
+      return;
+    }
+
+    setFloorToDelete({
+      facilityId: currentFacility.facilityId || currentFacility.id || currentFacility._id,
+      facilityName: currentFacility.name,
+      floorNumber: fNum,
+    });
+  };
+
+  const handleConfirmDeleteFloor = async () => {
+    if (!floorToDelete) return;
+    try {
+      await deleteFloorMutation.mutateAsync({
+        id: floorToDelete.facilityId,
+        floorNumber: floorToDelete.floorNumber,
+      });
+      showToast(`ลบชั้น ${floorToDelete.floorNumber} ของ ${floorToDelete.facilityName} เรียบร้อยแล้ว`, 'success');
+      setCurrentFloorNumber(1);
+    } catch (err) {
+      showToast(err?.response?.data?.message || err.message || 'ไม่สามารถลบชั้นได้', 'error');
+    } finally {
+      setFloorToDelete(null);
+    }
+  };
+
   // Cross-building asset search selection handler
   const handleSelectAssetResult = ({ buildingId, floorNumber, assetId }) => {
     setSelectedBuildingId(buildingId || 'b1');
@@ -196,6 +249,25 @@ export default function FloorPlanPage() {
             <span>🔍</span>
             <span>ค้นหาทรัพย์สินทั่วทั้ง 20 ไร่</span>
           </button>
+
+          {/* Quick Asset Inventory Button */}
+          <button
+            type="button"
+            onClick={() => setIsAssetInventoryOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 hover:border-indigo-300 transition"
+          >
+            <span>📋</span>
+            <span>ตารางจัดการทรัพย์สิน</span>
+          </button>
+
+          {/* Quick Maintenance & KPI Button */}
+          <Link
+            to="/maintenance"
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-100 hover:border-emerald-300 transition"
+          >
+            <span>🔧</span>
+            <span>แจ้งปัญหา & วัดผล KPI</span>
+          </Link>
 
           {isAdmin && (
             <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200 shadow-sm">
@@ -261,6 +333,8 @@ export default function FloorPlanPage() {
               initialFocusAssetId={initialFocusAssetId}
               onSelectBuilding={handleSelectBuilding}
               onOpenCampusSearch={() => setIsCampusSearchOpen(true)}
+              onOpenAssetInventory={() => setIsAssetInventoryOpen(true)}
+              onRequestMaintenance={(asset) => setReportingAsset(asset)}
               currentBuilding={currentFacility}
               currentFloorNumber={currentFloorNumber}
               onSelectFloor={handleSelectFloor}
@@ -268,6 +342,7 @@ export default function FloorPlanPage() {
               floorPlansInBuilding={floorPlansInBuilding}
               onOpenCopyLayoutModal={() => setIsCopyLayoutOpen(true)}
               onAddFloor={handleQuickAddFloor}
+              onDeleteFloor={handleQuickDeleteFloor}
             />
           ) : (
             <div className="h-[760px] w-full">
@@ -291,6 +366,27 @@ export default function FloorPlanPage() {
         onSelectAssetResult={handleSelectAssetResult}
       />
 
+      {/* Campus Asset Inventory Modal (Table View) */}
+      <AssetInventoryModal
+        isOpen={isAssetInventoryOpen}
+        onClose={() => setIsAssetInventoryOpen(false)}
+        currentFloorPlan={currentFloorPlan}
+        allFloorPlans={floorPlans}
+        onTargetAsset={handleSelectAssetResult}
+        onRequestMaintenance={(asset) => setReportingAsset(asset)}
+      />
+
+      {/* Maintenance Request Report Modal */}
+      <MaintenanceReportModal
+        isOpen={!!reportingAsset}
+        onClose={() => setReportingAsset(null)}
+        asset={reportingAsset}
+        onSuccess={() => {
+          // Invalidate floor plans query so updated maintenance status is immediately visible
+          window.location.reload();
+        }}
+      />
+
       {/* Facility Management Modal (CRUD Buildings & Warehouses) */}
       <FacilityManageModal
         isOpen={isFacilityManageOpen}
@@ -308,6 +404,22 @@ export default function FloorPlanPage() {
         onSuccess={() => {
           showToast('คัดลอกโครงสร้างแปลนและผนังเรียบร้อยแล้ว!', 'success');
         }}
+      />
+
+      {/* Delete Floor In-App Confirmation Modal */}
+      <ConfirmDialog
+        open={Boolean(floorToDelete)}
+        onClose={() => setFloorToDelete(null)}
+        onConfirm={handleConfirmDeleteFloor}
+        title="ยืนยันการลบชั้นแปลนอาคาร"
+        message={
+          floorToDelete
+            ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบ "ชั้น ${floorToDelete.floorNumber}" ของ ${floorToDelete.facilityName}?\n\nข้อมูลโครงสร้างห้อง กำแพง และอุปกรณ์ในชั้นนี้จะถูกลบออกอย่างถาวร!`
+            : ''
+        }
+        confirmLabel="ยืนยันลบชั้นนี้"
+        danger={true}
+        loading={deleteFloorMutation.isPending}
       />
     </AppShell>
   );

@@ -359,3 +359,80 @@ export const addFloor = asyncHandler(async (req, res) => {
     data: { floorPlan: newPlan, totalFloors: newFloorNumber },
   });
 });
+
+export const deleteFloor = asyncHandler(async (req, res) => {
+  const { id, floorNumber } = req.params; // id: facilityId, floorNumber: number
+  const fNum = Number(floorNumber);
+
+  const facility = await Facility.findOne({ facilityId: id });
+  if (!facility) {
+    throw ApiError.notFound('ไม่พบข้อมูลอาคาร');
+  }
+
+  // Count existing floor plans for this facility
+  const existingPlans = await FloorPlan.find({ buildingId: facility.facilityId }).sort({ floorNumber: 1 });
+  if (existingPlans.length <= 1) {
+    throw ApiError.badRequest('ไม่สามารถลบได้ เนื่องจากอาคารต้องมีอย่างน้อย 1 ชั้น');
+  }
+
+  // Find the target floor plan to delete
+  const targetPlan = existingPlans.find((p) => p.floorNumber === fNum);
+  if (!targetPlan) {
+    throw ApiError.notFound(`ไม่พบข้อมูลแปลนชั้น ${fNum} ของอาคารนี้`);
+  }
+
+  // Delete the target floor plan
+  await targetPlan.deleteOne();
+
+  // Re-index remaining floor plans above this floor if necessary, or simply update totalFloors
+  const remainingPlans = await FloorPlan.find({ buildingId: facility.facilityId }).sort({ floorNumber: 1 });
+  
+  // Re-number subsequent floors so there is no gap (e.g. if deleting floor 2 of 1..3, floor 3 becomes 2)
+  for (let i = 0; i < remainingPlans.length; i++) {
+    const plan = remainingPlans[i];
+    const expectedFloor = i + 1;
+    if (plan.floorNumber !== expectedFloor) {
+      plan.floorNumber = expectedFloor;
+      plan.name = `${facility.name} ชั้น ${expectedFloor}`;
+      plan.floorName = `ชั้น ${expectedFloor}`;
+      await plan.save();
+    }
+  }
+
+  const newTotalFloors = remainingPlans.length;
+  facility.totalFloors = newTotalFloors;
+  await facility.save();
+
+  // Update totalFloors on all floor plans of this facility
+  await FloorPlan.updateMany(
+    { buildingId: facility.facilityId },
+    { $set: { totalFloors: newTotalFloors } }
+  );
+
+  // Update Campus Master Plan room label if it exists
+  const campusPlan = await FloorPlan.findOne({ buildingId: 'campus' });
+  if (campusPlan) {
+    const roomInCampus = campusPlan.rooms.find((r) => r.targetBuildingId === facility.facilityId);
+    if (roomInCampus) {
+      roomInCampus.name = `${facility.icon || '🏢'} ${facility.shortName || facility.name} (${newTotalFloors} ชั้น)`;
+      await campusPlan.save();
+    }
+  }
+
+  await AuditLog.record({
+    userId: req.user?.id,
+    action: 'delete',
+    entity: 'FloorPlan',
+    entityId: targetPlan._id,
+    before: targetPlan.toObject(),
+    after: null,
+    ip: req.ip,
+    userAgent: req.get('user-agent') || '',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: `ลบชั้น ${fNum} ของ ${facility.name} เรียบร้อยแล้ว`,
+    data: { totalFloors: newTotalFloors },
+  });
+});

@@ -17,6 +17,8 @@ import {
   snapPoint,
   calculateAreaMeters,
   calculateLengthMeters,
+  calculatePolygonArea,
+  getPolygonCenter,
   generateId,
   ROOM_PALETTE,
   getWallCoords,
@@ -25,6 +27,10 @@ import RoomEditModal from './RoomEditModal.jsx';
 import AssetEditModal from './AssetEditModal.jsx';
 import useLanguage from '../../hooks/useLanguage.js';
 import VehicleShape from './VehicleShape.jsx';
+import FloorPlanImageOverlay from './FloorPlanImageOverlay.jsx';
+import DxfImportModal from './DxfImportModal.jsx';
+import { exportToPng, exportToPdf, exportToDxf } from '../../utils/exportFloorPlan.js';
+import floorPlanService from '../../services/floorPlanService.js';
 
 export default function FloorPlanDesigner({
   floorPlan,
@@ -49,7 +55,45 @@ export default function FloorPlanDesigner({
     floorPlan?.scaleMetersPerGrid || DEFAULT_METERS_PER_GRID
   );
 
-  // Tools: 'select' | 'room' | 'wall' | 'door' | 'cctv' | 'computer' | 'printer'
+  // Background Image Overlay state
+  const [backgroundImage, setBackgroundImage] = useState(
+    floorPlan?.backgroundImage || {
+      url: '',
+      x: 50,
+      y: 50,
+      width: 0,
+      height: 0,
+      opacity: 0.45,
+      locked: true,
+      visible: true,
+      rotation: 0,
+    }
+  );
+  const [isUploadingBg, setIsUploadingBg] = useState(false);
+  const bgFileInputRef = useRef(null);
+
+  // DXF CAD Layer state
+  const [dxfLayer, setDxfLayer] = useState(
+    floorPlan?.dxfLayer || {
+      entities: [],
+      visible: true,
+      opacity: 0.65,
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      sourceFileName: '',
+    }
+  );
+  const [showDxfModal, setShowDxfModal] = useState(false);
+
+  // Export menu dropdown state
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Freeform Polygon state
+  const [polygonPoints, setPolygonPoints] = useState([]); // [x1, y1, x2, y2, ...]
+  const [polygonCursorPos, setPolygonCursorPos] = useState(null); // { x, y }
+
+  // Tools: 'select' | 'room' | 'polygon' | 'wall' | 'door' | 'cctv' | 'computer' | 'printer' | ...
   const [tool, setTool] = useState('room');
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
@@ -57,7 +101,7 @@ export default function FloorPlanDesigner({
 
   // Selection
   const [selectedId, setSelectedId] = useState(null);
-  const [selectedType, setSelectedType] = useState(null); // 'room' | 'wall' | 'door' | 'asset'
+  const [selectedType, setSelectedType] = useState(null); // 'room' | 'wall' | 'door' | 'asset' | 'background'
   const [editingRoom, setEditingRoom] = useState(null);
   const [editingAsset, setEditingAsset] = useState(null);
 
@@ -83,9 +127,11 @@ export default function FloorPlanDesigner({
         walls: [...walls],
         doors: [...doors],
         assets: [...assets],
+        backgroundImage: { ...backgroundImage },
+        dxfLayer: { ...dxfLayer },
       },
     ]);
-  }, [rooms, walls, doors, assets]);
+  }, [rooms, walls, doors, assets, backgroundImage, dxfLayer]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
@@ -94,8 +140,106 @@ export default function FloorPlanDesigner({
     setWalls(previous.walls || []);
     setDoors(previous.doors || []);
     setAssets(previous.assets || []);
+    if (previous.backgroundImage) setBackgroundImage(previous.backgroundImage);
+    if (previous.dxfLayer) setDxfLayer(previous.dxfLayer);
     setSelectedId(null);
     setHistory((prev) => prev.slice(0, prev.length - 1));
+  };
+
+  const handleBgFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('ขนาดไฟล์ภาพต้องไม่เกิน 10MB');
+      return;
+    }
+
+    try {
+      setIsUploadingBg(true);
+      if (floorPlan?._id) {
+        const result = await floorPlanService.uploadBackgroundImage(floorPlan._id, file);
+        setBackgroundImage((prev) => ({
+          ...prev,
+          url: result.url,
+          visible: true,
+          locked: true,
+        }));
+      } else {
+        const objectUrl = URL.createObjectURL(file);
+        setBackgroundImage((prev) => ({
+          ...prev,
+          url: objectUrl,
+          visible: true,
+          locked: true,
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to upload background image:', err);
+      const objectUrl = URL.createObjectURL(file);
+      setBackgroundImage((prev) => ({
+        ...prev,
+        url: objectUrl,
+        visible: true,
+        locked: true,
+      }));
+    } finally {
+      setIsUploadingBg(false);
+      if (bgFileInputRef.current) bgFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDxfImport = ({ fileName, shapes, importMode }) => {
+    pushHistory();
+    if (importMode === 'convert') {
+      const newRooms = [];
+      const newWalls = [];
+
+      shapes.forEach((s) => {
+        if (s.type === 'line' && s.closed && s.points.length >= 6) {
+          const polyCenter = getPolygonCenter(s.points);
+          newRooms.push({
+            id: generateId('dxf-room'),
+            shapeType: 'polygon',
+            points: s.points,
+            name: `ห้อง CAD ${rooms.length + newRooms.length + 1}`,
+            color: '#e0f2fe',
+            department: s.layer || '',
+            extension: '',
+            capacity: 4,
+            description: `นำเข้าจาก CAD เลเยอร์ ${s.layer}`,
+            x: polyCenter.x,
+            y: polyCenter.y,
+            width: polyCenter.width,
+            height: polyCenter.height,
+          });
+        } else if (s.type === 'line' && s.points.length >= 4) {
+          newWalls.push({
+            id: generateId('dxf-wall'),
+            points: s.points.slice(0, 4),
+            strokeWidth: 6,
+            stroke: s.stroke || '#334155',
+          });
+        }
+      });
+
+      if (newRooms.length > 0) setRooms((prev) => [...prev, ...newRooms]);
+      if (newWalls.length > 0) setWalls((prev) => [...prev, ...newWalls]);
+
+      setDxfLayer({
+        entities: shapes,
+        visible: true,
+        opacity: 0.5,
+        sourceFileName: fileName,
+      });
+    } else {
+      setDxfLayer({
+        entities: shapes,
+        visible: true,
+        opacity: 0.65,
+        sourceFileName: fileName,
+      });
+    }
   };
 
   const handleCopyLayoutFromPlan = (source) => {
@@ -151,6 +295,20 @@ export default function FloorPlanDesigner({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (tool === 'polygon' && polygonPoints.length > 0) {
+        if (e.key === 'Escape') {
+          setPolygonPoints([]);
+          setPolygonCursorPos(null);
+          return;
+        }
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          setPolygonPoints((prev) => prev.slice(0, prev.length - 2));
+          return;
+        }
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         handleDeleteSelected();
       } else if (e.key === 'Escape') {
@@ -158,6 +316,8 @@ export default function FloorPlanDesigner({
         setSelectedType(null);
         setIsDrawing(false);
         setCurrentShape(null);
+        setPolygonPoints([]);
+        setPolygonCursorPos(null);
       } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         handleUndo();
@@ -191,6 +351,51 @@ export default function FloorPlanDesigner({
     if (tool === 'select') return;
 
     const pos = getRelativePointer();
+
+    if (tool === 'polygon') {
+      if (polygonPoints.length === 0) {
+        setPolygonPoints([pos.x, pos.y]);
+      } else if (polygonPoints.length >= 4) {
+        const startX = polygonPoints[0];
+        const startY = polygonPoints[1];
+        const dist = Math.hypot(pos.x - startX, pos.y - startY);
+
+        if (dist <= Math.max(gridSize, 25)) {
+          pushHistory();
+          const finalPoints = [...polygonPoints];
+          const polyCenter = getPolygonCenter(finalPoints);
+          const newPolygonRoom = {
+            id: generateId('poly-room'),
+            shapeType: 'polygon',
+            points: finalPoints,
+            x: polyCenter.x,
+            y: polyCenter.y,
+            width: polyCenter.width,
+            height: polyCenter.height,
+            name: `ห้องรูปหลายเหลี่ยม ${rooms.length + 1}`,
+            color: ROOM_PALETTE[rooms.length % ROOM_PALETTE.length].hex,
+            department: '',
+            extension: '',
+            capacity: 4,
+            description: '',
+          };
+          setRooms((prev) => [...prev, newPolygonRoom]);
+          setPolygonPoints([]);
+          setPolygonCursorPos(null);
+          setSelectedId(newPolygonRoom.id);
+          setSelectedType('room');
+          setTool('select');
+          setIsDrawing(false);
+          return;
+        }
+
+        setPolygonPoints((prev) => [...prev, pos.x, pos.y]);
+      } else {
+        setPolygonPoints((prev) => [...prev, pos.x, pos.y]);
+      }
+      return;
+    }
+
     setIsDrawing(true);
     setDrawStart(pos);
 
@@ -457,6 +662,12 @@ export default function FloorPlanDesigner({
   };
 
   const handleStageMouseMove = () => {
+    if (tool === 'polygon' && polygonPoints.length > 0) {
+      const pos = getRelativePointer();
+      setPolygonCursorPos(pos);
+      return;
+    }
+
     if (!isDrawing || !drawStart) return;
     const pos = getRelativePointer();
 
@@ -472,6 +683,8 @@ export default function FloorPlanDesigner({
   };
 
   const handleStageMouseUp = () => {
+    if (tool === 'polygon') return;
+
     if (!isDrawing || !currentShape) {
       setIsDrawing(false);
       return;
@@ -531,6 +744,8 @@ export default function FloorPlanDesigner({
       setDoors((prev) => prev.filter((d) => d.id !== selectedId));
     } else if (selectedType === 'asset') {
       setAssets((prev) => prev.filter((a) => a.id !== selectedId));
+    } else if (selectedType === 'background') {
+      setBackgroundImage({ url: '', visible: true, locked: true, opacity: 0.5 });
     }
     setSelectedId(null);
     setSelectedType(null);
@@ -556,6 +771,8 @@ export default function FloorPlanDesigner({
         walls,
         doors,
         assets,
+        backgroundImage,
+        dxfLayer,
         gridSize,
         scaleMetersPerGrid,
       });
@@ -648,6 +865,24 @@ export default function FloorPlanDesigner({
             title="คลิกลากสี่เหลี่ยมเพื่อสร้างบล็อกห้อง"
           >
             🏢 {t('toolRoom') || 'สร้างห้อง (Box)'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTool('polygon');
+              setSelectedId(null);
+              setPolygonPoints([]);
+              setPolygonCursorPos(null);
+            }}
+            className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold border transition ${
+              tool === 'polygon'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-400/30'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title="คลิกวางจุดทีละจุดเพื่อสร้างห้องรูปหลายเหลี่ยม (ตัดมุม / ทรง L / ทรงเฉียง)"
+          >
+            ⬡ {t('toolPolygon') || 'ห้องหลายเหลี่ยม'}
           </button>
 
           <button
@@ -925,6 +1160,205 @@ export default function FloorPlanDesigner({
             </button>
           )}
 
+          <div className="h-5 w-px bg-slate-200 mx-0.5" />
+
+          {/* Background Image Upload & Controls */}
+          <input
+            ref={bgFileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            onChange={handleBgFileSelect}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => bgFileInputRef.current?.click()}
+            disabled={isUploadingBg}
+            className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition ${
+              backgroundImage?.url
+                ? 'border-amber-300 bg-amber-50 text-amber-800 shadow-xs'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title="อัปโหลดภาพผังอาคาร (PNG/JPG) เพื่อวางเป็นฉากหลังอ้างอิงในการวาด"
+          >
+            🖼️ {isUploadingBg ? 'กำลังโหลด...' : backgroundImage?.url ? 'เปลี่ยนภาพผัง' : 'ภาพผังพื้นหลัง'}
+          </button>
+
+          {backgroundImage?.url && (
+            <div className="flex items-center gap-1 bg-amber-50/90 border border-amber-200 rounded-xl px-2 py-1 shadow-xs">
+              <button
+                type="button"
+                onClick={() =>
+                  setBackgroundImage((prev) => ({
+                    ...prev,
+                    visible: !prev.visible,
+                  }))
+                }
+                className="text-xs p-0.5 hover:scale-110 transition"
+                title={backgroundImage.visible ? 'ซ่อนภาพผังพื้นหลัง' : 'แสดงภาพผังพื้นหลัง'}
+              >
+                {backgroundImage.visible ? '👁️' : '🙈'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setBackgroundImage((prev) => ({
+                    ...prev,
+                    locked: !prev.locked,
+                  }))
+                }
+                className="text-xs p-0.5 hover:scale-110 transition"
+                title={backgroundImage.locked ? 'ภาพถูกล็อค (คลิกเพื่อปลดล็อคย้าย/ย่อขยาย)' : 'ปลดล็อคแล้ว (คลิกที่ภาพเพื่อลากย้าย/ย่อขยาย)'}
+              >
+                {backgroundImage.locked ? '🔒' : '🔓'}
+              </button>
+
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={backgroundImage.opacity ?? 0.45}
+                onChange={(e) =>
+                  setBackgroundImage((prev) => ({
+                    ...prev,
+                    opacity: parseFloat(e.target.value),
+                  }))
+                }
+                className="w-12 h-1 accent-amber-600 cursor-pointer"
+                title={`ความโปร่งใสภาพผัง: ${Math.round((backgroundImage.opacity ?? 0.45) * 100)}%`}
+              />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBackgroundImage({ url: '', visible: true, locked: true, opacity: 0.45 });
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 p-0.5 font-bold"
+                title="ลบภาพผังพื้นหลัง"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* DXF CAD Import Button & Controls */}
+          <button
+            type="button"
+            onClick={() => setShowDxfModal(true)}
+            className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition ${
+              dxfLayer?.entities?.length > 0
+                ? 'border-blue-300 bg-blue-50 text-blue-800 shadow-xs'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title="นำเข้าไฟล์แบบแปลน CAD (.dxf) จาก AutoCAD หรือซอฟต์แวร์เขียนแบบ"
+          >
+            📐 {dxfLayer?.entities?.length > 0 ? `CAD (${dxfLayer.entities.length})` : 'นำเข้า CAD (.dxf)'}
+          </button>
+
+          {dxfLayer?.entities?.length > 0 && (
+            <div className="flex items-center gap-1 bg-blue-50/90 border border-blue-200 rounded-xl px-2 py-1 shadow-xs">
+              <button
+                type="button"
+                onClick={() =>
+                  setDxfLayer((prev) => ({
+                    ...prev,
+                    visible: !prev.visible,
+                  }))
+                }
+                className="text-xs p-0.5 hover:scale-110 transition"
+                title={dxfLayer.visible ? 'ซ่อนเลเยอร์ CAD' : 'แสดงเลเยอร์ CAD'}
+              >
+                {dxfLayer.visible ? '👁️' : '🙈'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDxfLayer({ entities: [], visible: true, opacity: 0.65 });
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 p-0.5 font-bold"
+                title="ลบเลเยอร์ CAD"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+              title="ส่งออกผังอาคาร (PNG, PDF, DXF)"
+            >
+              📤 ส่งออก ▾
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    exportToPng(stageRef.current, {
+                      fileName: `${floorPlan?.buildingName || 'FTI'}-${floorPlan?.floorName || 'Plan'}.png`.replace(/\s+/g, '_'),
+                    });
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                >
+                  <span className="text-base">📸</span>
+                  <div className="text-left">
+                    <div className="font-bold">ภาพ PNG คมชัดสูง (Retina)</div>
+                    <div className="text-[10px] text-slate-400">สำหรับนำเสนอและเอกสาร</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    exportToPdf(stageRef.current, floorPlan || {});
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                >
+                  <span className="text-base">📄</span>
+                  <div className="text-left">
+                    <div className="font-bold">เอกสาร PDF (A4 แนวนอน)</div>
+                    <div className="text-[10px] text-slate-400">พร้อมหัวเรื่องแบบสถาปัตย์และสเกล</div>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    exportToDxf({
+                      ...floorPlan,
+                      rooms,
+                      walls,
+                      doors,
+                      assets,
+                    });
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition"
+                >
+                  <span className="text-base">📐</span>
+                  <div className="text-left">
+                    <div className="font-bold">ไฟล์ AutoCAD (.DXF)</div>
+                    <div className="text-[10px] text-slate-400">สำหรับ AutoCAD, Visio, SketchUp</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="h-5 w-px bg-slate-200 mx-0.5" />
+
           {/* Copy Layout Button */}
           {otherFloorPlans.length > 0 && (
             <button
@@ -983,8 +1417,8 @@ export default function FloorPlanDesigner({
           onTouchMove={handleStageMouseMove}
           onTouchEnd={handleStageMouseUp}
         >
-          {/* Background Grid Layer */}
-          <Layer listening={false}>
+          {/* Background Canvas & Image Overlay (Layer 0) */}
+          <Layer>
             <Rect
               x={0}
               y={0}
@@ -994,17 +1428,159 @@ export default function FloorPlanDesigner({
               stroke="#cbd5e1"
               strokeWidth={2}
             />
+            {backgroundImage?.url && backgroundImage?.visible && (
+              <FloorPlanImageOverlay
+                config={backgroundImage}
+                onChange={(newBg) => setBackgroundImage(newBg)}
+                isSelected={selectedType === 'background'}
+                onSelect={() => {
+                  setSelectedId('bg-image');
+                  setSelectedType('background');
+                }}
+              />
+            )}
+          </Layer>
+
+          {/* CAD DXF Layer (Layer 1) */}
+          {dxfLayer?.visible && dxfLayer?.entities?.length > 0 && (
+            <Layer opacity={dxfLayer.opacity ?? 0.65} listening={false}>
+              {dxfLayer.entities.map((shape) => {
+                if (shape.type === 'line') {
+                  return (
+                    <Line
+                      key={shape.id}
+                      points={shape.points}
+                      closed={shape.closed}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'circle') {
+                  return (
+                    <Circle
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      radius={shape.radius}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'arc') {
+                  return (
+                    <Arc
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      innerRadius={shape.innerRadius}
+                      outerRadius={shape.outerRadius}
+                      angle={shape.angle}
+                      rotation={shape.rotation}
+                      stroke={shape.stroke || '#334155'}
+                      strokeWidth={shape.strokeWidth || 1.5}
+                    />
+                  );
+                }
+                if (shape.type === 'text') {
+                  return (
+                    <Text
+                      key={shape.id}
+                      x={shape.x}
+                      y={shape.y}
+                      text={shape.text}
+                      fontSize={shape.fontSize || 12}
+                      fill={shape.fill || '#334155'}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </Layer>
+          )}
+
+          {/* Background Grid Layer (Layer 2) */}
+          <Layer listening={false}>
             {renderGridLines()}
           </Layer>
 
-          {/* Design Layer: Rooms, Walls, Doors */}
+          {/* Design Layer: Rooms, Walls, Doors, Assets (Layer 3) */}
           <Layer>
             {/* Rooms */}
             {rooms.map((room) => {
               const isSelected = selectedId === room.id;
-              const area = calculateAreaMeters(room.width, room.height, gridSize, scaleMetersPerGrid);
-              const widthM = (Math.abs(room.width) / gridSize) * scaleMetersPerGrid;
-              const heightM = (Math.abs(room.height) / gridSize) * scaleMetersPerGrid;
+              const isPolygon = room.shapeType === 'polygon' && Array.isArray(room.points) && room.points.length >= 6;
+              const area = isPolygon
+                ? calculatePolygonArea(room.points, gridSize, scaleMetersPerGrid)
+                : calculateAreaMeters(room.width, room.height, gridSize, scaleMetersPerGrid);
+              const polyCenter = isPolygon ? getPolygonCenter(room.points) : null;
+              const widthM = isPolygon
+                ? ((polyCenter?.width || 100) / gridSize) * scaleMetersPerGrid
+                : (Math.abs(room.width) / gridSize) * scaleMetersPerGrid;
+              const heightM = isPolygon
+                ? ((polyCenter?.height || 100) / gridSize) * scaleMetersPerGrid
+                : (Math.abs(room.height) / gridSize) * scaleMetersPerGrid;
+
+              if (isPolygon) {
+                return (
+                  <Group
+                    key={room.id}
+                    id={room.id}
+                    draggable={tool === 'select'}
+                    onClick={() => {
+                      setSelectedId(room.id);
+                      setSelectedType('room');
+                    }}
+                    onDblClick={() => setEditingRoom(room)}
+                    onDblTap={() => setEditingRoom(room)}
+                    onDragEnd={(e) => {
+                      pushHistory();
+                      const dx = e.target.x();
+                      const dy = e.target.y();
+                      e.target.position({ x: 0, y: 0 });
+                      const shiftedPoints = room.points.map((val, idx) =>
+                        idx % 2 === 0 ? Math.round(val + dx) : Math.round(val + dy)
+                      );
+                      setRooms((prev) =>
+                        prev.map((r) =>
+                          r.id === room.id ? { ...r, points: shiftedPoints } : r
+                        )
+                      );
+                    }}
+                  >
+                    <Line
+                      points={room.points}
+                      closed={true}
+                      fill={room.color || '#dbeafe'}
+                      stroke={isSelected ? '#2563eb' : '#64748b'}
+                      strokeWidth={isSelected ? 3 : 2}
+                      opacity={0.88}
+                      shadowColor="rgba(0,0,0,0.06)"
+                      shadowBlur={isSelected ? 10 : 4}
+                    />
+                    <Text
+                      text={room.name || 'ห้องรูปหลายเหลี่ยม'}
+                      x={polyCenter.x - 45}
+                      y={polyCenter.y - 12}
+                      fontSize={13}
+                      fontFamily="Inter, Noto Sans Thai, sans-serif"
+                      fontStyle="bold"
+                      fill="#1e293b"
+                      listening={false}
+                    />
+                    <Text
+                      text={`${room.department ? room.department + ' • ' : ''}${area}m²`}
+                      x={polyCenter.x - 45}
+                      y={polyCenter.y + 6}
+                      fontSize={10}
+                      fontFamily="Inter, Noto Sans Thai, sans-serif"
+                      fill="#475569"
+                      listening={false}
+                    />
+                  </Group>
+                );
+              }
 
               return (
                 <Group
@@ -1386,6 +1962,83 @@ export default function FloorPlanDesigner({
                     />
                   )}
 
+                  {/* CCTV Aiming Gizmo (Direct On-Canvas Rotation Handle) */}
+                  {asset.type === 'cctv' && isSelected && tool === 'select' && (
+                    <Group x={0} y={0}>
+                      {/* Aiming stem line extending towards camera direction */}
+                      <Line
+                        points={[0, 0, 42, 0]}
+                        stroke="#2563eb"
+                        strokeWidth={2.5}
+                        dash={[4, 3]}
+                        listening={false}
+                      />
+                      {/* Aiming Handle Pin / Target Ring */}
+                      <Group
+                        x={42}
+                        y={0}
+                        draggable
+                        onMouseEnter={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'grab';
+                        }}
+                        onMouseLeave={(e) => {
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                        }}
+                        onDragStart={(e) => {
+                          e.cancelBubble = true;
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'grabbing';
+                        }}
+                        onDragMove={(e) => {
+                          e.cancelBubble = true;
+                          // Calculate angle between asset center and handle position
+                          const handleX = e.target.x();
+                          const handleY = e.target.y();
+                          const rad = Math.atan2(handleY, handleX);
+                          let deg = Math.round((rad * 180) / Math.PI);
+                          
+                          // Snap to 15 degrees if snap is enabled
+                          if (snapEnabled) {
+                            deg = Math.round(deg / 15) * 15;
+                          }
+                          const normalizedDeg = ((asset.rotation || 0) + deg) % 360;
+                          const finalAngle = (normalizedDeg + 360) % 360;
+
+                          // Reset handle back to fixed stem distance on line
+                          e.target.position({ x: 42, y: 0 });
+
+                          setAssets((prev) =>
+                            prev.map((a) =>
+                              a.id === asset.id ? { ...a, rotation: finalAngle } : a
+                            )
+                          );
+                        }}
+                        onDragEnd={(e) => {
+                          e.cancelBubble = true;
+                          e.target.position({ x: 42, y: 0 });
+                          const container = e.target.getStage()?.container();
+                          if (container) container.style.cursor = 'default';
+                          pushHistory();
+                        }}
+                      >
+                        <Circle
+                          radius={10}
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth={2.5}
+                          shadowColor="rgba(37,99,235,0.5)"
+                          shadowBlur={8}
+                        />
+                        <Circle radius={4} fill="#ffffff" listening={false} />
+                        {/* Aim crosshair indicators */}
+                        <Line points={[-6, 0, 6, 0]} stroke="#ffffff" strokeWidth={1.5} listening={false} />
+                        <Line points={[0, -6, 0, 6]} stroke="#ffffff" strokeWidth={1.5} listening={false} />
+                      </Group>
+                    </Group>
+                  )}
+
                   {/* Asset Code / Plate / Slot label */}
                   <Text
                     text={
@@ -1470,6 +2123,48 @@ export default function FloorPlanDesigner({
               </>
             )}
 
+            {/* Polygon Drawing Preview */}
+            {tool === 'polygon' && polygonPoints.length > 0 && (
+              <Group listening={false}>
+                <Line
+                  points={
+                    polygonCursorPos
+                      ? [...polygonPoints, polygonCursorPos.x, polygonCursorPos.y]
+                      : polygonPoints
+                  }
+                  stroke="#4f46e5"
+                  strokeWidth={2.5}
+                  dash={polygonCursorPos ? [6, 4] : undefined}
+                  lineCap="round"
+                  lineJoin="round"
+                />
+                {Array.from({ length: polygonPoints.length / 2 }).map((_, i) => (
+                  <Circle
+                    key={`poly-vert-${i}`}
+                    x={polygonPoints[i * 2]}
+                    y={polygonPoints[i * 2 + 1]}
+                    radius={i === 0 ? 7 : 4.5}
+                    fill={i === 0 ? '#10b981' : '#6366f1'}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  />
+                ))}
+                {polygonPoints.length >= 4 && (
+                  <Text
+                    text="🎯 คลิกที่จุดแรกสีเขียวเพื่อปิดรูป (หรือกด Esc เพื่อยกเลิก)"
+                    x={polygonPoints[0] + 12}
+                    y={polygonPoints[1] - 22}
+                    fontSize={11}
+                    fontStyle="bold"
+                    fill="#059669"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    fillAfterStrokeEnabled={true}
+                  />
+                )}
+              </Group>
+            )}
+
             {/* Konva Transformer (Supports rotation for Assets, resize for Rooms) */}
             <Transformer
               ref={transformerRef}
@@ -1485,23 +2180,70 @@ export default function FloorPlanDesigner({
           </Layer>
         </Stage>
 
-        {/* Selected Asset Quick Info Floating Badge */}
+        {/* Selected Asset Quick Info Floating Badge with Direct Rotation Shortcuts */}
         {selectedAssetObj && (
-          <div className="absolute top-3 right-3 flex items-center gap-3 rounded-xl bg-white/95 backdrop-blur-md px-4 py-2.5 shadow-lg border border-slate-200 text-xs">
+          <div className="absolute top-3 right-3 flex flex-wrap items-center gap-2 rounded-xl bg-white/95 backdrop-blur-md px-3.5 py-2 shadow-xl border border-slate-200 text-xs animate-in fade-in">
             <div>
               <div className="font-bold text-slate-800">
                 {selectedAssetObj.code} - {selectedAssetObj.name}
               </div>
               <div className="text-[11px] text-slate-500">
-                หมุน: {selectedAssetObj.rotation || 0}° • สถานะ: {selectedAssetObj.status}
+                หมุน: <span className="font-bold text-blue-600">{selectedAssetObj.rotation || 0}°</span> • {selectedAssetObj.status}
               </div>
             </div>
+
+            {/* Quick Rotation Buttons */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                title="หมุนทวนเข็ม 45°"
+                onClick={() => {
+                  pushHistory();
+                  const newRot = (((selectedAssetObj.rotation || 0) - 45) % 360 + 360) % 360;
+                  setAssets((prev) =>
+                    prev.map((a) => (a.id === selectedAssetObj.id ? { ...a, rotation: newRot } : a))
+                  );
+                }}
+                className="rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 hover:bg-white hover:shadow-xs transition"
+              >
+                ↺ -45°
+              </button>
+              <button
+                type="button"
+                title="หมุนตามเข็ม 45°"
+                onClick={() => {
+                  pushHistory();
+                  const newRot = ((selectedAssetObj.rotation || 0) + 45) % 360;
+                  setAssets((prev) =>
+                    prev.map((a) => (a.id === selectedAssetObj.id ? { ...a, rotation: newRot } : a))
+                  );
+                }}
+                className="rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 hover:bg-white hover:shadow-xs transition"
+              >
+                ↻ +45°
+              </button>
+              <button
+                type="button"
+                title="กลับทิศ 180°"
+                onClick={() => {
+                  pushHistory();
+                  const newRot = ((selectedAssetObj.rotation || 0) + 180) % 360;
+                  setAssets((prev) =>
+                    prev.map((a) => (a.id === selectedAssetObj.id ? { ...a, rotation: newRot } : a))
+                  );
+                }}
+                className="rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 hover:bg-white hover:shadow-xs transition"
+              >
+                180°
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setEditingAsset(selectedAssetObj)}
               className="rounded-lg bg-primary-50 text-primary-700 font-semibold px-2.5 py-1.5 hover:bg-primary-100 transition"
             >
-              ✏️ แก้ไขข้อมูล / FOV
+              ✏️ ตั้งค่าละเอียด
             </button>
           </div>
         )}
@@ -1629,6 +2371,13 @@ export default function FloorPlanDesigner({
           </div>
         </div>
       )}
+
+      {/* DXF CAD Import Modal */}
+      <DxfImportModal
+        isOpen={showDxfModal}
+        onClose={() => setShowDxfModal(false)}
+        onImport={handleDxfImport}
+      />
     </div>
   );
 }

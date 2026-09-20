@@ -14,6 +14,8 @@ const roomSchema = new mongoose.Schema(
     extension: { type: String, trim: true, default: '' },
     capacity: { type: Number, default: 0 },
     targetBuildingId: { type: String, default: '' }, // For campus master view clickable buildings
+    shapeType: { type: String, enum: ['rect', 'polygon'], default: 'rect' },
+    points: { type: [Number], default: [] }, // For polygon rooms: [x1, y1, x2, y2, ...]
   },
   { _id: false }
 );
@@ -90,6 +92,34 @@ const assetSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const backgroundImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, default: '' },
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    width: { type: Number, default: 0 },
+    height: { type: Number, default: 0 },
+    opacity: { type: Number, default: 0.5 },
+    locked: { type: Boolean, default: true },
+    visible: { type: Boolean, default: true },
+    rotation: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const dxfLayerSchema = new mongoose.Schema(
+  {
+    entities: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    visible: { type: Boolean, default: true },
+    opacity: { type: Number, default: 0.6 },
+    scale: { type: Number, default: 1 },
+    offsetX: { type: Number, default: 0 },
+    offsetY: { type: Number, default: 0 },
+    sourceFileName: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const floorPlanSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 150 },
@@ -105,6 +135,8 @@ const floorPlanSchema = new mongoose.Schema(
     walls: { type: [wallSchema], default: [] },
     doors: { type: [doorSchema], default: [] },
     assets: { type: [assetSchema], default: [] },
+    backgroundImage: { type: backgroundImageSchema, default: () => ({}) },
+    dxfLayer: { type: dxfLayerSchema, default: () => ({}) },
     canvasWidth: { type: Number, default: 1000 },
     canvasHeight: { type: Number, default: 650 },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

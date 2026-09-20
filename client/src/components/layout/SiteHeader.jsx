@@ -105,11 +105,10 @@ export default function SiteHeader({ rightContent }) {
               <div className="hidden md:flex items-center gap-1.5">
                 <Link
                   to="/dashboard"
-                  className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
-                    pathname === '/dashboard'
-                      ? 'bg-primary-800 text-white shadow-xs font-semibold'
-                      : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
-                  }`}
+                  className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${pathname === '/dashboard'
+                    ? 'bg-primary-800 text-white shadow-xs font-semibold'
+                    : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
+                    }`}
                 >
                   {t('dashboard')}
                 </Link>
@@ -130,9 +129,8 @@ export default function SiteHeader({ rightContent }) {
                 to="/chat"
                 title={t('chat')}
                 aria-label={t('chat')}
-                className={`relative hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary-700/70 bg-primary-800/70 text-white transition hover:bg-primary-700 hover:border-primary-600 active:scale-95 ${
-                  pathname === '/chat' ? 'ring-2 ring-blue-400 bg-primary-700' : ''
-                }`}
+                className={`relative hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary-700/70 bg-primary-800/70 text-white transition hover:bg-primary-700 hover:border-primary-600 active:scale-95 ${pathname === '/chat' ? 'ring-2 ring-blue-400 bg-primary-700' : ''
+                  }`}
               >
                 <svg className="h-5 w-5 text-primary-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -197,9 +195,8 @@ export default function SiteHeader({ rightContent }) {
         role="dialog"
         aria-modal="true"
         aria-label={t('navigation')}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xs sm:max-w-sm flex-col bg-gradient-to-b from-primary-950 via-primary-900 to-slate-950 text-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
-          mobileOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
-        }`}
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xs sm:max-w-sm flex-col bg-gradient-to-b from-primary-950 via-primary-900 to-slate-950 text-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${mobileOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+          }`}
       >
         <div className="flex items-center justify-between border-b border-primary-800/80 px-4 py-3.5 bg-primary-950/50">
           <div className="flex items-center gap-3 min-w-0">
@@ -328,7 +325,14 @@ export default function SiteHeader({ rightContent }) {
               to="/floor-plan"
               active={pathname === '/floor-plan'}
               icon="🏢"
-              label={t('floorPlan') || 'ผังอาคารและทรัพย์สิน'}
+              label={t('floorPlan')}
+              onClick={closeDrawer}
+            />
+            <DrawerLink
+              to="/maintenance"
+              active={pathname === '/maintenance'}
+              icon="🔧"
+              label={t('equipmentMaintenance')}
               onClick={closeDrawer}
             />
             <DrawerLink
@@ -425,11 +429,10 @@ function DrawerLink({ to, active, icon, label, badge, onClick }) {
     <Link
       to={to}
       onClick={onClick}
-      className={`flex min-h-[44px] items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition active:scale-[0.99] ${
-        active
-          ? 'bg-primary-700/90 text-white font-semibold shadow-xs ring-1 ring-primary-500/50'
-          : 'text-primary-100 hover:bg-primary-800/70 hover:text-white'
-      }`}
+      className={`flex min-h-[44px] items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition active:scale-[0.99] ${active
+        ? 'bg-primary-700/90 text-white font-semibold shadow-xs ring-1 ring-primary-500/50'
+        : 'text-primary-100 hover:bg-primary-800/70 hover:text-white'
+        }`}
     >
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-lg shrink-0" aria-hidden="true">{icon}</span>
@@ -451,6 +454,7 @@ function ServicesDropdown({ pathname }) {
 
   const isServicesActive = [
     '/floor-plan',
+    '/maintenance',
     '/employees',
     '/departments',
     '/organization',
@@ -486,13 +490,12 @@ function ServicesDropdown({ pathname }) {
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="true"
-        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition ${
-          isServicesActive || open
-            ? 'bg-primary-800 text-white shadow-xs font-semibold'
-            : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
-        }`}
+        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition ${isServicesActive || open
+          ? 'bg-primary-800 text-white shadow-xs font-semibold'
+          : 'text-primary-200 hover:bg-primary-800/60 hover:text-white'
+          }`}
       >
-        <span>{t('servicesMenu') || 'บริการและผังอาคาร'}</span>
+        <span>{t('servicesMenu')}</span>
         <ChevronIcon open={open} />
       </button>
 
@@ -512,10 +515,28 @@ function ServicesDropdown({ pathname }) {
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-700">
-                {t('floorPlan') || 'ผังอาคารและทรัพย์สิน'}
+                {t('floorPlan')}
               </p>
               <p className="text-xs text-slate-500 truncate">
-                แปลนวิทยาเขต 20 ไร่, 10 สิ่งปลูกสร้าง, ทรัพย์สิน & CCTV
+                {t('floorPlanDesc')}
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            to="/maintenance"
+            role="menuitem"
+            className="flex items-start gap-3 rounded-xl p-2.5 transition hover:bg-emerald-50/80 group"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-base group-hover:scale-105 transition-transform">
+              🔧
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 group-hover:text-emerald-700">
+                {t('equipmentMaintenance')}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                {t('equipmentMaintenanceDesc')}
               </p>
             </div>
           </Link>
@@ -528,31 +549,31 @@ function ServicesDropdown({ pathname }) {
               to="/employees"
               icon="👥"
               title={t('employeeDirectory')}
-              subtitle="รายชื่อและช่องทางติดต่อเพื่อนร่วมงาน"
+              subtitle={t('employeeDirectoryDesc')}
             />
             <ServicesMenuItem
               to="/departments"
               icon="🏛️"
               title={t('departments')}
-              subtitle="ฝ่ายและแผนกทั้งหมดใน FTI"
+              subtitle={t('departmentsDesc')}
             />
             <ServicesMenuItem
               to="/organization"
               icon="🗂️"
               title={t('organizationChart')}
-              subtitle="ผังสายบังคับบัญชาและโครงสร้างทีม"
+              subtitle={t('organizationChartDesc')}
             />
             <ServicesMenuItem
               to="/it-help"
               icon="🛠️"
               title={t('itHelp')}
-              subtitle="แจ้งปัญหาคอมพิวเตอร์และระบบไอที"
+              subtitle={t('itHelpDesc')}
             />
             <ServicesMenuItem
               to="/policies"
               icon="📋"
               title={t('policies')}
-              subtitle="ระเบียบและแนวทางปฏิบัติต่างๆ"
+              subtitle={t('policiesDesc')}
             />
           </div>
         </div>

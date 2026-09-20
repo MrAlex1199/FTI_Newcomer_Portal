@@ -89,3 +89,21 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Anti-selection & Copy Protection */
+body.copy-protected {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+body.copy-protected input,
+body.copy-protected textarea,
+body.copy-protected [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+

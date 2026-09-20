@@ -43,6 +43,17 @@ const floorPlanService = {
     const { data } = await apiClient.delete(`/floor-plans/${id}`);
     return data;
   },
+
+  async uploadBackgroundImage(id, file) {
+    const formData = new FormData();
+    formData.append('backgroundImage', file);
+    const { data } = await apiClient.post(`/floor-plans/${id}/background-image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data.data;
+  },
 };
 
 export default floorPlanService;

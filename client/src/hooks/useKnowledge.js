@@ -118,3 +118,58 @@ export function useDeleteComment() {
     },
   });
 }
+
+// Topics / Folders (Obsidian-Style Hierarchical Organization)
+export function useKnowledgeTopics(params = {}) {
+  return useQuery({
+    queryKey: ['knowledge-topics', params],
+    queryFn: () => knowledgeService.listTopics(params),
+  });
+}
+
+export function useCreateKnowledgeTopic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => knowledgeService.createTopic(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useUpdateKnowledgeTopic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }) => knowledgeService.updateTopic(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useDeleteKnowledgeTopic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => knowledgeService.removeTopic(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+    },
+  });
+}
+
+export function useSeedMockItKnowledge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => knowledgeService.seedMockIt(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      queryClient.invalidateQueries({ queryKey: ['it-quick-links'] });
+    },
+  });
+}
+
+

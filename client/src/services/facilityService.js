@@ -25,6 +25,11 @@ const facilityService = {
     const { data } = await apiClient.post(`/facilities/${id}/floors`, payload);
     return data.data;
   },
+
+  async deleteFloor(id, floorNumber) {
+    const { data } = await apiClient.delete(`/facilities/${id}/floors/${floorNumber}`);
+    return data.data;
+  },
 };
 
 export default facilityService;
