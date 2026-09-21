@@ -783,7 +783,7 @@ export default function EquipmentMaintenancePage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       {t('assetTypeLabel')}
                     </label>
@@ -802,7 +802,7 @@ export default function EquipmentMaintenancePage() {
                     </select>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       {t('buildingInstalledLabel')}
                     </label>
@@ -814,27 +814,27 @@ export default function EquipmentMaintenancePage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       {t('floorAndRoomLabel')}
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 min-w-0">
                       <input
                         type="number"
                         min="1"
-                        max="20"
+                        max="15"
                         title={t('floorPlaceholder')}
                         placeholder={t('floorPlaceholder')}
                         value={formData.floorNumber}
-                        onChange={(e) => setFormData({ ...formData, floorNumber: Number(e.target.value) })}
-                        className="w-16 rounded-xl border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 text-center focus:border-blue-500 focus:outline-none"
+                        onChange={(e) => setFormData({ ...formData, floorNumber: e.target.value === '' ? '' : Number(e.target.value) })}
+                        className="w-14 sm:w-16 shrink-0 rounded-xl border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 text-center focus:border-blue-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         placeholder={t('roomPlaceholder')}
                         value={formData.roomName}
                         onChange={(e) => setFormData({ ...formData, roomName: e.target.value })}
-                        className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                        className="flex-1 min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
                       />
                     </div>
                   </div>
