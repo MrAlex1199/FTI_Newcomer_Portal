@@ -357,14 +357,14 @@ const buildingFloorConfigs = [
   },
 ];
 
-// Campus Master Plan with vehicle assets on 20-rai site
+// Campus Master Plan with vehicle assets on all-areas site
 const campusPlan = {
-  name: 'ผังบริเวณโครงการรวม 20 ไร่ (Campus Master Plan)',
+  name: 'ผังบริเวณพื้นที่ทั้งหมด (Campus Master Plan)',
   buildingId: 'campus',
-  buildingName: 'ผังบริเวณโครงการรวม 20 ไร่ (Campus Master Plan)',
+  buildingName: 'ผังบริเวณพื้นที่ทั้งหมด (Campus Master Plan)',
   buildingType: 'campus',
   floorNumber: 0,
-  floorName: 'ภาพรวม 20 ไร่',
+  floorName: 'พื้นที่ทั้งหมด',
   totalFloors: 1,
   gridSize: 20,
   scaleMetersPerGrid: 2.5,

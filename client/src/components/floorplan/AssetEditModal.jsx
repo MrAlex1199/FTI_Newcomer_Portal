@@ -6,6 +6,7 @@ export default function AssetEditModal({
   open,
   asset,
   departments = [],
+  allFloorPlans = [],
   onClose,
   onSave,
   onDelete,
@@ -18,12 +19,13 @@ export default function AssetEditModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`⚙️ ${t('editAssetDetails') || 'แก้ไขข้อมูลทรัพย์สิน'}: ${asset.code || asset.name}`}
+      title={asset.id ? `⚙️ ${t('editAssetDetails') || 'แก้ไขข้อมูลทรัพย์สิน'}: ${asset.code || asset.name || ''}` : `✨ ${t('btnAddNewAsset') || 'เพิ่มอุปกรณ์ใหม่'}`}
       size="md"
     >
       <AssetEditForm
         asset={asset}
         departments={departments}
+        allFloorPlans={allFloorPlans}
         onClose={onClose}
         onSave={onSave}
         onDelete={onDelete}
@@ -33,7 +35,9 @@ export default function AssetEditModal({
   );
 }
 
-function AssetEditForm({ asset, departments, onClose, onSave, onDelete, t }) {
+function AssetEditForm({ asset, departments, allFloorPlans, onClose, onSave, onDelete, t }) {
+  const defaultFpId = asset.floorPlanId || (allFloorPlans && allFloorPlans.length > 0 ? allFloorPlans[0]._id : '');
+  const [floorPlanId, setFloorPlanId] = useState(defaultFpId);
   const [code, setCode] = useState(asset.code || '');
   const [name, setName] = useState(asset.name || '');
   const [type, setType] = useState(asset.type || 'computer');
@@ -51,36 +55,91 @@ function AssetEditForm({ asset, departments, onClose, onSave, onDelete, t }) {
   const [parkingSlot, setParkingSlot] = useState(asset.parkingSlot || '');
   const [vehicleModel, setVehicleModel] = useState(asset.vehicleModel || '');
   const [notes, setNotes] = useState(asset.notes || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const isVehicle = type.startsWith('vehicle_') || type === 'parking_bay' || type === 'ev_charger';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave({
-      ...asset,
-      code: code.trim(),
-      name: name.trim() || 'อุปกรณ์ใหม่',
-      type,
-      rotation: Number(rotation) || 0,
-      fovAngle: Number(fovAngle) || 75,
-      rangeMeters: Number(rangeMeters) || 10,
-      status,
-      assignedTo: assignedTo.trim(),
-      department: department.trim(),
-      specs: specs.trim(),
-      warrantyExpiry: warrantyExpiry.trim(),
-      ipAddress: ipAddress.trim(),
-      licensePlate: licensePlate.trim(),
-      driverName: driverName.trim(),
-      parkingSlot: parkingSlot.trim(),
-      vehicleModel: vehicleModel.trim(),
-      notes: notes.trim(),
-    });
-    onClose();
+    if (!name.trim()) {
+      setFormError(t('assetNameRequired') || 'กรุณาระบุชื่ออุปกรณ์');
+      return;
+    }
+
+    const targetFloorId = floorPlanId || asset.floorPlanId || (allFloorPlans && allFloorPlans[0] ? allFloorPlans[0]._id : '');
+    if (!targetFloorId && allFloorPlans && allFloorPlans.length > 0) {
+      setFormError('กรุณาเลือกสถานที่ติดตั้งอุปกรณ์');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      await onSave({
+        ...asset,
+        code: code.trim(),
+        name: name.trim() || 'อุปกรณ์ใหม่',
+        type,
+        rotation: Number(rotation) || 0,
+        fovAngle: Number(fovAngle) || 75,
+        rangeMeters: Number(rangeMeters) || 10,
+        status,
+        assignedTo: assignedTo.trim(),
+        department: department.trim(),
+        specs: specs.trim(),
+        warrantyExpiry: warrantyExpiry.trim(),
+        ipAddress: ipAddress.trim(),
+        licensePlate: licensePlate.trim(),
+        driverName: driverName.trim(),
+        parkingSlot: parkingSlot.trim(),
+        vehicleModel: vehicleModel.trim(),
+        notes: notes.trim(),
+        floorPlanId: targetFloorId,
+        x: Number.isFinite(Number(asset.x)) ? Number(asset.x) : 100,
+        y: Number.isFinite(Number(asset.y)) ? Number(asset.y) : 100,
+      });
+      onClose();
+    } catch (err) {
+      setFormError(err?.response?.data?.message || err?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+      {formError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-600 font-medium flex items-center gap-1.5">
+          <span>⚠️</span>
+          <span>{formError}</span>
+        </div>
+      )}
+
+      {/* Location (Floor Plan) Selection */}
+      {allFloorPlans && allFloorPlans.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <label className="block font-bold text-indigo-700 mb-1">
+            📍 {t('assetLocation') || 'สถานที่ติดตั้ง (Location)'}
+          </label>
+          <select
+            value={floorPlanId || allFloorPlans[0]?._id || ''}
+            onChange={(e) => {
+              setFloorPlanId(e.target.value);
+              if (formError) setFormError('');
+            }}
+            className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-indigo-500 font-semibold text-slate-800"
+          >
+            {allFloorPlans.map((fp) => (
+              <option key={fp._id} value={fp._id}>
+                {fp.buildingName} - {fp.floorName} (ชั้น {fp.floorNumber})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Type & Status */}
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -429,9 +488,11 @@ function AssetEditForm({ asset, departments, onClose, onSave, onDelete, t }) {
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-primary-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-primary-700 transition"
+            disabled={isSubmitting}
+            className="rounded-lg bg-primary-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-primary-700 transition disabled:opacity-50 flex items-center gap-1.5"
           >
-            {t('saveChanges') || 'บันทึก'}
+            {isSubmitting && <span className="animate-spin text-[10px]">⏳</span>}
+            <span>{t('saveChanges') || 'บันทึก'}</span>
           </button>
         </div>
       </div>

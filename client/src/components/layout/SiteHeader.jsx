@@ -219,7 +219,7 @@ export default function SiteHeader({ rightContent }) {
         </div>
 
         <div className="border-b border-primary-800/60 px-4 py-3 bg-primary-900/40">
-          <GlobalSearch onSelect={closeDrawer} className="w-full" />
+          <GlobalSearch variant="drawer" onSelect={closeDrawer} className="w-full" />
         </div>
 
         <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">

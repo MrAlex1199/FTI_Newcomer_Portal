@@ -273,7 +273,7 @@ export const deleteFacility = asyncHandler(async (req, res) => {
   }
 
   if (facility.facilityId === 'campus') {
-    throw ApiError.badRequest('ไม่สามารถลบผังบริเวณโครงการหลัก 20 ไร่ได้');
+    throw ApiError.badRequest('ไม่สามารถลบผังบริเวณพื้นที่ทั้งหมดได้');
   }
 
   const before = facility.toObject();

@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useCampusAssets } from '../../hooks/useFloorPlans.js';
+import useLanguage from '../../hooks/useLanguage.js';
 
 export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetResult }) {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'maintenance' | 'cctv' | 'computer'
   const { data: assets = [], isLoading } = useCampusAssets(searchQuery);
@@ -29,10 +31,10 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
               <span className="text-xl">🔍</span>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  ค้นหาทรัพย์สินทั่วทั้งโครงการ 20 ไร่ (Campus Asset Locator)
+                  {t('searchAllCampusModalTitle')}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  ค้นหาชื่อพนักงาน, รหัสทรัพย์สิน, กล้อง CCTV, คอมพิวเตอร์ หรือแผนก ระบบจะสลับไปยังตึกและชั้นที่ถูกต้องทันที
+                  {t('searchAllCampusModalDesc')}
                 </p>
               </div>
             </div>
@@ -52,7 +54,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
               autoFocus
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="พิมพ์ชื่อพนักงาน (เช่น กิตติพัศ), รหัสทรัพย์สิน (FTI-PC-001, CCTV-01), แผนก..."
+              placeholder={t('searchAllCampusInputPlaceholder')}
               className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 shadow-inner focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
             <span className="absolute left-3.5 top-3 text-slate-400">🔍</span>
@@ -62,7 +64,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-3 text-xs text-slate-400 hover:text-slate-600"
               >
-                ล้าง
+                {t('clearSearch')}
               </button>
             )}
           </div>
@@ -78,7 +80,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              ทั้งหมด ({assets.length})
+              {t('filterAllWithCount', { count: assets.length })}
             </button>
             <button
               type="button"
@@ -89,7 +91,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              📹 กล้อง CCTV
+              {t('filterCctv')}
             </button>
             <button
               type="button"
@@ -100,7 +102,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              💻 เวิร์กสเตชัน / พีซี
+              {t('filterWorkstation')}
             </button>
             <button
               type="button"
@@ -111,7 +113,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                   : 'bg-red-50 text-red-700 hover:bg-red-100'
               }`}
             >
-              ⚠️ อุปกรณ์แจ้งซ่อม / ปัญหา
+              {t('filterIssues')}
             </button>
           </div>
         </div>
@@ -120,11 +122,11 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
         <div className="max-h-96 overflow-y-auto p-3 divide-y divide-slate-100">
           {isLoading ? (
             <div className="py-12 text-center text-sm text-slate-400">
-              ⏳ กำลังค้นหาทรัพย์สินใน 10 สิ่งปลูกสร้าง...
+              {t('searchingAssets')}
             </div>
           ) : filteredAssets.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-400">
-              {searchQuery ? 'ไม่พบทรัพย์สินที่ตรงกับคำค้นหา' : 'พิมพ์คำค้นหาเพื่อระบุตำแหน่งทรัพย์สิน'}
+              {searchQuery ? t('noAssetFoundQuery') : t('typeToSearchAssetPrompt')}
             </div>
           ) : (
             filteredAssets.map((asset) => {
@@ -168,7 +170,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                         )}
                         {isIssue && (
                           <span className="rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-700">
-                            {asset.status === 'broken' ? 'ชำรุด' : 'ซ่อมบำรุง'}
+                            {asset.status === 'broken' ? t('statusBroken') : t('statusMaintenance')}
                           </span>
                         )}
                       </div>
@@ -195,7 +197,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
                       {asset.buildingName || asset.buildingId}
                     </span>
                     <span className="text-[11px] font-medium text-slate-500">
-                      {asset.floorName || `ชั้น ${asset.floorNumber}`} ➔ ชี้เป้า
+                      {asset.floorName || t('floorNumberLabel', { floor: asset.floorNumber })} {t('jumpToTarget')}
                     </span>
                   </div>
                 </button>
@@ -206,9 +208,10 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
 
         {/* Footer */}
         <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3 text-right text-xs text-slate-500 rounded-b-2xl">
-          คลิกที่รายการเพื่อกระโดดไปยังตำแหน่งทรัพย์สินบนแปลนอัตโนมัติ
+          {t('clickToJumpNotice')}
         </div>
       </div>
     </div>
   );
 }
+

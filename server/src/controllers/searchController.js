@@ -6,6 +6,7 @@ import {
   FAQ,
   Intern,
   KnowledgeArticle,
+  KnowledgeTopic,
   Policy,
   SearchEvent,
 } from '../models/index.js';
@@ -141,18 +142,66 @@ const searchAnnouncements = async (regex, query, role, limit) => {
 };
 
 const searchKnowledge = async (regex, query, role, limit) => {
-  const rows = await KnowledgeArticle.find({ $and: [visibleKnowledge(role), searchable(['title', 'summary', 'content', 'tags', 'subcategory'], regex)] })
-    .select('title summary category subcategory')
+  // 1. Search matching topics
+  const matchingTopics = await KnowledgeTopic.find({
+    ...searchable(['name', 'nameEn', 'slug', 'description'], regex),
+  })
+    .select('name nameEn icon description slug')
     .limit(limit);
-  return rows.map((item) => result({
-    id: item._id,
-    entityType: 'knowledge',
-    title: item.title,
-    summary: item.summary,
-    url: item.category === 'it_help' ? `/it-help?article=${item._id}` : `/getting-started?article=${item._id}`,
-    score: scoreFor(query, [item.title, item.subcategory, item.summary]),
-    meta: { category: item.category, subcategory: item.subcategory },
-  }));
+
+  const matchingTopicIds = matchingTopics.map((t) => t._id);
+
+  // 2. Search articles matching text OR linked to matching topics
+  const articleQuery = {
+    $and: [
+      visibleKnowledge(role),
+      {
+        $or: [
+          ...searchable(['title', 'summary', 'content', 'tags', 'subcategory'], regex).$or,
+          ...(matchingTopicIds.length > 0 ? [{ topicId: { $in: matchingTopicIds } }] : []),
+        ],
+      },
+    ],
+  };
+
+  const articleRows = await KnowledgeArticle.find(articleQuery)
+    .select('title summary category subcategory topicId')
+    .populate('topicId', 'name icon')
+    .limit(limit);
+
+  // Format topic results
+  const topicResults = matchingTopics.map((item) =>
+    result({
+      id: item._id,
+      entityType: 'topic',
+      title: `${item.icon ? `${item.icon} ` : ''}${item.name}`,
+      summary: item.description || '',
+      url: `/it-help?topic=${item._id}`,
+      score: scoreFor(query, [item.name, item.nameEn, item.slug, item.description]),
+      meta: { type: 'topic' },
+    })
+  );
+
+  // Format article results
+  const articleResults = articleRows.map((item) =>
+    result({
+      id: item._id,
+      entityType: 'knowledge',
+      title: item.title,
+      summary: item.summary,
+      url: item.category === 'it_help' ? `/it-help?article=${item._id}` : `/getting-started?article=${item._id}`,
+      score: scoreFor(query, [item.title, item.subcategory, item.summary, item.topicId?.name]),
+      meta: {
+        category: item.category,
+        subcategory: item.subcategory,
+        topicName: item.topicId?.name || '',
+      },
+    })
+  );
+
+  return [...topicResults, ...articleResults]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 };
 
 const COMPANY_FALLBACK = {

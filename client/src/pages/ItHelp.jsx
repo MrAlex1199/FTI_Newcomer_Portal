@@ -109,32 +109,63 @@ export default function ItHelp() {
     [departments]
   );
 
-  // Synchronize URL search params with selected article
+  // ── Helper: extract topicId string whether it's a plain string or populated object ──
+  const extractTopicId = (topicId) => {
+    if (!topicId) return null;
+    if (typeof topicId === 'object' && topicId._id) return String(topicId._id);
+    return String(topicId);
+  };
+
+  // ── Synchronize URL search params → component state (one-way, URL is source of truth on mount) ──
   useEffect(() => {
-    if (selectedArticleId) {
+    const urlArticleId = searchParams.get('article');
+    const urlTopicId = searchParams.get('topic');
+
+    if (urlArticleId && urlArticleId !== selectedArticleId) {
+      setSelectedArticleId(urlArticleId);
+      setActiveViewTab('notes');
+    } else if (urlTopicId && urlTopicId !== selectedTopicId) {
+      setSelectedTopicId(urlTopicId);
+      setActiveViewTab('notes');
+      const matched = articles.find(
+        (a) => extractTopicId(a.topicId) === String(urlTopicId)
+      );
+      if (matched) setSelectedArticleId(matched._id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);  // Only react to URL changes, NOT to state changes
+
+  // ── Synchronize component state → URL (one-way, state writes to URL) ──
+  useEffect(() => {
+    if (selectedArticleId && searchParams.get('article') !== selectedArticleId) {
       setSearchParams({ article: selectedArticleId }, { replace: true });
     }
-  }, [selectedArticleId, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArticleId]); // Only react when selectedArticleId changes
 
   // Auto-select first article if none selected
   useEffect(() => {
-    if (!selectedArticleId && articles.length > 0) {
+    if (!selectedArticleId && !searchParams.get('article') && articles.length > 0) {
       setSelectedArticleId(articles[0]._id);
     }
-  }, [articles, selectedArticleId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articles.length]); // Only when articles list changes length
 
   // When selected article loads, sync its topic ID
   useEffect(() => {
     if (selectedArticle?.topicId) {
-      const tid = typeof selectedArticle.topicId === 'object' ? selectedArticle.topicId._id : selectedArticle.topicId;
-      setSelectedTopicId(tid);
+      const tid = extractTopicId(selectedArticle.topicId);
+      if (tid && tid !== selectedTopicId) {
+        setSelectedTopicId(tid);
+      }
     }
-  }, [selectedArticle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArticle?._id]); // Only when a different article is loaded
 
   // Compute topic hierarchy breadcrumbs for the selected article
   const topicHierarchy = useMemo(() => {
     if (!selectedArticle?.topicId) return [];
-    const topicId = typeof selectedArticle.topicId === 'object' ? selectedArticle.topicId._id : selectedArticle.topicId;
+    const topicId = extractTopicId(selectedArticle.topicId);
     const map = new Map(topics.map((t) => [String(t._id), t]));
     const path = [];
     let curr = map.get(String(topicId));
@@ -154,8 +185,8 @@ export default function ItHelp() {
   const handleSelectArticle = (article) => {
     setSelectedArticleId(article._id);
     if (article.topicId) {
-      const tid = typeof article.topicId === 'object' ? article.topicId._id : article.topicId;
-      setSelectedTopicId(tid);
+      const tid = extractTopicId(article.topicId);
+      if (tid) setSelectedTopicId(tid);
     }
     // Close mobile drawer on selection
     setSidebarOpenMobile(false);
@@ -163,9 +194,9 @@ export default function ItHelp() {
 
   const handleSelectTopic = (topic) => {
     setSelectedTopicId(topic._id);
-    // Find first article in this topic
+    // Find first article in this topic (handle both populated and string topicId)
     const matchedArticle = articles.find(
-      (a) => String(a.topicId) === String(topic._id) || a.subcategory === topic.slug
+      (a) => extractTopicId(a.topicId) === String(topic._id) || a.subcategory === topic.slug
     );
     if (matchedArticle) {
       setSelectedArticleId(matchedArticle._id);

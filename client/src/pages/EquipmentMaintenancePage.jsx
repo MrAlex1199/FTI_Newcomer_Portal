@@ -273,9 +273,20 @@ export default function EquipmentMaintenancePage() {
   };
 
   const handleDeleteTicket = async (ticket) => {
-    const confirmMsg = language === 'th'
-      ? `คุณแน่ใจหรือไม่ว่าต้องการลบใบแจ้งซ่อม ${ticket.ticketNo}?`
+    const isHistory = ['resolved', 'cancelled'].includes(ticket.status);
+    const confirmKey = isHistory ? 'deleteHistoryConfirm' : 'deleteTicketConfirm';
+    const fallbackMsgTh = isHistory 
+      ? `คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการซ่อม ${ticket.ticketNo}?`
+      : `คุณแน่ใจหรือไม่ว่าต้องการลบใบแจ้งซ่อม ${ticket.ticketNo}?`;
+    const fallbackMsgEn = isHistory
+      ? `Are you sure you want to delete repair history ${ticket.ticketNo}?`
       : `Are you sure you want to delete repair ticket ${ticket.ticketNo}?`;
+
+    let confirmMsg = t(confirmKey, { ticketNo: ticket.ticketNo });
+    if (confirmMsg === confirmKey || !confirmMsg) {
+      confirmMsg = language === 'th' ? fallbackMsgTh : fallbackMsgEn;
+    }
+
     if (!window.confirm(confirmMsg)) return;
     try {
       await maintenanceService.deleteTicket(ticket._id);
@@ -344,25 +355,48 @@ export default function EquipmentMaintenancePage() {
 
         {/* Navigation Tabs */}
         <div className="flex items-center justify-between border-b border-slate-200">
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar">
             <button
               type="button"
-              onClick={() => setActiveTab('tickets')}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'tickets'
+              onClick={() => {
+                setActiveTab('tickets');
+                setStatusFilter('all');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'tickets'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
             >
-              <span>📋 {t('ticketsQueue')}</span>
+              <span>📋 {t('activeTicketsTab') || t('ticketsQueue')}</span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                {tickets.length}
+                {tickets.filter(t => ['pending', 'in_progress'].includes(t.status)).length}
               </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('report')}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'report'
+              onClick={() => {
+                setActiveTab('history');
+                setStatusFilter('all');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'history'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+            >
+              <span>🗄️ {t('repairHistoryTab') || 'ประวัติการซ่อม'}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {tickets.filter(t => ['resolved', 'cancelled'].includes(t.status)).length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('report');
+                setStatusFilter('all');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'report'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
@@ -386,9 +420,9 @@ export default function EquipmentMaintenancePage() {
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 1: TICKETS QUEUE */}
+        {/* TAB 1 & 2: TICKETS QUEUE & HISTORY */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'tickets' && (
+        {(activeTab === 'tickets' || activeTab === 'history') && (
           <div className="space-y-4">
             {/* Filter Bar */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
@@ -411,10 +445,18 @@ export default function EquipmentMaintenancePage() {
                     className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
                   >
                     <option value="all">{t('allStatuses')}</option>
-                    <option value="pending">⏳ {t('statusPending')}</option>
-                    <option value="in_progress">🔧 {t('statusInProgress')}</option>
-                    <option value="resolved">✅ {t('statusResolved')}</option>
-                    <option value="cancelled">❌ {t('statusCancelled')}</option>
+                    {activeTab === 'tickets' && (
+                      <>
+                        <option value="pending">⏳ {t('statusPending')}</option>
+                        <option value="in_progress">🔧 {t('statusInProgress')}</option>
+                      </>
+                    )}
+                    {activeTab === 'history' && (
+                      <>
+                        <option value="resolved">✅ {t('statusResolved')}</option>
+                        <option value="cancelled">❌ {t('statusCancelled')}</option>
+                      </>
+                    )}
                   </select>
 
                   <select
@@ -468,15 +510,19 @@ export default function EquipmentMaintenancePage() {
                 <span className="inline-block animate-spin text-3xl">⏳</span>
                 <p className="mt-2 text-sm">{t('loadingData')}</p>
               </div>
-            ) : tickets.length === 0 ? (
+            ) : tickets.filter(tItem => activeTab === 'tickets' ? ['pending', 'in_progress'].includes(tItem.status) : ['resolved', 'cancelled'].includes(tItem.status)).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-slate-400">
-                <span className="text-4xl">📋</span>
-                <h3 className="mt-2 text-base font-bold text-slate-700">{t('noTicketsFound')}</h3>
-                <p className="text-xs text-slate-400">{t('noData')}</p>
+                <span className="text-4xl">{activeTab === 'history' ? '🗄️' : '📋'}</span>
+                <h3 className="mt-2 text-base font-bold text-slate-700">
+                  {activeTab === 'history' ? (t('noHistoryFound') || 'ไม่พบประวัติการซ่อม') : t('noTicketsFound')}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {activeTab === 'history' ? (t('historyTabSubtitle') || 'ยังไม่มีรายการที่ซ่อมเสร็จหรือถูกยกเลิก') : t('noData')}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {tickets.map((tItem) => {
+                {tickets.filter(tItem => activeTab === 'tickets' ? ['pending', 'in_progress'].includes(tItem.status) : ['resolved', 'cancelled'].includes(tItem.status)).map((tItem) => {
                   const slaLimit = SLA_HOURS_MAP[tItem.urgency] || 48;
                   const isResolved = tItem.status === 'resolved';
                   const createdAt = new Date(tItem.createdAt);

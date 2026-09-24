@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import useLanguage from '../../hooks/useLanguage.js';
 
 export default function BuildingSelector({
   facilities = [],
@@ -7,13 +8,14 @@ export default function BuildingSelector({
   buildingStats = {}, // e.g. { b1: { issueCount: 1, totalAssets: 12 } }
   onOpenFacilityManage,
 }) {
+  const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState('all'); // 'all' | 'office' | 'warehouse' | 'campus'
 
   // Categorize
   const campusFacility = facilities.find((f) => f.type === 'campus') || {
     id: 'campus',
-    name: 'ผังบริเวณรวม 20 ไร่',
-    shortName: 'ผัง 20 ไร่',
+    name: t('defaultCampusName'),
+    shortName: t('defaultCampusShortName'),
     type: 'campus',
     icon: '🌐',
   };
@@ -47,7 +49,7 @@ export default function BuildingSelector({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            🏢 ทั้งหมด ({totalStructures} สิ่งปลูกสร้าง)
+            🏢 {t('allStructures', { count: totalStructures })}
           </button>
           <button
             type="button"
@@ -58,7 +60,7 @@ export default function BuildingSelector({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            🏢 สำนักงาน ({officeBuildings.length} ตึก)
+            🏢 {t('officeBuildings', { count: officeBuildings.length })}
           </button>
           <button
             type="button"
@@ -69,7 +71,7 @@ export default function BuildingSelector({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            🏭 โกดังสินค้า ({warehouseFacilities.length} โกดัง)
+            🏭 {t('warehouseFacilities', { count: warehouseFacilities.length })}
           </button>
           <button
             type="button"
@@ -83,7 +85,7 @@ export default function BuildingSelector({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            🌐 ผังรวม 20 ไร่
+            🌐 {t('campusOverviewPill')}
           </button>
         </div>
 
@@ -93,16 +95,16 @@ export default function BuildingSelector({
               type="button"
               onClick={onOpenFacilityManage}
               className="flex items-center gap-1.5 rounded-xl border border-blue-300 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 shadow-xs transition"
-              title="เพิ่มอาคารใหม่ ลบอาคาร หรือแก้ไขจำนวนชั้น"
+              title={t('manageFacilitiesTitle')}
             >
               <span>🏗️</span>
-              <span>จัดการอาคาร / โกดัง</span>
+              <span>{t('manageFacilitiesBtn')}</span>
             </button>
           )}
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
-              🌱 พื้นที่โครงการ 20 ไร่ (~32,000 ตร.ม.)
+              🌱 {t('campusAreaTag')}
             </span>
           </div>
         </div>
@@ -114,6 +116,9 @@ export default function BuildingSelector({
           const isSelected = selectedBuildingId === facility.id;
           const stats = buildingStats[facility.id] || {};
           const hasIssue = stats.issueCount > 0;
+          const displayName = facility.id === 'campus' 
+            ? t('defaultCampusShortName') 
+            : (facility.shortName || facility.name);
 
           return (
             <button
@@ -132,12 +137,12 @@ export default function BuildingSelector({
                 <div className="flex items-center gap-1">
                   {facility.totalFloors > 1 && (
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 group-hover:bg-white">
-                      {facility.totalFloors} ชั้น
+                      {t('floorsCount', { count: facility.totalFloors })}
                     </span>
                   )}
                   {hasIssue && (
                     <span
-                      title={`มีอุปกรณ์แจ้งซ่อม ${stats.issueCount} รายการ`}
+                      title={t('hasIssuesCountBadge', { count: stats.issueCount })}
                       className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse"
                     >
                       !
@@ -153,14 +158,14 @@ export default function BuildingSelector({
                     isSelected ? 'text-primary-900' : 'text-slate-800'
                   }`}
                 >
-                  {facility.shortName || facility.name}
+                  {displayName}
                 </h4>
                 <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
                   {facility.type === 'campus'
-                    ? 'ภาพรวม Master Plan'
+                    ? t('campusDesc')
                     : facility.type === 'warehouse'
-                    ? 'คลังสินค้า & โลจิสติกส์'
-                    : 'อาคารสำนักงานบริหาร'}
+                    ? t('warehouseDesc')
+                    : t('officeDesc')}
                 </p>
               </div>
 

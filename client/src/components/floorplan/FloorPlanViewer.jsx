@@ -176,10 +176,7 @@ export default function FloorPlanViewer({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
-                t('assetLocatorPlaceholder') ||
-                'ค้นหาทรัพย์สินในชั้นนี้: รหัส, คน, กล้อง...'
-              }
+              placeholder={t('assetLocatorPlaceholder')}
               className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-8 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition shadow-sm"
             />
             {searchQuery && (
@@ -196,7 +193,7 @@ export default function FloorPlanViewer({
             {searchQuery && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl text-xs">
                 <div className="px-2 py-1 text-[10px] font-bold uppercase text-slate-400">
-                  พบ {searchResults.length} อุปกรณ์ (คลิกเพื่อชี้เป้าบนแผนที่)
+                  {t('foundAssetsCount', { count: searchResults.length })}
                 </div>
                 {searchResults.map((item) => (
                   <button
@@ -247,10 +244,10 @@ export default function FloorPlanViewer({
               type="button"
               onClick={onOpenCampusSearch}
               className="flex items-center gap-1.5 rounded-xl border border-primary-300 bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 shadow-xs hover:bg-primary-100 hover:border-primary-400 transition whitespace-nowrap"
-              title="ค้นหาทรัพย์สินทุกอาคารและทุกชั้นทั่วทั้งโครงการ 20 ไร่"
+              title={t('searchAllCampusBtnTitle')}
             >
               <span>🌐</span>
-              <span className="hidden sm:inline">ค้นหาทั้ง 20 ไร่</span>
+              <span className="hidden sm:inline">{t('searchAllCampusBtn')}</span>
             </button>
           )}
 
@@ -259,10 +256,10 @@ export default function FloorPlanViewer({
               type="button"
               onClick={onOpenAssetInventory}
               className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 hover:border-indigo-300 transition whitespace-nowrap"
-              title="เปิดตารางรายการทรัพย์สินทั้งหมด พร้อมค้นหาและชี้เป้า"
+              title={t('assetInventoryBtnTitle')}
             >
               <span>📋</span>
-              <span className="hidden sm:inline">ตารางทรัพย์สิน</span>
+              <span className="hidden sm:inline">{t('assetInventoryBtn')}</span>
             </button>
           )}
         </div>
@@ -281,9 +278,9 @@ export default function FloorPlanViewer({
                   ? 'bg-blue-50 text-blue-700 font-semibold'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
-              title="เปิด/ปิด การแสดงกล้องวงจรปิด"
+              title={t('layerCctvTitle')}
             >
-              📹 CCTV
+              {t('layerCctv')}
             </button>
 
             {layers.cctv && (
@@ -297,9 +294,9 @@ export default function FloorPlanViewer({
                     ? 'bg-blue-100 text-blue-800 font-semibold'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
-                title="เปิด/ปิด แถบแสงจำลองมุมกล้อง (FOV Beam)"
+                title={t('layerCctvFovTitle')}
               >
-                🔦 แสงมุมมอง (FOV)
+                {t('layerCctvFov')}
               </button>
             )}
 
@@ -313,9 +310,9 @@ export default function FloorPlanViewer({
                   ? 'bg-emerald-50 text-emerald-700 font-semibold'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
-              title="เปิด/ปิด เครื่องคอมพิวเตอร์และโต๊ะทำงาน"
+              title={t('layerComputerTitle')}
             >
-              💻 IT & โต๊ะ
+              {t('layerComputer')}
             </button>
 
             <button
@@ -328,9 +325,9 @@ export default function FloorPlanViewer({
                   ? 'bg-indigo-50 text-indigo-700 font-semibold'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
-              title="เปิด/ปิด เครื่องพิมพ์"
+              title={t('layerPrinterTitle')}
             >
-              🖨️ เครื่องพิมพ์
+              {t('layerPrinter')}
             </button>
 
             <button
@@ -343,9 +340,9 @@ export default function FloorPlanViewer({
                   ? 'bg-amber-50 text-amber-700 font-semibold'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
-              title="เปิด/ปิด ยานพาหนะและจุดจอดรถ"
+              title={t('layerVehicleTitle')}
             >
-              🚗 ยานพาหนะ/ที่จอด
+              {t('layerVehicle')}
             </button>
 
             <button
@@ -361,9 +358,9 @@ export default function FloorPlanViewer({
                   ? 'bg-red-100 text-red-800 font-bold'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
-              title="กรองดูเฉพาะอุปกรณ์ที่แจ้งเสียหรือซ่อมบำรุง"
+              title={t('layerMaintenanceOnlyTitle')}
             >
-              ⚠️ เฉพาะแจ้งเสีย
+              {t('layerMaintenanceOnly')}
             </button>
           </div>
 
@@ -373,7 +370,7 @@ export default function FloorPlanViewer({
               type="button"
               onClick={() => handleZoom('out')}
               className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-              title="ย่อ"
+              title={t('zoomOutTitle')}
             >
               ➖
             </button>
@@ -381,7 +378,7 @@ export default function FloorPlanViewer({
               type="button"
               onClick={handleResetView}
               className="px-2 py-1 text-[11px] font-mono text-slate-600 hover:bg-slate-100"
-              title="รีเซ็ตมุมมอง"
+              title={t('resetViewTitle')}
             >
               {Math.round(stageScale * 100)}%
             </button>
@@ -389,7 +386,7 @@ export default function FloorPlanViewer({
               type="button"
               onClick={() => handleZoom('in')}
               className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-              title="ขยาย"
+              title={t('zoomInTitle')}
             >
               ➕
             </button>
@@ -401,9 +398,9 @@ export default function FloorPlanViewer({
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
               className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
-              title="ส่งออกผังอาคาร (PNG, PDF)"
+              title={t('exportBtnTitle')}
             >
-              📤 ส่งออก ▾
+              {t('exportBtn')}
             </button>
 
             {showExportMenu && (
@@ -420,8 +417,8 @@ export default function FloorPlanViewer({
                 >
                   <span className="text-base">📸</span>
                   <div className="text-left">
-                    <div className="font-bold">บันทึกเป็นรูปภาพ (PNG)</div>
-                    <div className="text-[10px] text-slate-400">ภาพคมชัดสูง Retina</div>
+                    <div className="font-bold">{t('exportPng')}</div>
+                    <div className="text-[10px] text-slate-400">{t('exportPngDesc')}</div>
                   </div>
                 </button>
 
@@ -435,8 +432,8 @@ export default function FloorPlanViewer({
                 >
                   <span className="text-base">📄</span>
                   <div className="text-left">
-                    <div className="font-bold">พิมพ์เอกสาร PDF (A4)</div>
-                    <div className="text-[10px] text-slate-400">พร้อมข้อมูลโครงการและสเกล</div>
+                    <div className="font-bold">{t('exportPdf')}</div>
+                    <div className="text-[10px] text-slate-400">{t('exportPdfDesc')}</div>
                   </div>
                 </button>
               </div>
@@ -1123,15 +1120,15 @@ export default function FloorPlanViewer({
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 {selectedAsset.status === 'active'
-                  ? '🟢 ปกติ (Active)'
+                  ? t('statusActive')
                   : selectedAsset.status === 'broken'
-                  ? '🔴 เสีย / ส่งซ่อม (Broken)'
-                  : '🟡 ซ่อมบำรุง (Maintenance)'}
+                  ? t('statusBroken')
+                  : t('statusMaintenance')}
               </span>
 
               {selectedAsset.parkingSlot && (
                 <span className="rounded-md bg-amber-100 text-amber-900 px-2 py-0.5 text-[11px] font-mono font-bold">
-                  🅿️ ช่อง {selectedAsset.parkingSlot}
+                  {t('parkingSlotBadge', { slot: selectedAsset.parkingSlot })}
                 </span>
               )}
 
@@ -1146,16 +1143,16 @@ export default function FloorPlanViewer({
             {(selectedAsset.licensePlate || selectedAsset.driverName || selectedAsset.vehicleModel) && (
               <div className="rounded-xl bg-amber-50/80 p-2.5 border border-amber-200 space-y-1">
                 <div className="text-[10px] text-amber-800 uppercase tracking-wider font-semibold">
-                  🚗 ข้อมูลยานพาหนะ & พนักงานขับ
+                  {t('vehicleInfoTitle')}
                 </div>
                 {selectedAsset.vehicleModel && (
                   <div className="font-semibold text-slate-800 text-xs">
-                    รุ่น: {selectedAsset.vehicleModel}
+                    {t('vehicleModelLabel')} {selectedAsset.vehicleModel}
                   </div>
                 )}
                 {selectedAsset.driverName && (
                   <div className="text-slate-700 text-xs">
-                    พนักงานขับ: <strong>{selectedAsset.driverName}</strong>
+                    {t('driverNameLabel')} <strong>{selectedAsset.driverName}</strong>
                   </div>
                 )}
               </div>
@@ -1165,7 +1162,7 @@ export default function FloorPlanViewer({
             {selectedAsset.assignedTo && !selectedAsset.driverName && (
               <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                  ผู้ถือครอง / ผู้ใช้งาน
+                  {t('assignedOwnerLabel')}
                 </div>
                 <div className="font-bold text-slate-800 text-xs mt-0.5">
                   👤 {selectedAsset.assignedTo}
@@ -1177,7 +1174,7 @@ export default function FloorPlanViewer({
             {selectedAsset.specs && (
               <div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                  สเปกเครื่อง / รายละเอียด
+                  {t('specsLabel')}
                 </div>
                 <div className="mt-1 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-[11px] text-slate-700 leading-relaxed font-mono">
                   {selectedAsset.specs}
@@ -1189,12 +1186,12 @@ export default function FloorPlanViewer({
             {selectedAsset.type === 'cctv' && (
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="rounded-xl bg-blue-50 p-2 border border-blue-100">
-                  <span className="text-blue-500">มุมมอง (FOV):</span>{' '}
+                  <span className="text-blue-500">{t('fovLabel')}</span>{' '}
                   <strong>{selectedAsset.fovAngle || 75}°</strong>
                 </div>
                 <div className="rounded-xl bg-blue-50 p-2 border border-blue-100">
-                  <span className="text-blue-500">ระยะส่อง:</span>{' '}
-                  <strong>{selectedAsset.rangeMeters || 10} เมตร</strong>
+                  <span className="text-blue-500">{t('rangeLabel')}</span>{' '}
+                  <strong>{selectedAsset.rangeMeters || 10} {t('metersUnit')}</strong>
                 </div>
               </div>
             )}
@@ -1203,7 +1200,7 @@ export default function FloorPlanViewer({
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
               {selectedAsset.warrantyExpiry && (
                 <div className="rounded-xl bg-slate-50 p-2 border border-slate-100">
-                  <div className="text-[10px] text-slate-400">วันหมดประกัน</div>
+                  <div className="text-[10px] text-slate-400">{t('warrantyExpiryLabel')}</div>
                   <div className="font-bold text-slate-800">
                     {selectedAsset.warrantyExpiry}
                   </div>
@@ -1211,7 +1208,7 @@ export default function FloorPlanViewer({
               )}
               {selectedAsset.ipAddress && (
                 <div className="rounded-xl bg-slate-50 p-2 border border-slate-100">
-                  <div className="text-[10px] text-slate-400">IP Address</div>
+                  <div className="text-[10px] text-slate-400">{t('ipAddressLabel')}</div>
                   <div className="font-mono font-bold text-slate-800">
                     {selectedAsset.ipAddress}
                   </div>
@@ -1222,7 +1219,7 @@ export default function FloorPlanViewer({
             {/* Notes or Issue */}
             {selectedAsset.notes && (
               <div className="rounded-xl bg-amber-50 p-2.5 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                <strong>บันทึก:</strong> {selectedAsset.notes}
+                <strong>{t('notesLabel')}</strong> {selectedAsset.notes}
               </div>
             )}
 
@@ -1243,7 +1240,7 @@ export default function FloorPlanViewer({
                 }}
                 className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-600 transition"
               >
-                🔧 แจ้งซ่อมอุปกรณ์นี้ (Report Issue)
+                {t('reportThisAssetBtn')}
               </button>
             </div>
           </div>
@@ -1294,22 +1291,22 @@ export default function FloorPlanViewer({
 
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
               <div className="rounded-xl bg-slate-50 p-2 border border-slate-100">
-                <div className="text-[11px] text-slate-400">ขนาดพื้นที่</div>
+                <div className="text-[11px] text-slate-400">{t('roomAreaLabel')}</div>
                 <div className="font-semibold text-slate-800">
-                  {calculateAreaMeters(selectedRoom.width, selectedRoom.height)} ตร.ม.
+                  {calculateAreaMeters(selectedRoom.width, selectedRoom.height)} {t('sqmUnit')}
                 </div>
               </div>
               <div className="rounded-xl bg-slate-50 p-2 border border-slate-100">
-                <div className="text-[11px] text-slate-400">ความจุที่นั่ง</div>
+                <div className="text-[11px] text-slate-400">{t('seatCapacityLabel')}</div>
                 <div className="font-semibold text-slate-800">
-                  {selectedRoom.capacity ? `👥 ${selectedRoom.capacity} คน` : '—'}
+                  {selectedRoom.capacity ? `👥 ${selectedRoom.capacity} ${t('peopleUnit')}` : '—'}
                 </div>
               </div>
             </div>
 
             {selectedRoom.extension && (
               <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 border border-slate-100">
-                <span>📞 เบอร์ต่อภายใน (Ext.):</span>
+                <span>{t('phoneExtLabel')}</span>
                 <span className="font-bold text-primary-600">
                   {selectedRoom.extension}
                 </span>
@@ -1325,7 +1322,7 @@ export default function FloorPlanViewer({
                 }}
                 className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition"
               >
-                <span>🏢 คลิกเข้าดูผังภายในอาคารนี้</span>
+                <span>{t('viewInsideBuildingBtn')}</span>
                 <span>➔</span>
               </button>
             )}
@@ -1340,10 +1337,10 @@ export default function FloorPlanViewer({
               <span className="text-lg">📐</span>
               <div>
                 <strong className="block text-amber-950 font-bold">
-                  ชั้นนี้ยังไม่มีการแบ่งห้อง
+                  {t('emptyFloorTitle')}
                 </strong>
                 <span className="text-amber-800 text-[11px]">
-                  คุณสามารถคัดลอกโครงร่างผนัง/ห้องจากชั้นอื่น หรือเข้าสู่โหมดแอดมินเพื่อวาดห้อง
+                  {t('emptyFloorDesc')}
                 </span>
               </div>
               {canEdit && onOpenCopyLayoutModal && (
@@ -1353,7 +1350,7 @@ export default function FloorPlanViewer({
                   className="rounded-xl bg-amber-600 px-3 py-1.5 font-bold text-white shadow-xs hover:bg-amber-700 transition flex items-center gap-1.5 whitespace-nowrap text-xs"
                 >
                   <span>📋</span>
-                  <span>คัดลอกจากชั้นอื่น</span>
+                  <span>{t('copyFromOtherFloorBtn')}</span>
                 </button>
               )}
             </div>
@@ -1361,7 +1358,7 @@ export default function FloorPlanViewer({
 
         {/* Quick Helper Hint Badge */}
         <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-lg bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[11px] text-slate-500 shadow-sm border border-slate-200 pointer-events-none">
-          <span>💡 <strong>คำแนะนำ:</strong> พิมพ์ค้นหารหัสทรัพย์สิน/ชื่อพนักงาน/ทะเบียนรถเพื่อชี้เป้า หรือคลิกที่อุปกรณ์เพื่อดูสเปก</span>
+          <span>{t('locatorHintBadge')}</span>
         </div>
       </div>
     </div>

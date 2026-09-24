@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { MaintenanceTicket, FloorPlan, AuditLog } from '../models/index.js';
+import { MaintenanceTicket, FloorPlan, AuditLog, User } from '../models/index.js';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
@@ -356,7 +356,7 @@ router.put(
 
 /**
  * DELETE /api/v1/maintenance-tickets/:id
- * Delete a ticket (Admins or user who reported it if still pending)
+ * Delete a ticket (Admins, editors, maintenance/IT department staff, or creator)
  */
 router.delete(
   '/:id',
@@ -366,10 +366,40 @@ router.delete(
       throw new ApiError(404, 'ไม่พบข้อมูลใบแจ้งซ่อม');
     }
 
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
-    const isOwner = ticket.reportedBy && String(ticket.reportedBy) === String(req.user?._id);
+    const currentUserId = req.user?.id || req.user?._id?.toString();
+    const isPrivileged =
+      req.user?.role === 'admin' ||
+      req.user?.role === 'super_admin' ||
+      req.user?.role === 'editor';
+    const isOwner =
+      ticket.reportedBy &&
+      String(ticket.reportedBy?._id || ticket.reportedBy) === String(currentUserId);
 
-    if (!isAdmin && (!isOwner || ticket.status !== 'pending')) {
+    let isMaintenanceStaff = false;
+    if (!isPrivileged && !isOwner && currentUserId) {
+      const dbUser = await User.findById(currentUserId).populate('employeeId');
+      const deptName = (
+        dbUser?.department ||
+        dbUser?.employeeId?.departmentId?.name ||
+        dbUser?.employeeId?.department ||
+        ''
+      ).toLowerCase();
+      if (
+        deptName.includes('it') ||
+        deptName.includes('information') ||
+        deptName.includes('สารสนเทศ') ||
+        deptName.includes('maintenance') ||
+        deptName.includes('ซ่อมบำรุง') ||
+        deptName.includes('facility') ||
+        deptName.includes('วิศวกรรม') ||
+        deptName.includes('engineering') ||
+        deptName.includes('admin')
+      ) {
+        isMaintenanceStaff = true;
+      }
+    }
+
+    if (!isPrivileged && !isOwner && !isMaintenanceStaff) {
       throw new ApiError(403, 'คุณไม่มีสิทธิ์ลบใบแจ้งซ่อมนี้');
     }
 
@@ -394,6 +424,19 @@ router.delete(
           );
         }
       }
+    }
+
+    // Optional Audit Log
+    try {
+      await AuditLog.create({
+        action: 'DELETE',
+        resourceType: 'MaintenanceTicket',
+        resourceId: ticket._id.toString(),
+        userId: currentUserId,
+        details: { ticketNo: ticket.ticketNo, title: ticket.title, status: ticket.status },
+      });
+    } catch {
+      // ignore audit log error if not critical
     }
 
     res.status(200).json({

@@ -1,4 +1,5 @@
 import React from 'react';
+import useLanguage from '../../hooks/useLanguage.js';
 
 export default function FloorElevatorControl({
   currentBuilding,
@@ -9,6 +10,8 @@ export default function FloorElevatorControl({
   onAddFloor,
   onDeleteFloor,
 }) {
+  const { t } = useLanguage();
+
   if (!currentBuilding || currentBuilding.id === 'campus') {
     return null;
   }
@@ -45,9 +48,9 @@ export default function FloorElevatorControl({
               type="button"
               onClick={onAddFloor}
               className="w-full flex items-center justify-center rounded-lg bg-blue-900/60 hover:bg-blue-800 text-blue-300 hover:text-white py-1 text-[10px] font-bold border border-blue-700/50 transition"
-              title="เพิ่มชั้นใหม่ให้อาคารนี้"
+              title={t('addFloorTitle')}
             >
-              + ชั้น
+              {t('addFloorBtn')}
             </button>
           )}
 
@@ -56,9 +59,9 @@ export default function FloorElevatorControl({
               type="button"
               onClick={() => onDeleteFloor(currentFloorNumber)}
               className="w-full flex items-center justify-center rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 hover:text-white py-1 text-[9.5px] font-bold border border-red-800/50 transition"
-              title={`ลบแปลนชั้นปัจจุบัน (ชั้น ${currentFloorNumber})`}
+              title={t('deleteFloorTitle', { floor: currentFloorNumber })}
             >
-              🗑️ ลบชั้นนี้
+              {t('deleteFloorBtn')}
             </button>
           )}
         </div>
@@ -86,7 +89,10 @@ export default function FloorElevatorControl({
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 ring-2 ring-amber-300'
                   : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
-              title={`สลับไปดู ${currentBuilding.shortName || currentBuilding.name} ชั้น ${fNum}`}
+              title={t('switchToBuildingFloorTitle', { 
+                building: currentBuilding.id === 'campus' ? t('defaultCampusShortName') : (currentBuilding.shortName || currentBuilding.name), 
+                floor: fNum 
+              })}
             >
               <span className="text-xs">{fNum}F</span>
               <span className="text-[8px] opacity-70">FL {fNum}</span>
@@ -94,7 +100,7 @@ export default function FloorElevatorControl({
               {/* Issue Indicator Dot */}
               {hasIssues && (
                 <span
-                  title="มีอุปกรณ์แจ้งซ่อมในชั้นนี้"
+                  title={t('hasIssuesBadge')}
                   className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-2 ring-slate-900"
                 >
                   !
@@ -105,16 +111,16 @@ export default function FloorElevatorControl({
         })}
       </div>
 
-      {/* Return to Campus Master Plan 20 ไร่ Button */}
+      {/* Return to Campus Master Plan Button */}
       <div className="mt-2.5 border-t border-slate-700/60 pt-2">
         <button
           type="button"
           onClick={onReturnToCampus}
           className="group flex flex-col items-center justify-center rounded-xl bg-emerald-950/80 px-2 py-1.5 text-center text-emerald-400 transition hover:bg-emerald-900 hover:text-emerald-300"
-          title="กลับไปยังผังบริเวณรวม 20 ไร่ (Campus Master Plan)"
+          title={t('returnToCampusTitle')}
         >
           <span className="text-sm leading-none">🌐</span>
-          <span className="mt-0.5 text-[9px] font-semibold whitespace-nowrap">ผัง 20 ไร่</span>
+          <span className="mt-0.5 text-[9px] font-semibold whitespace-nowrap">{t('returnToCampusBtn')}</span>
         </button>
       </div>
     </div>

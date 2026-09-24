@@ -67,8 +67,8 @@ const assetSchema = new mongoose.Schema(
       ],
       default: 'computer',
     },
-    x: { type: Number, required: true },
-    y: { type: Number, required: true },
+    x: { type: Number, default: 100 },
+    y: { type: Number, default: 100 },
     rotation: { type: Number, default: 0 },
     fovAngle: { type: Number, default: 70 }, // 60, 70, 90, 120
     rangeMeters: { type: Number, default: 8 }, // view distance in meters

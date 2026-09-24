@@ -199,7 +199,7 @@ export default function FacilityManageModal({
                 จัดการข้อมูลอาคารและโกดัง (Campus Facilities)
               </h2>
               <p className="text-xs text-slate-500">
-                เพิ่ม ลบ หรือแก้ไขอาคารและจำนวนชั้นบนพื้นที่ 20 ไร่
+                เพิ่ม ลบ หรือแก้ไขอาคารและจำนวนชั้นบนพื้นที่ทั้งหมด
               </p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDuplicateLayout } from '../../hooks/useFloorPlans.js';
+import useLanguage from '../../hooks/useLanguage.js';
 
 export default function CopyLayoutModal({
   isOpen,
@@ -8,6 +9,7 @@ export default function CopyLayoutModal({
   allFloorPlans = [],
   onSuccess,
 }) {
+  const { t } = useLanguage();
   const duplicateMutation = useDuplicateLayout();
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +31,7 @@ export default function CopyLayoutModal({
 
   const handleCopy = async () => {
     if (!activeSourceId) {
-      setErrorMsg('กรุณาเลือกแปลนต้นทางที่ต้องการคัดลอก');
+      setErrorMsg(t('selectSourcePlanRequired'));
       return;
     }
 
@@ -45,7 +47,7 @@ export default function CopyLayoutModal({
       onClose();
     } catch (err) {
       setIsSubmitting(false);
-      setErrorMsg(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการคัดลอกแปลน');
+      setErrorMsg(err.response?.data?.message || err.message || t('errorCopyingLayout'));
     }
   };
 
@@ -60,10 +62,10 @@ export default function CopyLayoutModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                คัดลอกโครงร่างแปลนและผนัง (Duplicate Layout)
+                {t('copyLayoutModalTitle')}
               </h2>
               <p className="text-xs text-slate-500">
-                ปลายทาง: {targetPlan.name || `ชั้น ${targetPlan.floorNumber}`}
+                {t('targetFloorLabel', { name: targetPlan.name || t('floorNumberLabel', { floor: targetPlan.floorNumber }) })}
               </p>
             </div>
           </div>
@@ -85,15 +87,15 @@ export default function CopyLayoutModal({
           )}
 
           <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
-            <p className="font-semibold">💡 ประโยชน์ของการคัดลอกแปลน:</p>
+            <p className="font-semibold">{t('copyLayoutBenefitTitle')}</p>
             <p>
-              ระบบจะคัดลอกผนังรอบนอก (Outer Walls), ผนังกั้นห้อง, ประตู, และสเกลกริดจากแปลนต้นทางมายังชั้นนี้ทันที ทำให้ไม่ต้องวาดโครงสร้างผนังซ้ำใหม่จากศูนย์!
+              {t('copyLayoutBenefitDesc')}
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">
-              เลือกแปลนต้นทางที่ต้องการคัดลอก (Source Floor Plan):
+              {t('selectSourcePlanLabel')}
             </label>
             <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
               {candidatePlans.map((plan) => {
@@ -118,15 +120,19 @@ export default function CopyLayoutModal({
                       </span>
                       <div>
                         <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                          <span>{plan.name || `${plan.buildingName} ชั้น ${plan.floorNumber}`}</span>
+                          <span>{plan.name || `${plan.buildingName} ${t('floorNumberLabel', { floor: plan.floorNumber })}`}</span>
                           {isSameBuilding && (
                             <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 text-[10px] rounded font-medium">
-                              อาคารเดียวกัน
+                              {t('sameBuildingTag')}
                             </span>
                           )}
                         </div>
                         <div className="text-[11px] text-slate-500">
-                          {roomCount} ห้อง • {wallCount} ผนัง • {plan.buildingId.toUpperCase()}
+                          {t('roomsAndWallsCount', {
+                            rooms: roomCount,
+                            walls: wallCount,
+                            building: plan.buildingId.toUpperCase(),
+                          })}
                         </div>
                       </div>
                     </div>
@@ -152,7 +158,7 @@ export default function CopyLayoutModal({
             onClick={onClose}
             className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition"
           >
-            ยกเลิก
+            {t('btnCancel')}
           </button>
           <button
             type="button"
@@ -163,12 +169,12 @@ export default function CopyLayoutModal({
             {isSubmitting ? (
               <>
                 <span className="animate-spin text-xs">⏳</span>
-                <span>กำลังคัดลอก...</span>
+                <span>{t('copyingLayout')}</span>
               </>
             ) : (
               <>
                 <span>📋</span>
-                <span>ยืนยันคัดลอกโครงร่าง</span>
+                <span>{t('btnConfirmCopyLayout')}</span>
               </>
             )}
           </button>
@@ -177,3 +183,4 @@ export default function CopyLayoutModal({
     </div>
   );
 }
+

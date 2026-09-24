@@ -8,12 +8,12 @@
 export const CAMPUS_FACILITIES = [
   {
     "id": "campus",
-    "name": "ผังบริเวณโครงการรวม 20 ไร่ (Campus Master Plan)",
-    "shortName": "ผังบริเวณ 20 ไร่",
+    "name": "ผังบริเวณพื้นที่ทั้งหมด (Campus Master Plan)",
+    "shortName": "ผังบริเวณพื้นที่ทั้งหมด",
     "type": "campus",
     "totalFloors": 1,
     "icon": "🌐",
-    "description": "ภาพรวมโครงการ 20 ไร่ (~32,000 ตร.ม.) เชื่อมต่อ 5 อาคารสำนักงาน, 5 โกดังสินค้า, ป้อม รปภ. และระบบ CCTV รอบแนวรั้ว"
+    "description": "ภาพรวมพื้นที่ทั้งหมด (~32,000 ตร.ม.) เชื่อมต่อ 5 อาคารสำนักงาน, 5 โกดังสินค้า, ป้อม รปภ. และระบบ CCTV รอบแนวรั้ว"
   },
   {
     "id": "b1",
@@ -109,12 +109,12 @@ export const CAMPUS_FACILITIES = [
 
 export const INITIAL_CAMPUS_PLANS = [
   {
-    "name": "ผังบริเวณโครงการรวม 20 ไร่ (Campus Master Plan)",
+    "name": "ผังบริเวณพื้นที่ทั้งหมด (Campus Master Plan)",
     "buildingId": "campus",
-    "buildingName": "ผังบริเวณโครงการรวม 20 ไร่ (Campus Master Plan)",
+    "buildingName": "ผังบริเวณพื้นที่ทั้งหมด (Campus Master Plan)",
     "buildingType": "campus",
     "floorNumber": 0,
-    "floorName": "ภาพรวม 20 ไร่",
+    "floorName": "พื้นที่ทั้งหมด",
     "totalFloors": 1,
     "gridSize": 20,
     "scaleMetersPerGrid": 2.5,

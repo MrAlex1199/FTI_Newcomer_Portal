@@ -23,6 +23,27 @@ export const getFloorPlans = asyncHandler(async (req, res) => {
     plans = await FloorPlan.find(filter).sort({ floorNumber: 1, createdAt: 1 });
   }
 
+  // Ensure "IT Setup Room" exists for unassigned assets
+  const hasItSetupRoom = await FloorPlan.exists({ buildingId: 'it_setup_room' });
+  if (!hasItSetupRoom) {
+    const itSetupRoom = await FloorPlan.create({
+      name: 'คลังสินค้า / IT Setup Room',
+      buildingId: 'it_setup_room',
+      buildingName: 'คลังจัดเก็บและพักรออุปกรณ์ (Warehouse & Setup)',
+      buildingType: 'warehouse',
+      totalFloors: 1,
+      floorNumber: 1,
+      floorName: 'IT Setup',
+      canvasWidth: 800,
+      canvasHeight: 600,
+      updatedBy: req.user ? req.user.id : null,
+    });
+    // Add it to the plans list if it matches the filter
+    if (!buildingId || buildingId === 'it_setup_room') {
+      plans.push(itSetupRoom);
+    }
+  }
+
   res.status(200).json({
     success: true,
     data: {
@@ -320,6 +341,104 @@ export const uploadFloorPlanBackground = asyncHandler(async (req, res) => {
       filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
+    },
+  });
+});
+
+export const moveAsset = asyncHandler(async (req, res) => {
+  const { assetId, sourceFloorPlanId, targetFloorPlanId, assetData } = req.body;
+
+  if (!targetFloorPlanId || !assetData) {
+    throw ApiError.badRequest('Missing targetFloorPlanId or assetData');
+  }
+
+  // Case 1: Same floor plan (Edit or move within the same plan) or New Asset (no source)
+  if (!sourceFloorPlanId || sourceFloorPlanId === targetFloorPlanId) {
+    const plan = await FloorPlan.findById(targetFloorPlanId);
+    if (!plan) throw ApiError.notFound('Target floor plan not found');
+    
+    let isNew = false;
+    let originalId = assetId || `asset-${Date.now()}`;
+    
+    if (assetId && sourceFloorPlanId) {
+      const idx = plan.assets.findIndex(a => a.id === assetId);
+      if (idx !== -1) plan.assets.splice(idx, 1);
+    } else {
+      isNew = true;
+    }
+
+    const savedAsset = {
+      ...assetData,
+      id: originalId,
+      x: Number.isFinite(Number(assetData.x)) ? Number(assetData.x) : 100,
+      y: Number.isFinite(Number(assetData.y)) ? Number(assetData.y) : 100,
+    };
+    plan.assets.push(savedAsset);
+    plan.updatedBy = req.user ? (req.user.id || req.user._id) : null;
+    await plan.save();
+
+    await AuditLog.record({
+      userId: req.user ? (req.user.id || req.user._id) : null,
+      action: isNew ? 'create' : 'update',
+      entity: 'FloorPlanAsset',
+      entityId: originalId,
+      before: isNew ? null : { floorPlanId: targetFloorPlanId },
+      after: { floorPlanId: targetFloorPlanId, asset: savedAsset },
+      ip: req.ip,
+      userAgent: req.get('user-agent') || '',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: isNew ? 'เพิ่มอุปกรณ์สำเร็จ' : 'แก้ไขอุปกรณ์สำเร็จ',
+      data: { targetFloorPlan: plan }
+    });
+  }
+
+  // Case 2: Move across different floor plans
+  const sourcePlan = await FloorPlan.findById(sourceFloorPlanId);
+  const targetPlan = await FloorPlan.findById(targetFloorPlanId);
+
+  if (!sourcePlan) throw ApiError.notFound('Source floor plan not found');
+  if (!targetPlan) throw ApiError.notFound('Target floor plan not found');
+
+  const assetIndex = sourcePlan.assets.findIndex((a) => a.id === assetId);
+  if (assetIndex === -1) {
+    throw ApiError.notFound('Asset not found in source floor plan');
+  }
+
+  sourcePlan.assets.splice(assetIndex, 1);
+  sourcePlan.updatedBy = req.user ? (req.user.id || req.user._id) : null;
+
+  const movedAsset = {
+    ...assetData,
+    id: assetId,
+    x: Number.isFinite(Number(assetData.x)) ? Number(assetData.x) : (sourcePlan.assets[assetIndex]?.x || 100),
+    y: Number.isFinite(Number(assetData.y)) ? Number(assetData.y) : (sourcePlan.assets[assetIndex]?.y || 100),
+  };
+  targetPlan.assets.push(movedAsset);
+  targetPlan.updatedBy = req.user ? (req.user.id || req.user._id) : null;
+
+  await sourcePlan.save();
+  await targetPlan.save();
+
+  await AuditLog.record({
+    userId: req.user ? (req.user.id || req.user._id) : null,
+    action: 'move',
+    entity: 'FloorPlanAsset',
+    entityId: assetId,
+    before: { floorPlanId: sourceFloorPlanId },
+    after: { floorPlanId: targetFloorPlanId, asset: movedAsset },
+    ip: req.ip,
+    userAgent: req.get('user-agent') || '',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'ย้ายอุปกรณ์ข้ามผังอาคารสำเร็จ',
+    data: {
+      sourceFloorPlan: sourcePlan,
+      targetFloorPlan: targetPlan,
     },
   });
 });

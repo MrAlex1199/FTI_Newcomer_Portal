@@ -67,3 +67,13 @@ export function useDeleteFloorPlan() {
     },
   });
 }
+
+export function useMoveAsset() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: floorPlanService.moveAsset,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['floor-plans'] });
+    },
+  });
+}

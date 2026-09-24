@@ -26,7 +26,7 @@ export default function MaintenanceReportModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      setErrorMsg('กรุณาระบุหัวข้อปัญหาที่พบ');
+      setErrorMsg(t('issueTitleRequired'));
       return;
     }
 
@@ -42,7 +42,7 @@ export default function MaintenanceReportModal({
         buildingId: asset.buildingId || 'b1',
         buildingName: asset.buildingName || 'อาคารหลัก',
         floorNumber: asset.floorNumber || 1,
-        roomName: asset.roomName || 'พื้นที่ส่วนกลาง',
+        roomName: asset.roomName || t('commonArea'),
         floorPlanId: asset.floorPlanId || undefined,
         title: title.trim(),
         description: description.trim(),
@@ -53,11 +53,11 @@ export default function MaintenanceReportModal({
       };
 
       const res = await maintenanceService.create(payload);
-      showToast(res.message || 'ส่งคำขอแจ้งซ่อมสำเร็จแล้ว!', 'success');
+      showToast(res.message || t('reportSubmitSuccess'), 'success');
       onSuccess?.(res.data);
       onClose();
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+      setErrorMsg(err.response?.data?.message || err.message || t('errorSubmittingReport'));
     } finally {
       setIsSubmitting(false);
     }
@@ -73,8 +73,8 @@ export default function MaintenanceReportModal({
               🔧
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">แจ้งซ่อมอุปกรณ์ / ทรัพย์สิน</h3>
-              <p className="text-xs text-slate-500">ระบบจะระบุตำแหน่งและส่งเรื่องถึงทีมช่าง/ไอทีทันที</p>
+              <h3 className="text-base font-bold text-slate-900">{t('maintenanceReportModalTitle')}</h3>
+              <p className="text-xs text-slate-500">{t('maintenanceReportModalDesc')}</p>
             </div>
           </div>
           <button
@@ -94,11 +94,11 @@ export default function MaintenanceReportModal({
               ({asset.code || asset.licensePlate || 'ID: ' + asset.id})
             </span>
             <div className="text-[11px] text-indigo-600 font-medium mt-0.5">
-              📍 {asset.buildingName} • ชั้น {asset.floorNumber || 1} • {asset.roomName || 'พื้นที่ห้อง'}
+              📍 {asset.buildingName} • {t('floorNumberLabel', { floor: asset.floorNumber || 1 })} • {asset.roomName || t('commonArea')}
             </div>
           </div>
           <span className="rounded-md bg-white px-2 py-1 font-semibold text-slate-600 border border-slate-200">
-            {asset.type === 'cctv' ? '📹 CCTV' : asset.type === 'computer' ? '💻 PC' : '📦 อุปกรณ์'}
+            {asset.type === 'cctv' ? '📹 CCTV' : asset.type === 'computer' ? '💻 PC' : asset.type === 'printer' ? '🖨️ Printer' : '📦 Asset'}
           </span>
         </div>
 
@@ -112,12 +112,12 @@ export default function MaintenanceReportModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              หัวข้อปัญหา / อาการชำรุด <span className="text-red-500">*</span>
+              {t('issueTitleLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="เช่น หน้าจอดับเปิดไม่ติด, ภาพกล้อง CCTV ขาดหาย, ล้อเก้าอี้หัก"
+              placeholder={t('issueTitlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none"
@@ -127,26 +127,26 @@ export default function MaintenanceReportModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                ระดับความเร่งด่วน
+                {t('urgencyLabel')}
               </label>
               <select
                 value={urgency}
                 onChange={(e) => setUrgency(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-amber-500 focus:outline-none"
               >
-                <option value="low">🟢 ทั่วไป (Low)</option>
-                <option value="medium">🟡 ปานกลาง (Medium)</option>
-                <option value="high">🟠 สูง / รบกวนการทำงาน (High)</option>
-                <option value="critical">🔴 วิกฤต / กระทบระบบหลัก (Critical)</option>
+                <option value="low">{t('urgencyLow')}</option>
+                <option value="medium">{t('urgencyMedium')}</option>
+                <option value="high">{t('urgencyHigh')}</option>
+                <option value="critical">{t('urgencyCritical')}</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                เบอร์โทรศัพท์ติดต่อกลับ
+                {t('contactPhoneLabel')}
               </label>
               <input
                 type="text"
-                placeholder="เช่น 081-234-5678 หรือ Ext. 123"
+                placeholder={t('contactPhonePlaceholder')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none"
@@ -156,11 +156,11 @@ export default function MaintenanceReportModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              รายละเอียดเพิ่มเติม
+              {t('additionalDetailsLabel')}
             </label>
             <textarea
               rows={3}
-              placeholder="ระบุอาการเสียอย่างละเอียด เช่น ไฟกระพริบ มีกลิ่นไหม้ หรือเพิ่งเกิดขึ้นเมื่อเช้า..."
+              placeholder={t('additionalDetailsPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none"
@@ -173,14 +173,14 @@ export default function MaintenanceReportModal({
               onClick={onClose}
               className="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
             >
-              ยกเลิก
+              {t('btnCancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-xl bg-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-amber-200 hover:bg-amber-600 transition disabled:opacity-50"
             >
-              {isSubmitting ? 'กำลังส่งคำขอ...' : '🚀 ยืนยันการแจ้งซ่อม'}
+              {isSubmitting ? t('submittingReport') : t('btnConfirmReport')}
             </button>
           </div>
         </form>
@@ -188,3 +188,4 @@ export default function MaintenanceReportModal({
     </div>
   );
 }
+

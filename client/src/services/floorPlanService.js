@@ -44,6 +44,16 @@ const floorPlanService = {
     return data;
   },
 
+  async moveAsset({ assetId, sourceFloorPlanId, targetFloorPlanId, assetData }) {
+    const { data } = await apiClient.post('/floor-plans/assets/move', {
+      assetId,
+      sourceFloorPlanId,
+      targetFloorPlanId,
+      assetData,
+    });
+    return data.data;
+  },
+
   async uploadBackgroundImage(id, file) {
     const formData = new FormData();
     formData.append('backgroundImage', file);

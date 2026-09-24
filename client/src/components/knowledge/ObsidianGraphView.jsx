@@ -2,17 +2,87 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import useLanguage from '../../hooks/useLanguage.js';
 
 /**
+ * Domain Spectrum Configurations
+ * Divides the 360-degree knowledge graph into 4 orbital quadrants / sectors
+ */
+const DOMAINS = {
+  software: {
+    key: 'software',
+    labelTh: 'ระบบปฏิบัติการและซอฟต์แวร์',
+    labelEn: 'OS & Software',
+    baseAngle: 0, // 0 rad (East / 3 o'clock)
+    color: '#0284c7', // Sky 600
+    accentColor: '#38bdf8', // Sky 400
+    haloColor: 'rgba(56, 189, 248, 0.28)',
+    keywords: ['software', 'ซอฟต์แวร์', 'os', 'windows', 'linux', 'ubuntu', 'word', 'excel', 'microsoft', 'erp', 'office', 'teams'],
+  },
+  hardware: {
+    key: 'hardware',
+    labelTh: 'ฮาร์ดแวร์และอุปกรณ์ไอที',
+    labelEn: 'Hardware & Devices',
+    baseAngle: Math.PI * 0.5, // 90 deg (South / 6 o'clock)
+    color: '#ea580c', // Orange 600
+    accentColor: '#fb923c', // Orange 400
+    haloColor: 'rgba(249, 115, 22, 0.28)',
+    keywords: ['hardware', 'ฮาร์ดแวร์', 'cpu', 'ram', 'storage', 'ssd', 'printer', 'พิมพ์', 'monitor', 'จอ', 'cctv', 'กล้อง', 'ptz', 'pdpa'],
+  },
+  network: {
+    key: 'network',
+    labelTh: 'ระบบเครือข่ายและการเชื่อมต่อ',
+    labelEn: 'Network & Connectivity',
+    baseAngle: Math.PI, // 180 deg (West / 9 o'clock)
+    color: '#059669', // Emerald 600
+    accentColor: '#34d399', // Emerald 400
+    haloColor: 'rgba(16, 185, 129, 0.28)',
+    keywords: ['network', 'เครือข่าย', 'wifi', 'wi-fi', 'vpn', 'diagnostics', 'lan', 'internet', 'ping', 'dns'],
+  },
+  security: {
+    key: 'security',
+    labelTh: 'ความปลอดภัยและนโยบายไอที',
+    labelEn: 'Security & Policy',
+    baseAngle: Math.PI * 1.5, // 270 deg (North / 12 o'clock)
+    color: '#9333ea', // Purple 600
+    accentColor: '#c084fc', // Purple 400
+    haloColor: 'rgba(168, 85, 247, 0.28)',
+    keywords: ['security', 'ปลอดภัย', 'password', 'รหัสผ่าน', '2fa', 'mfa', 'phishing', 'sla', 'loan', 'policy', 'นโยบาย', 'ยืม-คืน'],
+  },
+};
+
+/**
+ * Detect domain from topic and its hierarchy chain
+ */
+function detectDomain(topic, allTopicsMap) {
+  let current = topic;
+  const visited = new Set();
+  while (current && !visited.has(String(current._id))) {
+    visited.add(String(current._id));
+    const parentId = current.parentId
+      ? (typeof current.parentId === 'object' && current.parentId._id ? String(current.parentId._id) : String(current.parentId))
+      : null;
+    if (!parentId) break;
+    const parent = allTopicsMap.get(parentId);
+    if (!parent) break;
+    current = parent;
+  }
+
+  const textToMatch = `${current.name || ''} ${current.nameEn || ''} ${current.slug || ''}`.toLowerCase();
+  for (const [key, domain] of Object.entries(DOMAINS)) {
+    if (domain.keywords.some((kw) => textToMatch.includes(kw))) {
+      return key;
+    }
+  }
+  return 'software';
+}
+
+/**
  * ObsidianGraphView - Interactive 2D Knowledge Graph
  * 
  * Features:
- * - Native HTML5 Canvas 2D Force-Directed Simulation (0 extra npm dependencies)
- * - 3 Node types: Folders (hub nodes), Notes (content nodes), Tags (connector nodes)
- * - Dynamic Links: Folder-to-Folder, Folder-to-Note, Note-to-Tag, Note-to-Related Note
- * - Interactive: Drag nodes, Pan & Zoom canvas, Hover highlight neighbors, Click to Quick Preview
- * - Floating Quick Preview card with "Open Full Article" action
- * - Filter controls (Toggle Folders/Notes/Tags, Search query filter)
- * - Obsidian Dark & Clean Light themes
- * - Fullscreen mode support
+ * - Planetary Orbit System (Central Sun, 4 Domain Sectors, Radial Halo Density Nebulae)
+ * - Free-Floating Physics toggle
+ * - Dynamic Node Scaling & Article Count Badges
+ * - Canvas 2D Force-Directed Simulation
+ * - Pan, Zoom, Drag, Quick Preview Card & Filters
  */
 export default function ObsidianGraphView({
   topics = [],
@@ -20,12 +90,13 @@ export default function ObsidianGraphView({
   onOpenArticle,
   initialSelectedArticleId = null,
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  // View & UI states
+  // Layout & UI states
+  const [layoutMode, setLayoutMode] = useState('planetary'); // 'planetary' | 'free'
   const [theme, setTheme] = useState('dark'); // 'dark' (Obsidian) | 'light'
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,44 +106,180 @@ export default function ObsidianGraphView({
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
 
-  // Camera & Physics state references (kept in refs for 60fps canvas loop)
-  const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
+  // Camera & Physics state references
+  const cameraRef = useRef({ x: 0, y: 0, zoom: 0.85 });
   const isDraggingRef = useRef(false);
   const dragTargetRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const mousePosRef = useRef({ x: 0, y: 0 });
   const isPanningRef = useRef(false);
 
-  // Simulation alpha/energy to pause calculation when settled
+  // Simulation alpha/energy
   const alphaRef = useRef(1);
 
-  // 1. Transform raw topics & articles into Graph Nodes & Links
+  // 1. Transform raw topics & articles into Graph Nodes & Links with Domain Intelligence
   const graphData = useMemo(() => {
     const nodeMap = new Map();
     const links = [];
 
-    // Map of topic id to topic object for fast lookup
+    // Fast lookup for topics
     const topicLookup = new Map();
     topics.forEach((topic) => topicLookup.set(String(topic._id), topic));
 
-    // A. Add Topic (Folder) Nodes
+    // Articles grouped by topic
+    const articlesByTopic = new Map();
+    articles.forEach((art) => {
+      const topicId = art.topicId?._id ? String(art.topicId._id) : (art.topicId ? String(art.topicId) : null);
+      if (topicId) {
+        if (!articlesByTopic.has(topicId)) articlesByTopic.set(topicId, []);
+        articlesByTopic.get(topicId).push(art);
+      }
+    });
+
+    // Domain Statistics & Density Tracking
+    const domainStats = {
+      software: { articleCount: 0, topicCount: 0 },
+      hardware: { articleCount: 0, topicCount: 0 },
+      network: { articleCount: 0, topicCount: 0 },
+      security: { articleCount: 0, topicCount: 0 },
+    };
+
+    // Calculate article counts per topic (including descendants)
+    const topicSubtreeArticleCount = new Map();
+    topics.forEach((t) => {
+      const direct = (articlesByTopic.get(String(t._id)) || []).length;
+      topicSubtreeArticleCount.set(String(t._id), direct);
+    });
+
+    topics.forEach((t) => {
+      let curParentId = t.parentId
+        ? (typeof t.parentId === 'object' && t.parentId._id ? String(t.parentId._id) : String(t.parentId))
+        : null;
+      const direct = (articlesByTopic.get(String(t._id)) || []).length;
+      const visited = new Set();
+      while (curParentId && !visited.has(curParentId)) {
+        visited.add(curParentId);
+        const prev = topicSubtreeArticleCount.get(curParentId) || 0;
+        topicSubtreeArticleCount.set(curParentId, prev + direct);
+        const pTopic = topicLookup.get(curParentId);
+        curParentId = pTopic?.parentId
+          ? (typeof pTopic.parentId === 'object' && pTopic.parentId._id ? String(pTopic.parentId._id) : String(pTopic.parentId))
+          : null;
+      }
+    });
+
+    // Populate Domain Stats
+    topics.forEach((t) => {
+      const dKey = detectDomain(t, topicLookup);
+      if (domainStats[dKey]) {
+        domainStats[dKey].topicCount += 1;
+        const direct = (articlesByTopic.get(String(t._id)) || []).length;
+        domainStats[dKey].articleCount += direct;
+      }
+    });
+
+    // A. Central Sun Node (Knowledge Core)
+    const coreId = 'core_fti_vault';
+    nodeMap.set(coreId, {
+      id: coreId,
+      rawId: 'core',
+      type: 'core',
+      label: language === 'th' ? 'ศูนย์กลางคลังความรู้ FTI IT' : 'FTI IT Knowledge Core',
+      icon: '🪐',
+      color: '#f59e0b',
+      accentColor: '#fbbf24',
+      radius: 26,
+      targetRadius: 0,
+      targetAngle: 0,
+      domain: 'core',
+      articleCount: articles.length,
+      domainStats,
+    });
+
+    // Determine topic hierarchy depth & group child topics for angular distribution
+    const rootTopics = [];
+    const childrenByParent = new Map();
+
+    topics.forEach((t) => {
+      const parentRawId = t.parentId
+        ? (typeof t.parentId === 'object' && t.parentId._id ? String(t.parentId._id) : String(t.parentId))
+        : null;
+      if (!parentRawId) {
+        rootTopics.push(t);
+      } else {
+        if (!childrenByParent.has(parentRawId)) childrenByParent.set(parentRawId, []);
+        childrenByParent.get(parentRawId).push(t);
+      }
+    });
+
+    // B. Add Topic (Folder) Nodes with Planetary Orbit coordinates
     topics.forEach((topic) => {
       const id = `folder_${topic._id}`;
-      // parentId can be a populated object {_id, name} or a raw ObjectId string or null
       const parentRawId = topic.parentId
         ? (typeof topic.parentId === 'object' && topic.parentId._id ? String(topic.parentId._id) : String(topic.parentId))
         : null;
+
+      const domainKey = detectDomain(topic, topicLookup);
+      const domainCfg = DOMAINS[domainKey] || DOMAINS.software;
+      const isRoot = !parentRawId;
+      const totalArticles = topicSubtreeArticleCount.get(String(topic._id)) || 0;
+
+      // Scaled radius reflecting knowledge density
+      let nodeRadius = 14;
+      let targetRadius = 295;
+      let targetAngle = domainCfg.baseAngle;
+
+      if (isRoot) {
+        // Root topics orbit at R=180, size scaled with square root of articles
+        targetRadius = 180;
+        nodeRadius = Math.round(18 + Math.min(16, Math.sqrt(totalArticles) * 4.2));
+        targetAngle = domainCfg.baseAngle;
+      } else {
+        // Check hierarchy depth
+        const parentTopic = topicLookup.get(parentRawId);
+        const grandParentId = parentTopic?.parentId
+          ? (typeof parentTopic.parentId === 'object' && parentTopic.parentId._id ? String(parentTopic.parentId._id) : String(parentTopic.parentId))
+          : null;
+
+        const isSubSub = !!grandParentId;
+        targetRadius = isSubSub ? 365 : 290;
+        nodeRadius = Math.round(12 + Math.min(9, totalArticles * 1.6));
+
+        // Angular spread relative to parent folder
+        const siblings = childrenByParent.get(parentRawId) || [topic];
+        const sibIndex = siblings.findIndex((s) => String(s._id) === String(topic._id));
+        const sibCount = siblings.length;
+        const spreadSpan = isSubSub ? 0.35 : 0.65;
+        const angleOffset = sibCount > 1 ? (sibIndex - (sibCount - 1) / 2) * (spreadSpan / (sibCount - 1)) : 0;
+        targetAngle = domainCfg.baseAngle + angleOffset;
+      }
 
       nodeMap.set(id, {
         id,
         rawId: topic._id,
         type: 'folder',
         label: topic.name || topic.nameEn || 'Folder',
-        icon: topic.icon || '📁',
-        color: '#3b82f6', // Bright Folder Blue
-        radius: 16,
+        icon: topic.icon || (isRoot ? '🏛️' : '📁'),
+        color: domainCfg.color,
+        accentColor: domainCfg.accentColor,
+        radius: nodeRadius,
+        targetRadius,
+        targetAngle,
+        domain: domainKey,
+        articleCount: totalArticles,
+        isRoot,
         parentTopicId: parentRawId,
       });
+
+      // Link root folders to Central Sun
+      if (isRoot) {
+        links.push({
+          id: `core_${topic._id}`,
+          source: coreId,
+          target: id,
+          linkType: 'core-root',
+        });
+      }
 
       // Folder-to-parent folder hierarchy link
       if (parentRawId) {
@@ -86,22 +293,45 @@ export default function ObsidianGraphView({
       }
     });
 
-    // B. Add Article (Note) Nodes & Tags
+    // C. Add Article (Note) Nodes with Planetary Orbit positions
     const tagSet = new Set();
-    articles.forEach((art) => {
+    articles.forEach((art, artIdx) => {
       const id = `note_${art._id}`;
       const topicId = art.topicId?._id ? String(art.topicId._id) : (art.topicId ? String(art.topicId) : null);
       const topicObj = topicId ? topicLookup.get(topicId) : null;
-      // When topicId is populated, its name is on art.topicId.name
       const topicName = topicObj?.name || (typeof art.topicId === 'object' && art.topicId?.name) || '';
+
+      const domainKey = topicObj ? detectDomain(topicObj, topicLookup) : 'software';
+      const domainCfg = DOMAINS[domainKey] || DOMAINS.software;
+
+      // Find parent folder target angle to orbit nearby
+      const parentFolderNode = topicId ? nodeMap.get(`folder_${topicId}`) : null;
+      const baseAngle = parentFolderNode ? parentFolderNode.targetAngle : domainCfg.baseAngle;
+
+      const folderArticles = topicId ? (articlesByTopic.get(topicId) || [art]) : [art];
+      const artIndexInFolder = folderArticles.findIndex((a) => String(a._id) === String(art._id));
+      const artCountInFolder = folderArticles.length;
+
+      const angleOffset =
+        artCountInFolder > 1
+          ? (artIndexInFolder - (artCountInFolder - 1) / 2) * (0.28 / Math.max(1, artCountInFolder - 1))
+          : ((artIdx % 5) - 2) * 0.05;
+
+      // Stagger radius between 410 and 460 to form a natural celestial asteroid/satellite belt
+      const targetRadius = 425 + ((artIdx % 3) - 1) * 22;
+      const targetAngle = baseAngle + angleOffset;
 
       nodeMap.set(id, {
         id,
         rawId: art._id,
         type: 'note',
         label: art.title || art.titleEn || 'Untitled Note',
-        color: '#10b981', // Emerald Green
-        radius: 11,
+        color: domainCfg.accentColor,
+        domainColor: domainCfg.color,
+        radius: 10,
+        targetRadius,
+        targetAngle,
+        domain: domainKey,
         topicId,
         topicName,
         summary: art.summary || '',
@@ -143,7 +373,6 @@ export default function ObsidianGraphView({
         art.relatedArticles.forEach((rel) => {
           const relId = typeof rel === 'object' && rel._id ? rel._id : rel;
           if (relId && String(relId) !== String(art._id)) {
-            // Sort IDs to prevent duplicate bidirectional links
             const pairKey = [String(art._id), String(relId)].sort().join('___');
             links.push({
               id: `rel_${pairKey}`,
@@ -156,20 +385,26 @@ export default function ObsidianGraphView({
       }
     });
 
-    // C. Add Unique Tag Nodes
-    tagSet.forEach((tag) => {
+    // D. Add Unique Tag Nodes orbiting at outer perimeter
+    const tagArray = Array.from(tagSet);
+    tagArray.forEach((tag, tIdx) => {
       const id = `tag_${tag}`;
+      const angle = (tIdx / Math.max(1, tagArray.length)) * Math.PI * 2;
       nodeMap.set(id, {
         id,
         rawId: tag,
         type: 'tag',
         label: `#${tag}`,
-        color: '#a855f7', // Purple
+        color: '#a855f7',
+        accentColor: '#c084fc',
         radius: 7,
+        targetRadius: 535,
+        targetAngle: angle,
+        domain: 'tag',
       });
     });
 
-    // Deduplicate links by link ID
+    // Deduplicate links by ID
     const uniqueLinksMap = new Map();
     links.forEach((l) => {
       if (!uniqueLinksMap.has(l.id)) {
@@ -181,21 +416,22 @@ export default function ObsidianGraphView({
       nodes: Array.from(nodeMap.values()),
       links: Array.from(uniqueLinksMap.values()),
       nodeMap,
+      domainStats,
     };
-  }, [topics, articles]);
+  }, [topics, articles, language]);
 
   // Persistent simulated nodes & links kept in ref across renders
   const simStateRef = useRef({
     nodes: [],
     links: [],
     nodeMap: new Map(),
-    adjacency: new Map(), // nodeId -> Set of neighbor nodeIds
+    adjacency: new Map(),
+    domainStats: {},
   });
 
-  // Version counter to force re-computation of activeNodes/activeLinks after simStateRef updates
   const [simVersion, setSimVersion] = useState(0);
 
-  // Update simulation structure when graphData changes
+  // Initialize simulation positions when graphData changes
   useEffect(() => {
     if (graphData.nodes.length === 0) return;
 
@@ -204,13 +440,20 @@ export default function ObsidianGraphView({
       existingPos.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy });
     });
 
-    const angleStep = (2 * Math.PI) / Math.max(1, graphData.nodes.length);
-    const radius = Math.min(300, 20 + graphData.nodes.length * 8);
-
-    const initializedNodes = graphData.nodes.map((n, idx) => {
+    const initializedNodes = graphData.nodes.map((n) => {
       const prev = existingPos.get(n.id);
-      const initX = prev ? prev.x : Math.cos(angleStep * idx) * (radius + (Math.random() * 80 - 40));
-      const initY = prev ? prev.y : Math.sin(angleStep * idx) * (radius + (Math.random() * 80 - 40));
+      let initX, initY;
+
+      if (prev) {
+        initX = prev.x;
+        initY = prev.y;
+      } else {
+        // Place initial node smoothly near its planetary target angle & radius
+        const rad = n.targetRadius || 20;
+        const ang = n.targetAngle || 0;
+        initX = Math.cos(ang) * rad + (Math.random() * 24 - 12);
+        initY = Math.sin(ang) * rad + (Math.random() * 24 - 12);
+      }
 
       return {
         ...n,
@@ -224,10 +467,8 @@ export default function ObsidianGraphView({
     const nodeLookup = new Map();
     initializedNodes.forEach((n) => nodeLookup.set(n.id, n));
 
-    // Resolve source & target object references for physics
     const resolvedLinks = [];
     const adjacency = new Map();
-
     initializedNodes.forEach((n) => adjacency.set(n.id, new Set()));
 
     graphData.links.forEach((l) => {
@@ -249,14 +490,12 @@ export default function ObsidianGraphView({
       links: resolvedLinks,
       nodeMap: nodeLookup,
       adjacency,
+      domainStats: graphData.domainStats,
     };
 
-    alphaRef.current = 1.0; // restart physics animation
-
-    // Bump version to trigger re-computation of activeNodes/activeLinks
+    alphaRef.current = 1.0;
     setSimVersion((v) => v + 1);
 
-    // Auto-select initial note if passed in
     if (initialSelectedArticleId) {
       const targetId = `note_${initialSelectedArticleId}`;
       const found = nodeLookup.get(targetId);
@@ -269,6 +508,7 @@ export default function ObsidianGraphView({
   // Filter nodes according to toggle states
   const activeNodes = useMemo(() => {
     return simStateRef.current.nodes.filter((node) => {
+      if (node.type === 'core') return true; // Central sun always anchors the graph
       if (node.type === 'folder' && !showFolders) return false;
       if (node.type === 'note' && !showNotes) return false;
       if (node.type === 'tag' && !showTags) return false;
@@ -305,7 +545,7 @@ export default function ObsidianGraphView({
     return matches;
   }, [searchQuery, activeNodes]);
 
-  // Screen <-> World coordinate conversion helpers
+  // Coordinate conversions
   const screenToWorld = useCallback((screenX, screenY, width, height) => {
     const { x, y, zoom } = cameraRef.current;
     return {
@@ -322,22 +562,24 @@ export default function ObsidianGraphView({
     };
   }, []);
 
-  // Find node under world coordinates
-  const getNodeAt = useCallback((worldX, worldY) => {
-    const nodes = activeNodes;
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const n = nodes[i];
-      const dx = worldX - n.x;
-      const dy = worldY - n.y;
-      const hitRadius = Math.max(n.radius + 6, 14);
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-        return n;
+  const getNodeAt = useCallback(
+    (worldX, worldY) => {
+      const nodes = activeNodes;
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i];
+        const dx = worldX - n.x;
+        const dy = worldY - n.y;
+        const hitRadius = Math.max(n.radius + 6, 14);
+        if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+          return n;
+        }
       }
-    }
-    return null;
-  }, [activeNodes]);
+      return null;
+    },
+    [activeNodes]
+  );
 
-  // Main 60fps Force Simulation & Render Loop
+  // 60fps Force Simulation & Render Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -357,30 +599,56 @@ export default function ObsidianGraphView({
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    const stepPhysics = (dt) => {
-      if (alphaRef.current < 0.005) return; // Simulation is settled
+    const stepPhysics = () => {
+      if (alphaRef.current < 0.005) return;
 
       const nodes = activeNodes;
       const links = activeLinks;
       const alpha = alphaRef.current;
+      const isPlanetary = layoutMode === 'planetary';
 
-      // 1. Center gravity force (pulls slightly toward world 0,0)
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        if (n.pinned) continue;
-        n.vx -= n.x * 0.0008 * alpha;
-        n.vy -= n.y * 0.0008 * alpha;
+      // 1. Orbital Constraints (Planetary) or Center Gravity (Free)
+      if (isPlanetary) {
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          if (n.pinned) continue;
+
+          if (n.id === 'core_fti_vault') {
+            // Anchor Central Sun firmly at (0, 0)
+            n.vx -= n.x * 0.08 * alpha;
+            n.vy -= n.y * 0.08 * alpha;
+            continue;
+          }
+
+          const targetX = Math.cos(n.targetAngle) * n.targetRadius;
+          const targetY = Math.sin(n.targetAngle) * n.targetRadius;
+
+          const kOrbit =
+            (n.type === 'folder' ? (n.isRoot ? 0.016 : 0.012) : n.type === 'note' ? 0.009 : 0.007) * alpha;
+
+          n.vx += (targetX - n.x) * kOrbit;
+          n.vy += (targetY - n.y) * kOrbit;
+        }
+      } else {
+        // Free Mode Center Gravity
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          if (n.pinned) continue;
+          n.vx -= n.x * 0.0008 * alpha;
+          n.vy -= n.y * 0.0008 * alpha;
+        }
       }
 
-      // 2. Node-node repulsion (Coulomb force)
-      const kRepulsion = 1200;
+      // 2. Node-Node Repulsion (Coulomb force)
+      const kRepulsion = isPlanetary ? 950 : 1200;
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i];
         for (let j = i + 1; j < nodes.length; j++) {
           const b = nodes[j];
           const dx = b.x - a.x;
           const dy = b.y - a.y;
-          const distSq = dx * dx + dy * dy + 400; // avoid singularity
+          const minDist = (a.radius + b.radius) * 1.5;
+          const distSq = dx * dx + dy * dy + minDist * minDist;
           const dist = Math.sqrt(distSq);
           const force = (kRepulsion * alpha) / distSq;
           const fx = (dx / dist) * force;
@@ -397,7 +665,7 @@ export default function ObsidianGraphView({
         }
       }
 
-      // 3. Link spring force (Hooke's law)
+      // 3. Link Spring Forces (Hooke's Law)
       for (let i = 0; i < links.length; i++) {
         const l = links[i];
         const s = l.sourceNode;
@@ -410,12 +678,16 @@ export default function ObsidianGraphView({
 
         let desiredLength = 85;
         let springConstant = 0.04;
-        if (l.linkType === 'folder-hierarchy') {
-          desiredLength = 130;
-          springConstant = 0.05;
+
+        if (l.linkType === 'core-root') {
+          desiredLength = 180;
+          springConstant = 0.035;
+        } else if (l.linkType === 'folder-hierarchy') {
+          desiredLength = 120;
+          springConstant = 0.045;
         } else if (l.linkType === 'folder-note') {
           desiredLength = 95;
-          springConstant = 0.04;
+          springConstant = 0.035;
         } else if (l.linkType === 'related-note') {
           desiredLength = 110;
           springConstant = 0.025;
@@ -440,31 +712,29 @@ export default function ObsidianGraphView({
       }
 
       // 4. Integrate velocity with damping
-      const damping = 0.88;
+      const damping = isPlanetary ? 0.86 : 0.88;
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         if (n.pinned) continue;
         n.vx *= damping;
         n.vy *= damping;
 
-        // Cap max velocity to avoid violent explosions
         const speedSq = n.vx * n.vx + n.vy * n.vy;
-        if (speedSq > 100) {
+        if (speedSq > 120) {
           const speed = Math.sqrt(speedSq);
-          n.vx = (n.vx / speed) * 10;
-          n.vy = (n.vy / speed) * 10;
+          n.vx = (n.vx / speed) * 11;
+          n.vy = (n.vy / speed) * 11;
         }
 
         n.x += n.vx;
         n.y += n.vy;
       }
 
-      // Decay alpha
       alphaRef.current *= 0.985;
     };
 
     const render = () => {
-      stepPhysics(1);
+      stepPhysics();
 
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -476,12 +746,12 @@ export default function ObsidianGraphView({
 
       // A. Background Render
       const isDark = theme === 'dark';
-      ctx.fillStyle = isDark ? '#090d16' : '#f8fafc';
+      ctx.fillStyle = isDark ? '#080c14' : '#f8fafc';
       ctx.fillRect(0, 0, width, height);
 
       const { x: camX, y: camY, zoom } = cameraRef.current;
 
-      // Subtle background grid dots
+      // Subtle Starlight Dots
       ctx.fillStyle = isDark ? 'rgba(51, 65, 85, 0.35)' : 'rgba(203, 213, 225, 0.6)';
       const dotSpacing = 36 * zoom;
       if (dotSpacing >= 12) {
@@ -496,12 +766,11 @@ export default function ObsidianGraphView({
         }
       }
 
-      // Apply camera transformation to world coordinates
+      // Camera transformation
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
       ctx.translate(camX, camY);
 
-      // Determine hover/selected context for dimming
       const focusedNode = hoveredNode || selectedNode;
       const focusedNeighborSet = new Set();
       if (focusedNode) {
@@ -512,7 +781,55 @@ export default function ObsidianGraphView({
         }
       }
 
-      // B. Render Links
+      // B. Planetary Background: Concentric Celestial Orbit Rings & Knowledge Density Nebulae
+      if (layoutMode === 'planetary') {
+        ctx.save();
+
+        // 1. Concentric Celestial Orbit Rings
+        ctx.setLineDash([4, 7]);
+        ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.28)';
+        ctx.lineWidth = 1 / zoom;
+
+        const orbits = [180, 290, 425, 535];
+        orbits.forEach((r) => {
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+
+        // 2. Knowledge Density Halos (Domain Cluster Nebulae)
+        const dStats = simStateRef.current.domainStats || {};
+        Object.values(DOMAINS).forEach((dom) => {
+          const count = dStats[dom.key]?.articleCount || 0;
+          // Radius expands with article count (dense areas have vibrant large halos)
+          const haloRadius = 90 + Math.min(160, count * 13);
+          const hx = Math.cos(dom.baseAngle) * 240;
+          const hy = Math.sin(dom.baseAngle) * 240;
+
+          const grad = ctx.createRadialGradient(hx, hy, 15, hx, hy, haloRadius);
+          grad.addColorStop(0, dom.haloColor);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(hx, hy, haloRadius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // 3. Central Sun Solar Corona Glow
+        const sunGlow = ctx.createRadialGradient(0, 0, 10, 0, 0, 75);
+        sunGlow.addColorStop(0, isDark ? 'rgba(245, 158, 11, 0.35)' : 'rgba(245, 158, 11, 0.22)');
+        sunGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+        ctx.fillStyle = sunGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, 75, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // C. Render Links with Gradients
       const links = activeLinks;
       for (let i = 0; i < links.length; i++) {
         const l = links[i];
@@ -530,34 +847,54 @@ export default function ObsidianGraphView({
 
         if (l.linkType === 'related-note') {
           ctx.setLineDash([4, 4]);
+        } else if (l.linkType === 'core-root') {
+          ctx.setLineDash([3, 5]);
         } else {
           ctx.setLineDash([]);
         }
 
         if (isConnectedToFocused) {
           ctx.strokeStyle = isDark ? '#38bdf8' : '#0284c7';
-          ctx.lineWidth = 2.2 / zoom;
+          ctx.lineWidth = 2.4 / zoom;
           ctx.shadowColor = isDark ? 'rgba(56, 189, 248, 0.8)' : 'transparent';
           ctx.shadowBlur = isDark ? 8 : 0;
         } else {
           ctx.shadowBlur = 0;
-          if (l.linkType === 'related-note') {
+          if (l.linkType === 'core-root') {
+            ctx.strokeStyle = isDark
+              ? (isDimmed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.55)')
+              : (isDimmed ? 'rgba(217, 119, 6, 0.15)' : 'rgba(217, 119, 6, 0.45)');
+            ctx.lineWidth = 1.8 / zoom;
+          } else if (l.linkType === 'related-note') {
             ctx.strokeStyle = isDark
               ? (isDimmed ? 'rgba(244, 63, 94, 0.12)' : 'rgba(244, 63, 94, 0.55)')
               : (isDimmed ? 'rgba(225, 29, 72, 0.1)' : 'rgba(225, 29, 72, 0.45)');
+            ctx.lineWidth = 1.2 / zoom;
           } else {
-            ctx.strokeStyle = isDark
-              ? (isDimmed ? 'rgba(71, 85, 105, 0.15)' : 'rgba(71, 85, 105, 0.45)')
-              : (isDimmed ? 'rgba(203, 213, 225, 0.25)' : 'rgba(148, 163, 184, 0.6)');
+            // Gradient link between nodes
+            if (!isDimmed && zoom >= 0.7) {
+              try {
+                const grad = ctx.createLinearGradient(s.x, s.y, t.x, t.y);
+                grad.addColorStop(0, s.color);
+                grad.addColorStop(1, t.color);
+                ctx.strokeStyle = grad;
+              } catch {
+                ctx.strokeStyle = isDark ? 'rgba(71, 85, 105, 0.45)' : 'rgba(148, 163, 184, 0.6)';
+              }
+            } else {
+              ctx.strokeStyle = isDark
+                ? (isDimmed ? 'rgba(71, 85, 105, 0.12)' : 'rgba(71, 85, 105, 0.45)')
+                : (isDimmed ? 'rgba(203, 213, 225, 0.2)' : 'rgba(148, 163, 184, 0.55)');
+            }
+            ctx.lineWidth = (l.linkType === 'folder-hierarchy' ? 1.6 : 1.1) / zoom;
           }
-          ctx.lineWidth = (l.linkType === 'folder-hierarchy' ? 1.6 : 1.1) / zoom;
         }
 
         ctx.stroke();
       }
-      ctx.setLineDash([]); // Reset line dash
+      ctx.setLineDash([]);
 
-      // C. Render Nodes
+      // D. Render Nodes
       const nodes = activeNodes;
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
@@ -574,7 +911,7 @@ export default function ObsidianGraphView({
           ctx.save();
           ctx.beginPath();
           ctx.arc(n.x, n.y, currentRadius + 5 / zoom, 0, Math.PI * 2);
-          ctx.strokeStyle = '#f59e0b'; // Amber pulsing ring
+          ctx.strokeStyle = '#f59e0b';
           ctx.lineWidth = 2.5 / zoom;
           ctx.shadowColor = '#f59e0b';
           ctx.shadowBlur = 10;
@@ -590,41 +927,84 @@ export default function ObsidianGraphView({
           ctx.strokeStyle = isDark ? '#ffffff' : '#0f172a';
           ctx.lineWidth = 1.8 / zoom;
           ctx.shadowColor = n.color;
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 14;
           ctx.stroke();
           ctx.restore();
         }
 
-        // Draw Main Node Circle
+        // Main Node Body
         ctx.save();
         ctx.beginPath();
         ctx.arc(n.x, n.y, currentRadius, 0, Math.PI * 2);
 
-        // Alpha handling for dimming
         if (isDimmed) {
           ctx.globalAlpha = 0.2;
         } else {
           ctx.globalAlpha = 1.0;
         }
 
-        // Glowing fill
-        if (!isDimmed && isDark) {
-          ctx.shadowColor = n.color;
-          ctx.shadowBlur = 10;
-        }
-        ctx.fillStyle = n.color;
-        ctx.fill();
+        if (n.type === 'core') {
+          // Central Sun Node: Rich Golden Radial Gradient
+          const coreGrad = ctx.createRadialGradient(n.x - 6, n.y - 6, 2, n.x, n.y, currentRadius);
+          coreGrad.addColorStop(0, '#fef08a');
+          coreGrad.addColorStop(0.6, '#f59e0b');
+          coreGrad.addColorStop(1, '#d97706');
+          ctx.fillStyle = coreGrad;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 18;
+          ctx.fill();
 
-        // White border
-        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.85)';
-        ctx.lineWidth = 1.2 / zoom;
-        ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6 / zoom;
+          ctx.stroke();
+
+          // Sun Icon inside core
+          ctx.font = `${Math.round(14 / Math.sqrt(zoom))}px system-ui`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🪐', n.x, n.y);
+        } else {
+          if (!isDimmed && isDark) {
+            ctx.shadowColor = n.color;
+            ctx.shadowBlur = n.type === 'folder' ? 12 : 8;
+          }
+          ctx.fillStyle = n.color;
+          ctx.fill();
+
+          ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 1.2 / zoom;
+          ctx.stroke();
+        }
         ctx.restore();
 
-        // Node Label Rendering
-        // Only render labels if zoom is high enough, or if node is hovered/selected/search match/folder
+        // E. Knowledge Density Badge on Folder Nodes (Shows Article Count!)
+        if (n.type === 'folder' && n.articleCount > 0 && !isDimmed) {
+          ctx.save();
+          const badgeText = String(n.articleCount);
+          const badgeRadius = 7.5 / Math.sqrt(zoom);
+          const badgeX = n.x + currentRadius * 0.72;
+          const badgeY = n.y - currentRadius * 0.72;
+
+          ctx.beginPath();
+          ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 1.4 / zoom;
+          ctx.stroke();
+
+          ctx.font = `700 ${Math.max(7, Math.round(9 / Math.sqrt(zoom)))}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = isDark ? n.accentColor || '#ffffff' : n.color;
+          ctx.fillText(badgeText, badgeX, badgeY);
+          ctx.restore();
+        }
+
+        // F. Node Label Rendering (Clean view: hubs show at all times, notes show on zoom or hover)
         const shouldShowLabel =
-          zoom >= 0.85 ||
+          zoom >= 1.25 ||
+          n.type === 'core' ||
           n.type === 'folder' ||
           isHovered ||
           isSelected ||
@@ -639,20 +1019,23 @@ export default function ObsidianGraphView({
             ctx.globalAlpha = 1.0;
           }
 
-          const fontSize = Math.max(9, Math.min(13, (n.type === 'folder' ? 12 : 11) / Math.sqrt(zoom)));
-          ctx.font = `${isHovered || isSelected || isSearchMatch ? '600' : '400'} ${fontSize}px system-ui, -apple-system, sans-serif`;
+          const fontSize = Math.max(
+            9,
+            Math.min(13, (n.type === 'core' ? 13 : n.type === 'folder' ? 12 : 11) / Math.sqrt(zoom))
+          );
+          ctx.font = `${isHovered || isSelected || isSearchMatch || n.type === 'core' ? '600' : '400'} ${fontSize}px system-ui, -apple-system, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
 
-          // Text halo/outline for high legibility
-          ctx.strokeStyle = isDark ? 'rgba(9, 13, 22, 0.85)' : 'rgba(248, 250, 252, 0.9)';
-          ctx.lineWidth = 3;
+          // Text halo
+          ctx.strokeStyle = isDark ? 'rgba(8, 12, 20, 0.9)' : 'rgba(248, 250, 252, 0.92)';
+          ctx.lineWidth = 3.5;
           ctx.lineJoin = 'round';
           ctx.strokeText(n.label, n.x, n.y + currentRadius + 4);
 
           ctx.fillStyle = isDark
-            ? (isHovered || isSelected || isSearchMatch ? '#ffffff' : '#cbd5e1')
-            : (isHovered || isSelected || isSearchMatch ? '#0f172a' : '#334155');
+            ? (isHovered || isSelected || isSearchMatch || n.type === 'core' ? '#ffffff' : '#cbd5e1')
+            : (isHovered || isSelected || isSearchMatch || n.type === 'core' ? '#0f172a' : '#334155');
           ctx.fillText(n.label, n.x, n.y + currentRadius + 4);
           ctx.restore();
         }
@@ -671,9 +1054,9 @@ export default function ObsidianGraphView({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [activeNodes, activeLinks, theme, hoveredNode, selectedNode, searchMatches, getNodeAt]);
+  }, [activeNodes, activeLinks, theme, layoutMode, hoveredNode, selectedNode, searchMatches, getNodeAt]);
 
-  // Mouse / Touch interaction handlers
+  // Mouse / Touch handlers
   const handleMouseDown = (e) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -689,7 +1072,7 @@ export default function ObsidianGraphView({
       hit.pinned = true;
       hit.fx = hit.x;
       hit.fy = hit.y;
-      alphaRef.current = Math.max(alphaRef.current, 0.5); // wake physics
+      alphaRef.current = Math.max(alphaRef.current, 0.5);
     } else {
       isPanningRef.current = true;
       dragStartRef.current = {
@@ -706,14 +1089,12 @@ export default function ObsidianGraphView({
     const mouseY = e.clientY - rect.top;
     mousePosRef.current = { x: mouseX, y: mouseY };
 
-    // Pan camera
     if (isPanningRef.current) {
       cameraRef.current.x = (mouseX - dragStartRef.current.x) / cameraRef.current.zoom;
       cameraRef.current.y = (mouseY - dragStartRef.current.y) / cameraRef.current.zoom;
       return;
     }
 
-    // Drag node
     if (isDraggingRef.current && dragTargetRef.current) {
       const world = screenToWorld(mouseX, mouseY, rect.width, rect.height);
       const node = dragTargetRef.current;
@@ -725,7 +1106,6 @@ export default function ObsidianGraphView({
       return;
     }
 
-    // Check hover
     const world = screenToWorld(mouseX, mouseY, rect.width, rect.height);
     const hit = getNodeAt(world.x, world.y);
     setHoveredNode(hit);
@@ -742,7 +1122,6 @@ export default function ObsidianGraphView({
     const mouseY = e.clientY - rect.top;
 
     if (isDraggingRef.current && dragTargetRef.current) {
-      // Unpin node after dragging so physics relaxes it smoothly
       dragTargetRef.current.pinned = false;
       dragTargetRef.current = null;
       isDraggingRef.current = false;
@@ -752,7 +1131,6 @@ export default function ObsidianGraphView({
       isPanningRef.current = false;
     }
 
-    // Handle click selection if not dragged far
     const world = screenToWorld(mouseX, mouseY, rect.width, rect.height);
     const hit = getNodeAt(world.x, world.y);
     if (hit) {
@@ -760,7 +1138,6 @@ export default function ObsidianGraphView({
     }
   };
 
-  // Zoom with mouse wheel
   const handleWheel = (e) => {
     e.preventDefault();
     if (!canvasRef.current) return;
@@ -770,9 +1147,8 @@ export default function ObsidianGraphView({
 
     const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
     const currentZoom = cameraRef.current.zoom;
-    const newZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.25), 3.5);
+    const newZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 3.5);
 
-    // Zoom centered around mouse cursor
     const worldBefore = screenToWorld(mouseX, mouseY, rect.width, rect.height);
     cameraRef.current.zoom = newZoom;
     const worldAfter = screenToWorld(mouseX, mouseY, rect.width, rect.height);
@@ -782,13 +1158,11 @@ export default function ObsidianGraphView({
     alphaRef.current = Math.max(alphaRef.current, 0.1);
   };
 
-  // Reset Camera View
   const handleResetCamera = () => {
-    cameraRef.current = { x: 0, y: 0, zoom: 1 };
+    cameraRef.current = { x: 0, y: 0, zoom: 0.95 };
     alphaRef.current = 0.8;
   };
 
-  // Toggle Fullscreen
   const handleToggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!isFullscreen) {
@@ -812,11 +1186,9 @@ export default function ObsidianGraphView({
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
-  // Quick Preview Details for Selected Node
   const selectedNodeDetails = useMemo(() => {
     if (!selectedNode) return null;
 
-    // Direct connected neighbors
     const neighborIds = simStateRef.current.adjacency.get(selectedNode.id) || new Set();
     const neighbors = Array.from(neighborIds)
       .map((id) => simStateRef.current.nodeMap.get(id))
@@ -834,10 +1206,10 @@ export default function ObsidianGraphView({
       className={`relative w-full overflow-hidden select-none transition-colors duration-200 ${
         isFullscreen
           ? 'fixed inset-0 z-50 h-screen w-screen bg-slate-950'
-          : 'h-[720px] rounded-2xl border shadow-sm'
+          : 'h-[750px] rounded-2xl border shadow-sm'
       } ${
         theme === 'dark'
-          ? 'bg-[#090d16] border-slate-800 text-slate-100'
+          ? 'bg-[#080c14] border-slate-800 text-slate-100'
           : 'bg-[#f8fafc] border-slate-200 text-slate-900'
       }`}
     >
@@ -863,7 +1235,7 @@ export default function ObsidianGraphView({
                 : 'bg-white/85 border-slate-200/80 text-slate-700'
             }`}
           >
-            <span className="text-blue-500">🕸️</span>
+            <span className="text-amber-400">🪐</span>
             <span>
               {t('graphNodesCount', { count: activeNodes.length })} ·{' '}
               {t('graphEdgesCount', { count: activeLinks.length })}
@@ -877,7 +1249,7 @@ export default function ObsidianGraphView({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('searchGraph')}
-              className={`w-48 sm:w-64 rounded-xl px-3 py-1.5 pl-8 text-xs font-normal backdrop-blur-md border transition-all focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
+              className={`w-44 sm:w-60 rounded-xl px-3 py-1.5 pl-8 text-xs font-normal backdrop-blur-md border transition-all focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
                 theme === 'dark'
                   ? 'bg-slate-900/80 border-slate-800 text-slate-100 placeholder-slate-500'
                   : 'bg-white/85 border-slate-200/80 text-slate-900 placeholder-slate-400'
@@ -898,8 +1270,54 @@ export default function ObsidianGraphView({
           </div>
         </div>
 
-        {/* Center/Right: Filter Toggles & Actions */}
-        <div className="flex items-center gap-1.5 pointer-events-auto">
+        {/* Center/Right: Layout Switcher, Filter Toggles & Actions */}
+        <div className="flex items-center gap-1.5 pointer-events-auto flex-wrap">
+          {/* Layout Mode Switcher */}
+          <div
+            className={`flex items-center gap-1 rounded-xl p-1 backdrop-blur-md border shadow-xs ${
+              theme === 'dark'
+                ? 'bg-slate-900/80 border-slate-800 text-slate-300'
+                : 'bg-white/85 border-slate-200/80 text-slate-700'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setLayoutMode('planetary');
+                alphaRef.current = 1.0;
+              }}
+              title={t('planetaryLayout')}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                layoutMode === 'planetary'
+                  ? theme === 'dark'
+                    ? 'bg-amber-500/20 text-amber-300 font-semibold'
+                    : 'bg-amber-50 text-amber-700 font-semibold'
+                  : 'text-slate-400 opacity-60 hover:opacity-100'
+              }`}
+            >
+              <span>🪐</span>
+              <span className="hidden sm:inline">{t('planetaryLayout')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLayoutMode('free');
+                alphaRef.current = 1.0;
+              }}
+              title={t('freeLayout')}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                layoutMode === 'free'
+                  ? theme === 'dark'
+                    ? 'bg-blue-500/20 text-blue-400 font-semibold'
+                    : 'bg-blue-50 text-blue-700 font-semibold'
+                  : 'text-slate-400 opacity-60 hover:opacity-100'
+              }`}
+            >
+              <span>🌐</span>
+              <span className="hidden sm:inline">{t('freeLayout')}</span>
+            </button>
+          </div>
+
           {/* Filter Toggles */}
           <div
             className={`flex items-center gap-1 rounded-xl p-1 backdrop-blur-md border shadow-xs ${
@@ -915,7 +1333,7 @@ export default function ObsidianGraphView({
                 setShowFolders(!showFolders);
                 alphaRef.current = 0.5;
               }}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${
                 showFolders
                   ? theme === 'dark'
                     ? 'bg-blue-500/20 text-blue-400 font-semibold'
@@ -924,7 +1342,7 @@ export default function ObsidianGraphView({
               }`}
             >
               <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <span>{t('showFolders')}</span>
+              <span className="hidden sm:inline">{t('showFolders')}</span>
             </button>
 
             {/* Toggle Notes */}
@@ -934,7 +1352,7 @@ export default function ObsidianGraphView({
                 setShowNotes(!showNotes);
                 alphaRef.current = 0.5;
               }}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${
                 showNotes
                   ? theme === 'dark'
                     ? 'bg-emerald-500/20 text-emerald-400 font-semibold'
@@ -943,7 +1361,7 @@ export default function ObsidianGraphView({
               }`}
             >
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>{t('showNotes')}</span>
+              <span className="hidden sm:inline">{t('showNotes')}</span>
             </button>
 
             {/* Toggle Tags */}
@@ -953,7 +1371,7 @@ export default function ObsidianGraphView({
                 setShowTags(!showTags);
                 alphaRef.current = 0.5;
               }}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${
                 showTags
                   ? theme === 'dark'
                     ? 'bg-purple-500/20 text-purple-400 font-semibold'
@@ -962,7 +1380,7 @@ export default function ObsidianGraphView({
               }`}
             >
               <span className="h-2 w-2 rounded-full bg-purple-500" />
-              <span>{t('showTags')}</span>
+              <span className="hidden sm:inline">{t('showTags')}</span>
             </button>
           </div>
 
@@ -1010,34 +1428,42 @@ export default function ObsidianGraphView({
         </div>
       </div>
 
-      {/* 3. Bottom Helper Legend & Tip */}
+      {/* 3. Bottom Helper Legend with Domain Sectors & Density Guide */}
       <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-2 pointer-events-none">
         <div
-          className={`flex items-center gap-3 rounded-xl px-3 py-1.5 text-[11px] font-medium backdrop-blur-md border shadow-xs ${
+          className={`flex flex-wrap items-center gap-3 rounded-xl px-3 py-1.5 text-[11px] font-medium backdrop-blur-md border shadow-xs ${
             theme === 'dark'
-              ? 'bg-slate-900/80 border-slate-800 text-slate-400'
-              : 'bg-white/85 border-slate-200/80 text-slate-600'
+              ? 'bg-slate-900/80 border-slate-800 text-slate-300'
+              : 'bg-white/85 border-slate-200/80 text-slate-700'
           }`}
         >
+          {/* Domain Spectrum Indicators */}
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
-            <span>{t('showFolders')}</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shadow-xs shadow-sky-500/50" />
+            <span>{language === 'th' ? 'ซอฟต์แวร์' : 'Software'}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span>{t('showNotes')}</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shadow-xs shadow-orange-500/50" />
+            <span>{language === 'th' ? 'ฮาร์ดแวร์ & CCTV' : 'Hardware & CCTV'}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-purple-500" />
-            <span>{t('showTags')}</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
+            <span>{language === 'th' ? 'เครือข่าย' : 'Network'}</span>
           </div>
-          <span className="hidden sm:inline border-l border-slate-700/40 pl-2 text-[10px] text-slate-400">
-            {t('graphHelpTooltip')}
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shadow-xs shadow-purple-500/50" />
+            <span>{language === 'th' ? 'ความปลอดภัย' : 'Security'}</span>
+          </div>
+
+          <span className="hidden md:inline border-l border-slate-700/50 pl-2 text-[10px] text-amber-400">
+            {language === 'th'
+              ? '🪐 รัศมีวงเรืองแสงและขนาดโหนดแสดงความหนาแน่นความรู้'
+              : '🪐 Halo radius & node size reflect knowledge density'}
           </span>
         </div>
       </div>
 
-      {/* 4. Floating Quick Preview Card (Drawer on Selected Node) */}
+      {/* 4. Floating Quick Preview Card */}
       {selectedNodeDetails && (
         <div
           className={`absolute bottom-3 right-3 w-80 sm:w-96 rounded-2xl p-4 backdrop-blur-xl border shadow-2xl transition-all duration-200 pointer-events-auto ${
@@ -1046,19 +1472,23 @@ export default function ObsidianGraphView({
               : 'bg-white/95 border-slate-200 text-slate-900'
           }`}
         >
-          {/* Header with Type badge & Close */}
+          {/* Header */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <span
                 className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                  selectedNodeDetails.type === 'folder'
+                  selectedNodeDetails.type === 'core'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : selectedNodeDetails.type === 'folder'
                     ? 'bg-blue-500/20 text-blue-400'
                     : selectedNodeDetails.type === 'note'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : 'bg-purple-500/20 text-purple-400'
                 }`}
               >
-                {selectedNodeDetails.type === 'folder'
+                {selectedNodeDetails.type === 'core'
+                  ? (language === 'th' ? 'แกนกลางคลังความรู้' : 'Knowledge Core')
+                  : selectedNodeDetails.type === 'folder'
                   ? t('showFolders')
                   : selectedNodeDetails.type === 'note'
                   ? t('showNotes')
@@ -1081,10 +1511,37 @@ export default function ObsidianGraphView({
           </div>
 
           {/* Title */}
-          <h4 className="font-semibold text-sm leading-snug line-clamp-2 mb-1.5">
-            {selectedNodeDetails.icon ? `${selectedNodeDetails.icon} ` : ''}
-            {selectedNodeDetails.label}
+          <h4 className="font-semibold text-sm leading-snug line-clamp-2 mb-1.5 flex items-center gap-1.5">
+            {selectedNodeDetails.icon ? <span>{selectedNodeDetails.icon}</span> : null}
+            <span>{selectedNodeDetails.label}</span>
           </h4>
+
+          {/* Central Sun Breakdown Overview */}
+          {selectedNodeDetails.type === 'core' && selectedNodeDetails.domainStats && (
+            <div className="my-2.5 rounded-xl border border-slate-800/80 bg-slate-950/40 p-2.5 text-xs space-y-1.5">
+              <span className="block font-semibold text-amber-400 text-[11px] uppercase tracking-wider">
+                {language === 'th' ? 'สรุปความหนาแน่นรายเซกเตอร์' : 'Domain Knowledge Breakdown'}
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="flex items-center justify-between rounded-lg bg-sky-950/30 border border-sky-800/30 px-2 py-1 text-sky-300">
+                  <span>💻 ซอฟต์แวร์</span>
+                  <span className="font-bold">{selectedNodeDetails.domainStats.software?.articleCount || 0}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-orange-950/30 border border-orange-800/30 px-2 py-1 text-orange-300">
+                  <span>⚙️ ฮาร์ดแวร์</span>
+                  <span className="font-bold">{selectedNodeDetails.domainStats.hardware?.articleCount || 0}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-emerald-950/30 border border-emerald-800/30 px-2 py-1 text-emerald-300">
+                  <span>🌐 เครือข่าย</span>
+                  <span className="font-bold">{selectedNodeDetails.domainStats.network?.articleCount || 0}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-purple-950/30 border border-purple-800/30 px-2 py-1 text-purple-300">
+                  <span>🔒 ความปลอดภัย</span>
+                  <span className="font-bold">{selectedNodeDetails.domainStats.security?.articleCount || 0}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Note Summary / Snippet */}
           {selectedNodeDetails.summary && (
@@ -1117,21 +1574,23 @@ export default function ObsidianGraphView({
               <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
                 {t('connectedLinks')} ({selectedNodeDetails.neighbors.length})
               </span>
-              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
+              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
                 {selectedNodeDetails.neighbors.map((neighbor) => (
                   <button
                     key={neighbor.id}
                     type="button"
                     onClick={() => setSelectedNode(neighbor)}
                     className={`truncate max-w-[170px] rounded-md px-2 py-0.5 text-[11px] transition-colors ${
-                      neighbor.type === 'folder'
+                      neighbor.type === 'core'
+                        ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                        : neighbor.type === 'folder'
                         ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
                         : neighbor.type === 'note'
                         ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
                         : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
                     }`}
                   >
-                    {neighbor.type === 'folder' ? '📁 ' : neighbor.type === 'tag' ? '#' : '📄 '}
+                    {neighbor.icon || (neighbor.type === 'folder' ? '📁 ' : neighbor.type === 'tag' ? '#' : '📄 ')}
                     {neighbor.label}
                   </button>
                 ))}

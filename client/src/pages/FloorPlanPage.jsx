@@ -85,12 +85,12 @@ export default function FloorPlanPage() {
   const currentFacility = useMemo(() => {
     return facilities.find((f) => f.id === selectedBuildingId) || {
       id: selectedBuildingId,
-      name: selectedBuildingId === 'campus' ? 'ผังบริเวณโครงการรวม 20 ไร่' : 'อาคาร 1: สำนักงานใหญ่',
-      shortName: selectedBuildingId === 'campus' ? 'ผัง 20 ไร่' : 'อาคาร 1 (HQ)',
+      name: selectedBuildingId === 'campus' ? t('defaultCampusName') : t('defaultBuildingName'),
+      shortName: selectedBuildingId === 'campus' ? t('defaultCampusShortName') : t('defaultBuildingShortName'),
       type: selectedBuildingId === 'campus' ? 'campus' : selectedBuildingId.startsWith('w') ? 'warehouse' : 'office',
       totalFloors: selectedBuildingId === 'campus' ? 1 : selectedBuildingId === 'b1' ? 4 : selectedBuildingId.startsWith('w') ? 1 : 3,
     };
-  }, [facilities, selectedBuildingId]);
+  }, [facilities, selectedBuildingId, t]);
 
   // Plans belonging to the current building
   const floorPlansInBuilding = useMemo(() => {
@@ -144,12 +144,12 @@ export default function FloorPlanPage() {
     try {
       await addFloorMutation.mutateAsync({
         id: currentFacility.facilityId || currentFacility.id || currentFacility._id,
-        payload: { floorName: `ชั้น ${nextFloor}` },
+        payload: { floorName: `${t('floorLabel')} ${nextFloor}` },
       });
-      showToast(`เพิ่มชั้น ${nextFloor} ให้กับ ${currentFacility.name} เรียบร้อยแล้ว!`, 'success');
+      showToast(t('floorAddedSuccess', { floor: nextFloor, facility: currentFacility.name }), 'success');
       setCurrentFloorNumber(nextFloor);
     } catch (err) {
-      showToast(err?.response?.data?.message || err.message || 'ไม่สามารถเพิ่มชั้นได้', 'error');
+      showToast(err?.response?.data?.message || err.message || t('errorLoadingFloorPlans'), 'error');
     }
   };
 
@@ -159,7 +159,7 @@ export default function FloorPlanPage() {
     const fNum = floorNum || currentFloorNumber;
     
     if (floorPlansInBuilding.length <= 1) {
-      showToast('ไม่สามารถลบได้ เนื่องจากอาคารต้องมีอย่างน้อย 1 ชั้น', 'error');
+      showToast(t('minFloorsError'), 'error');
       return;
     }
 
@@ -177,10 +177,10 @@ export default function FloorPlanPage() {
         id: floorToDelete.facilityId,
         floorNumber: floorToDelete.floorNumber,
       });
-      showToast(`ลบชั้น ${floorToDelete.floorNumber} ของ ${floorToDelete.facilityName} เรียบร้อยแล้ว`, 'success');
+      showToast(t('floorDeletedSuccess', { floor: floorToDelete.floorNumber, facility: floorToDelete.facilityName }), 'success');
       setCurrentFloorNumber(1);
     } catch (err) {
-      showToast(err?.response?.data?.message || err.message || 'ไม่สามารถลบชั้นได้', 'error');
+      showToast(err?.response?.data?.message || err.message || t('errorLoadingFloorPlans'), 'error');
     } finally {
       setFloorToDelete(null);
     }
@@ -214,10 +214,10 @@ export default function FloorPlanPage() {
           scaleMetersPerGrid: updatedPlan.scaleMetersPerGrid,
         },
       });
-      showToast(t('floorPlanSaved') || 'บันทึกผังอาคารและทรัพย์สินเรียบร้อยแล้ว!', 'success');
+      showToast(t('floorPlanSaved'), 'success');
       setMode('view');
     } catch (err) {
-      showToast(err?.response?.data?.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+      showToast(err?.response?.data?.message || t('errorLoadingFloorPlans'), 'error');
     }
   };
 
@@ -227,27 +227,26 @@ export default function FloorPlanPage() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">
-            {t('dashboard')} / {t('floorPlan') || 'ผังอาคารและทรัพย์สิน'}
+            {t('dashboard')} / {t('floorPlan')}
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl flex items-center gap-2">
-            🏢 {t('floorPlanTitle') || 'ระบบผังโครงการ 20 ไร่ และระบุตำแหน่งทรัพย์สิน'}
+            🏢 {t('floorPlanTitle')}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-3xl">
-            {t('floorPlanSubtitle') ||
-              'ผังบริเวณรวม 20 ไร่ (~32,000 ตร.ม.), 5 อาคารสำนักงาน, 5 โกดังสินค้า, จำลองมุมกล้อง CCTV Coverage และระบุตำแหน่งทรัพย์สิน'}
+            {t('floorPlanSubtitle')}
           </p>
         </div>
 
         {/* Global Search & Admin Mode Switcher */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick 20-Rai Global Search Button */}
+          {/* Quick Global Campus Search Button */}
           <button
             type="button"
             onClick={() => setIsCampusSearchOpen(true)}
             className="flex items-center gap-1.5 rounded-xl border border-primary-300 bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 shadow-xs hover:bg-primary-100 hover:border-primary-400 transition"
           >
             <span>🔍</span>
-            <span>ค้นหาทรัพย์สินทั่วทั้ง 20 ไร่</span>
+            <span>{t('searchAllCampusAssets')}</span>
           </button>
 
           {/* Quick Asset Inventory Button */}
@@ -257,7 +256,7 @@ export default function FloorPlanPage() {
             className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 hover:border-indigo-300 transition"
           >
             <span>📋</span>
-            <span>ตารางจัดการทรัพย์สิน</span>
+            <span>{t('assetInventoryTable')}</span>
           </button>
 
           {/* Quick Maintenance & KPI Button */}
@@ -266,7 +265,7 @@ export default function FloorPlanPage() {
             className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-100 hover:border-emerald-300 transition"
           >
             <span>🔧</span>
-            <span>แจ้งปัญหา & วัดผล KPI</span>
+            <span>{t('reportIssueAndKpi')}</span>
           </Link>
 
           {isAdmin && (
@@ -280,7 +279,7 @@ export default function FloorPlanPage() {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                👁️ {t('userMode') || 'โหมดพนักงาน'}
+                👁️ {t('userMode')}
               </button>
               <button
                 type="button"
@@ -291,7 +290,7 @@ export default function FloorPlanPage() {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ✏️ {t('adminMode') || 'โหมดแอดมิน / ออกแบบ'}
+                ✏️ {t('adminMode')}
               </button>
             </div>
           )}
@@ -312,13 +311,13 @@ export default function FloorPlanPage() {
       {/* Loading or Error */}
       {isLoading && (
         <div className="flex h-96 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-400">
-          ⏳ กำลังโหลดข้อมูลผังอาคารและทรัพย์สิน...
+          ⏳ {t('loadingFloorPlans')}
         </div>
       )}
 
       {isError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
-          {error?.message || 'ไม่สามารถโหลดข้อมูลผังอาคารได้'}
+          {error?.message || t('errorLoadingFloorPlans')}
         </div>
       )}
 
@@ -372,6 +371,7 @@ export default function FloorPlanPage() {
         onClose={() => setIsAssetInventoryOpen(false)}
         currentFloorPlan={currentFloorPlan}
         allFloorPlans={floorPlans}
+        departments={departments}
         onTargetAsset={handleSelectAssetResult}
         onRequestMaintenance={(asset) => setReportingAsset(asset)}
       />
@@ -402,7 +402,7 @@ export default function FloorPlanPage() {
         targetPlan={currentFloorPlan}
         allFloorPlans={floorPlans}
         onSuccess={() => {
-          showToast('คัดลอกโครงสร้างแปลนและผนังเรียบร้อยแล้ว!', 'success');
+          showToast(t('copyLayoutSuccess'), 'success');
         }}
       />
 
@@ -411,13 +411,13 @@ export default function FloorPlanPage() {
         open={Boolean(floorToDelete)}
         onClose={() => setFloorToDelete(null)}
         onConfirm={handleConfirmDeleteFloor}
-        title="ยืนยันการลบชั้นแปลนอาคาร"
+        title={t('confirmDeleteFloorTitle')}
         message={
           floorToDelete
-            ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบ "ชั้น ${floorToDelete.floorNumber}" ของ ${floorToDelete.facilityName}?\n\nข้อมูลโครงสร้างห้อง กำแพง และอุปกรณ์ในชั้นนี้จะถูกลบออกอย่างถาวร!`
+            ? t('confirmDeleteFloorMsg', { floor: floorToDelete.floorNumber, facility: floorToDelete.facilityName })
             : ''
         }
-        confirmLabel="ยืนยันลบชั้นนี้"
+        confirmLabel={t('confirmDeleteFloorBtn')}
         danger={true}
         loading={deleteFloorMutation.isPending}
       />
