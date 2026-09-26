@@ -122,4 +122,110 @@ export function getPolygonCenter(flatPoints = []) {
   };
 }
 
+/**
+ * Calculates the bounding box enclosing all elements of a floor plan
+ * (rooms, walls, doors, assets, and background image)
+ */
+export function calculatePlanBounds({
+  rooms = [],
+  walls = [],
+  doors = [],
+  assets = [],
+  backgroundImage = null,
+} = {}) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  // Rooms
+  for (const r of rooms || []) {
+    if (r.type === 'polygon' && Array.isArray(r.points) && r.points.length >= 2) {
+      for (let i = 0; i < r.points.length; i += 2) {
+        const px = r.points[i];
+        const py = r.points[i + 1];
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+      }
+    } else {
+      const rx = r.x || 0;
+      const ry = r.y || 0;
+      const rw = r.width || 0;
+      const rh = r.height || 0;
+      if (rx < minX) minX = rx;
+      if (rx + rw > maxX) maxX = rx + rw;
+      if (ry < minY) minY = ry;
+      if (ry + rh > maxY) maxY = ry + rh;
+    }
+  }
+
+  // Walls
+  for (const w of walls || []) {
+    const coords = getWallCoords(w);
+    if (coords.x1 < minX) minX = coords.x1;
+    if (coords.x2 < minX) minX = coords.x2;
+    if (coords.x1 > maxX) maxX = coords.x1;
+    if (coords.x2 > maxX) maxX = coords.x2;
+    if (coords.y1 < minY) minY = coords.y1;
+    if (coords.y2 < minY) minY = coords.y2;
+    if (coords.y1 > maxY) maxY = coords.y1;
+    if (coords.y2 > maxY) maxY = coords.y2;
+  }
+
+  // Doors
+  for (const d of doors || []) {
+    const dx = d.x || 0;
+    const dy = d.y || 0;
+    if (dx < minX) minX = dx;
+    if (dx > maxX) maxX = dx;
+    if (dy < minY) minY = dy;
+    if (dy > maxY) maxY = dy;
+  }
+
+  // Assets
+  for (const a of assets || []) {
+    const ax = a.x || 0;
+    const ay = a.y || 0;
+    if (ax < minX) minX = ax;
+    if (ax > maxX) maxX = ax;
+    if (ay < minY) minY = ay;
+    if (ay > maxY) maxY = ay;
+  }
+
+  // Background Image
+  if (backgroundImage?.url && backgroundImage?.width && backgroundImage?.height) {
+    const bx = backgroundImage.x || 0;
+    const by = backgroundImage.y || 0;
+    const bw = backgroundImage.width;
+    const bh = backgroundImage.height;
+    if (bx < minX) minX = bx;
+    if (bx + bw > maxX) maxX = bx + bw;
+    if (by < minY) minY = by;
+    if (by + bh > maxY) maxY = by + bh;
+  }
+
+  // Fallback to default canvas bounds if no elements exist
+  if (minX === Infinity || maxX === -Infinity || maxX <= minX || maxY <= minY) {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 1200,
+      maxY: 800,
+      width: 1200,
+      height: 800,
+    };
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(100, maxX - minX),
+    height: Math.max(100, maxY - minY),
+  };
+}
+
 

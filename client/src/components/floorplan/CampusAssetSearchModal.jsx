@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useCampusAssets } from '../../hooks/useFloorPlans.js';
 import useLanguage from '../../hooks/useLanguage.js';
 
@@ -21,8 +22,8 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 pt-16 backdrop-blur-sm sm:p-6 sm:pt-24">
+  const modalNode = (
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 pt-16 backdrop-blur-sm sm:p-6 sm:pt-24">
       <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all">
         {/* Header */}
         <div className="border-b border-slate-100 p-4 sm:p-5">
@@ -213,5 +214,7 @@ export default function CampusAssetSearchModal({ isOpen, onClose, onSelectAssetR
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }
 

@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import useLanguage from '../../hooks/useLanguage.js';
 
-export default function Modal({ open, onClose, title, children, size = 'md' }) {
+export default function Modal({ open, onClose, title, children, size = 'md', zIndex = 'z-[80]' }) {
   const { t } = useLanguage();
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -62,8 +63,8 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
     full: 'max-w-[96vw]',
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6" onClick={onClose}>
+  const modalNode = (
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-black/40 px-4 py-6`} onClick={onClose}>
       <div
         ref={dialogRef}
         className={`w-full ${sizes[size] || sizes.md} max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl`}
@@ -90,4 +91,6 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }

@@ -172,4 +172,27 @@ describe('Polygon Calculation Utilities', () => {
     expect(center.width).toBe(200);
     expect(center.height).toBe(100);
   });
+
+  it('should calculate floor plan bounds correctly enclosing rooms, walls, and assets', async () => {
+    const { calculatePlanBounds } = await import('../../components/floorplan/snapUtils.js');
+    const bounds = calculatePlanBounds({
+      rooms: [
+        { x: 100, y: 100, width: 400, height: 300 },
+        { type: 'polygon', points: [500, 100, 800, 100, 800, 400, 500, 400] },
+      ],
+      walls: [
+        { points: [100, 100, 100, 500] },
+      ],
+      assets: [
+        { x: 900, y: 250 },
+      ],
+    });
+
+    expect(bounds.minX).toBe(100);
+    expect(bounds.minY).toBe(100);
+    expect(bounds.maxX).toBe(900);
+    expect(bounds.maxY).toBe(500);
+    expect(bounds.width).toBe(800);
+    expect(bounds.height).toBe(400);
+  });
 });

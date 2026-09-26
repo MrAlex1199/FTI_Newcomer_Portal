@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import useLanguage from '../../hooks/useLanguage.js';
 import { useMoveAsset } from '../../hooks/useFloorPlans.js';
 import AssetEditModal from './AssetEditModal.jsx';
@@ -322,8 +323,8 @@ export default function AssetInventoryModal({
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 p-0 sm:p-4 md:p-6 backdrop-blur-xs animate-in fade-in">
+  const modalNode = (
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/60 p-0 sm:p-4 md:p-6 backdrop-blur-xs animate-in fade-in">
       <div className="flex h-[94vh] sm:h-[88vh] w-full max-w-7xl flex-col rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         {/* Mobile Pull/Drag Indicator */}
         <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-2 mb-1 sm:hidden flex-shrink-0" />
@@ -897,5 +898,7 @@ export default function AssetInventoryModal({
       )}
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }
 

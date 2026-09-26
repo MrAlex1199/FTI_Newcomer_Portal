@@ -20,7 +20,7 @@ export default function AssetEditModal({
       open={open}
       onClose={onClose}
       title={asset.id ? `⚙️ ${t('editAssetDetails') || 'แก้ไขข้อมูลทรัพย์สิน'}: ${asset.code || asset.name || ''}` : `✨ ${t('btnAddNewAsset') || 'เพิ่มอุปกรณ์ใหม่'}`}
-      size="md"
+      size="lg"
     >
       <AssetEditForm
         asset={asset}
@@ -55,6 +55,20 @@ function AssetEditForm({ asset, departments, allFloorPlans, onClose, onSave, onD
   const [parkingSlot, setParkingSlot] = useState(asset.parkingSlot || '');
   const [vehicleModel, setVehicleModel] = useState(asset.vehicleModel || '');
   const [notes, setNotes] = useState(asset.notes || '');
+
+  // IT Computer & Operating System states
+  const [pcName, setPcName] = useState(asset.pcName || '');
+  const [osVersion, setOsVersion] = useState(asset.osVersion || '');
+  const [cpu, setCpu] = useState(asset.cpu || '');
+  const [ram, setRam] = useState(asset.ram || '');
+  const [storage, setStorage] = useState(asset.storage || '');
+  const [peripherals, setPeripherals] = useState(
+    Array.isArray(asset.peripherals) ? asset.peripherals.join(', ') : (asset.peripherals || '')
+  );
+  const [installedSoftware, setInstalledSoftware] = useState(
+    Array.isArray(asset.installedSoftware) ? asset.installedSoftware.join(', ') : (asset.installedSoftware || '')
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -96,6 +110,18 @@ function AssetEditForm({ asset, departments, allFloorPlans, onClose, onSave, onD
         parkingSlot: parkingSlot.trim(),
         vehicleModel: vehicleModel.trim(),
         notes: notes.trim(),
+        // IT Computer specs
+        pcName: pcName.trim(),
+        osVersion: osVersion.trim(),
+        cpu: cpu.trim(),
+        ram: ram.trim(),
+        storage: storage.trim(),
+        peripherals: peripherals
+          ? peripherals.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+        installedSoftware: installedSoftware
+          ? installedSoftware.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
         floorPlanId: targetFloorId,
         x: Number.isFinite(Number(asset.x)) ? Number(asset.x) : 100,
         y: Number.isFinite(Number(asset.y)) ? Number(asset.y) : 100,
@@ -217,6 +243,113 @@ function AssetEditForm({ asset, departments, allFloorPlans, onClose, onSave, onD
           />
         </div>
       </div>
+
+      {/* Computer & Operating System Specific Fields */}
+      {type === 'computer' && (
+        <div className="rounded-xl bg-slate-900 text-slate-100 p-3.5 border border-indigo-500/30 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="font-semibold text-indigo-300 flex items-center gap-1.5 text-xs">
+              💻 {t('itSpecsSectionTitle') || 'ข้อมูลคอมพิวเตอร์และระบบปฏิบัติการ (IT Asset Specification)'}
+            </span>
+            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono font-medium">
+              Admin & IT Only
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('pcNameLabel') || 'ชื่อเครื่องคอมพิวเตอร์ (PC Name / Hostname)'}
+              </label>
+              <input
+                type="text"
+                value={pcName}
+                onChange={(e) => setPcName(e.target.value)}
+                placeholder="เช่น FTI-NB-MKT01, DESKTOP-HQ04"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs font-mono font-bold text-emerald-400 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('osVersionLabel') || 'ระบบปฏิบัติการ (Operating System / Windows)'}
+              </label>
+              <input
+                type="text"
+                value={osVersion}
+                onChange={(e) => setOsVersion(e.target.value)}
+                placeholder="เช่น Windows 11 Pro 23H2, Windows 10 Enterprise"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-sky-300 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('cpuLabel') || 'หน่วยประมวลผล (CPU)'}
+              </label>
+              <input
+                type="text"
+                value={cpu}
+                onChange={(e) => setCpu(e.target.value)}
+                placeholder="เช่น Intel Core i7-13700, Ryzen 7 7800X3D"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('ramLabel') || 'หน่วยความจำ (RAM)'}
+              </label>
+              <input
+                type="text"
+                value={ram}
+                onChange={(e) => setRam(e.target.value)}
+                placeholder="เช่น 16 GB DDR5, 32 GB DDR4"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('storageLabel') || 'พื้นที่จัดเก็บข้อมูล (Storage)'}
+              </label>
+              <input
+                type="text"
+                value={storage}
+                onChange={(e) => setStorage(e.target.value)}
+                placeholder="เช่น 512 GB NVMe SSD + 1 TB HDD"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('peripheralsLabel') || 'อุปกรณ์ต่อพ่วง (Peripherals - คั่นด้วยเครื่องหมายจุลภาค ,)'}
+              </label>
+              <input
+                type="text"
+                value={peripherals}
+                onChange={(e) => setPeripherals(e.target.value)}
+                placeholder="เช่น จอ Dell 27 นิ้ว 2 จอ, เมาส์ไร้สาย, คีย์บอร์ดกลไก, Headset"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-400 placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-[11px] font-semibold text-slate-300 mb-0.5">
+                {t('installedSoftwareLabel') || 'โปรแกรมที่ติดตั้ง / ซอฟต์แวร์ (Installed Software - คั่นด้วยเครื่องหมายจุลภาค ,)'}
+              </label>
+              <textarea
+                rows={2}
+                value={installedSoftware}
+                onChange={(e) => setInstalledSoftware(e.target.value)}
+                placeholder="เช่น Microsoft 365, AutoCAD 2024, Adobe Photoshop CC, ERP Client, Zoom"
+                className="w-full rounded border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-400 placeholder:text-slate-500 resize-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CCTV Specific FOV & Angle Controls */}
       {type === 'cctv' && (

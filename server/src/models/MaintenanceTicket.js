@@ -39,6 +39,16 @@ const maintenanceTicketSchema = new mongoose.Schema(
     roomName: { type: String, trim: true, default: 'พื้นที่ส่วนกลาง' },
     floorPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'FloorPlan' },
 
+    // Machine & IT Diagnostics Snapshot (for computer assets)
+    pcName: { type: String, trim: true, default: '' },
+    osVersion: { type: String, trim: true, default: '' },
+    cpu: { type: String, trim: true, default: '' },
+    ram: { type: String, trim: true, default: '' },
+    storage: { type: String, trim: true, default: '' },
+    specs: { type: String, trim: true, default: '' },
+    peripherals: { type: [String], default: [] },
+    installedSoftware: { type: [String], default: [] },
+
     // Issue Description & Priority
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true, default: '' },

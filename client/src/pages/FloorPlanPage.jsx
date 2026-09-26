@@ -344,7 +344,7 @@ export default function FloorPlanPage() {
               onDeleteFloor={handleQuickDeleteFloor}
             />
           ) : (
-            <div className="h-[760px] w-full">
+            <div className="h-[calc(100vh-220px)] min-h-[720px] max-h-[920px] w-full">
               <FloorPlanDesigner
                 floorPlan={currentFloorPlan}
                 allFloorPlans={floorPlans}
@@ -352,6 +352,10 @@ export default function FloorPlanPage() {
                 onSave={handleSaveFloorPlan}
                 isSaving={updateFloorPlanMutation.isPending}
                 onClose={() => setMode('view')}
+                currentFacility={currentFacility}
+                floorPlansInBuilding={floorPlansInBuilding}
+                currentFloorNumber={currentFloorNumber}
+                onSelectFloor={handleSelectFloor}
               />
             </div>
           )}

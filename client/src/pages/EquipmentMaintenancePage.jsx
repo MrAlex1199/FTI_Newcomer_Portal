@@ -111,6 +111,14 @@ export default function EquipmentMaintenancePage() {
     reporterName: user?.name || user?.employeeId?.firstName ? `${user?.employeeId?.firstName || ''} ${user?.employeeId?.lastName || ''}`.trim() : (language === 'th' ? 'พนักงาน' : 'Staff'),
     reporterEmail: user?.email || '',
     reporterPhone: '',
+    pcName: '',
+    osVersion: '',
+    cpu: '',
+    ram: '',
+    storage: '',
+    specs: '',
+    peripherals: [],
+    installedSoftware: [],
   });
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formSuccess, setFormSuccess] = useState(null);
@@ -200,6 +208,14 @@ export default function EquipmentMaintenancePage() {
       floorNumber: asset.floorNumber,
       roomName: asset.roomName,
       floorPlanId: asset.floorPlanId || '',
+      pcName: asset.pcName || '',
+      osVersion: asset.osVersion || '',
+      cpu: asset.cpu || '',
+      ram: asset.ram || '',
+      storage: asset.storage || '',
+      specs: asset.specs || '',
+      peripherals: asset.peripherals || [],
+      installedSoftware: asset.installedSoftware || [],
     }));
   };
 
@@ -240,6 +256,14 @@ export default function EquipmentMaintenancePage() {
         reporterName: user?.name || 'พนักงาน',
         reporterEmail: user?.email || '',
         reporterPhone: '',
+        pcName: '',
+        osVersion: '',
+        cpu: '',
+        ram: '',
+        storage: '',
+        specs: '',
+        peripherals: [],
+        installedSoftware: [],
       });
       loadData();
       setTimeout(() => {
@@ -553,6 +577,16 @@ export default function EquipmentMaintenancePage() {
                                 {tItem.assetCode}
                               </span>
                             )}
+                            {tItem.pcName && (
+                              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                💻 {tItem.pcName}
+                              </span>
+                            )}
+                            {tItem.osVersion && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-800 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
+                                🪟 {tItem.osVersion}
+                              </span>
+                            )}
 
                             {/* Urgency Badge */}
                             <span
@@ -617,6 +651,64 @@ export default function EquipmentMaintenancePage() {
                             <span>•</span>
                             <span>👤 {language === 'th' ? 'ผู้แจ้ง' : 'Reporter'}: {tItem.reporterName} {tItem.reporterPhone ? `(${tItem.reporterPhone})` : ''}</span>
                           </div>
+
+                          {/* IT Computer Specifications Diagnostic Card */}
+                          {(tItem.pcName || tItem.osVersion || tItem.cpu || tItem.ram || tItem.storage || (tItem.installedSoftware && tItem.installedSoftware.length > 0) || (tItem.peripherals && tItem.peripherals.length > 0)) && (
+                            <div className="mt-2.5 rounded-xl bg-slate-900 text-slate-200 p-3 text-xs border border-indigo-500/25 shadow-xs space-y-2">
+                              <div className="flex items-center justify-between font-semibold text-indigo-300 text-[11px]">
+                                <span className="flex items-center gap-1.5">
+                                  💻 {t('itSpecsSectionTitle') || 'ข้อมูลเครื่องและระบบปฏิบัติการ (IT Specs)'}
+                                  {tItem.pcName && <span className="text-emerald-400 font-mono">[{tItem.pcName}]</span>}
+                                </span>
+                                {tItem.osVersion && (
+                                  <span className="text-sky-300 font-medium bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800/50 text-[10px]">
+                                    🪟 {tItem.osVersion}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Hardware Specs Grid */}
+                              {(tItem.cpu || tItem.ram || tItem.storage) && (
+                                <div className="grid grid-cols-3 gap-2 text-[10px] bg-slate-800/80 p-2 rounded-lg border border-slate-700/60">
+                                  <div>
+                                    <span className="text-slate-400 block font-medium">CPU</span>
+                                    <span className="text-slate-100 font-semibold truncate block">{tItem.cpu || '-'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block font-medium">RAM</span>
+                                    <span className="text-slate-100 font-semibold truncate block">{tItem.ram || '-'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block font-medium">Storage</span>
+                                    <span className="text-slate-100 font-semibold truncate block">{tItem.storage || '-'}</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Peripherals & Software Chips */}
+                              {tItem.peripherals && tItem.peripherals.length > 0 && (
+                                <div className="text-[10px] text-slate-300 flex flex-wrap items-center gap-1">
+                                  <span className="text-slate-400 font-medium">🔌 {t('peripheralsLabel') || 'อุปกรณ์ต่อพ่วง'}:</span>
+                                  {tItem.peripherals.map((p, idx) => (
+                                    <span key={idx} className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">
+                                      {p}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {tItem.installedSoftware && tItem.installedSoftware.length > 0 && (
+                                <div className="text-[10px] text-slate-300 flex flex-wrap items-center gap-1">
+                                  <span className="text-slate-400 font-medium">💿 {t('installedSoftwareLabel') || 'โปรแกรมที่ติดตั้ง'}:</span>
+                                  {tItem.installedSoftware.map((sw, idx) => (
+                                    <span key={idx} className="bg-indigo-950/80 text-indigo-200 px-1.5 py-0.5 rounded border border-indigo-800/50">
+                                      {sw}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Resolution Info */}
                           {tItem.resolutionNotes && (
@@ -1039,6 +1131,67 @@ export default function EquipmentMaintenancePage() {
                   ✕
                 </button>
               </div>
+
+              {/* IT Diagnostic Specs Box for Technicians */}
+              {(statusModalTicket.pcName || statusModalTicket.osVersion || statusModalTicket.cpu || statusModalTicket.storage || (statusModalTicket.installedSoftware && statusModalTicket.installedSoftware.length > 0) || (statusModalTicket.peripherals && statusModalTicket.peripherals.length > 0)) && (
+                <div className="mt-3.5 rounded-xl bg-slate-900 text-slate-200 p-3 text-xs border border-indigo-500/30 space-y-2 shadow-xs">
+                  <div className="flex items-center justify-between text-indigo-300 font-semibold border-b border-slate-800 pb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      💻 {t('itSpecsSectionTitle') || 'ข้อมูลระบบคอมพิวเตอร์ (IT Specs)'}
+                      {statusModalTicket.pcName && <span className="text-emerald-400 font-mono">[{statusModalTicket.pcName}]</span>}
+                    </span>
+                    {statusModalTicket.osVersion && (
+                      <span className="text-sky-300 bg-sky-950 px-2 py-0.5 rounded border border-sky-800 text-[10px]">
+                        🪟 {statusModalTicket.osVersion}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {statusModalTicket.pcName && (
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">PC Name / Hostname</span>
+                        <span className="font-mono font-bold text-emerald-400">{statusModalTicket.pcName}</span>
+                      </div>
+                    )}
+                    {(statusModalTicket.cpu || statusModalTicket.ram) && (
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">CPU / RAM</span>
+                        <span className="text-slate-200">{[statusModalTicket.cpu, statusModalTicket.ram].filter(Boolean).join(' • ')}</span>
+                      </div>
+                    )}
+                  </div>
+                  {statusModalTicket.storage && (
+                    <div className="text-[11px]">
+                      <span className="text-slate-400 block text-[10px]">Storage</span>
+                      <span className="text-slate-200">{statusModalTicket.storage}</span>
+                    </div>
+                  )}
+                  {statusModalTicket.peripherals && statusModalTicket.peripherals.length > 0 && (
+                    <div className="text-[11px] pt-1 border-t border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] mb-1">🔌 {t('peripheralsLabel') || 'อุปกรณ์ต่อพ่วง'}:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {statusModalTicket.peripherals.map((p, idx) => (
+                          <span key={idx} className="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300 border border-slate-700">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {statusModalTicket.installedSoftware && statusModalTicket.installedSoftware.length > 0 && (
+                    <div className="text-[11px] pt-1 border-t border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] mb-1">💿 {t('installedSoftwareLabel') || 'โปรแกรมที่ติดตั้ง'}:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {statusModalTicket.installedSoftware.map((sw, idx) => (
+                          <span key={idx} className="bg-indigo-950/80 text-indigo-200 px-1.5 py-0.5 rounded text-[10px] border border-indigo-800/50">
+                            {sw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <form onSubmit={handleSaveStatus} className="mt-4 space-y-4">
                 <div>

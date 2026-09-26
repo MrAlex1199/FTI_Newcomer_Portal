@@ -94,6 +94,14 @@ export default function FloorPlanAssetPickerModal({ isOpen, onClose, onSelectAss
               roomName: item.roomName || (language === 'th' ? 'พื้นที่สำนักงาน' : 'Office Area'),
               floorPlanId: plan._id,
               status: item.status || 'available',
+              pcName: item.pcName || '',
+              osVersion: item.osVersion || '',
+              cpu: item.cpu || '',
+              ram: item.ram || '',
+              storage: item.storage || '',
+              specs: item.specs || '',
+              peripherals: item.peripherals || [],
+              installedSoftware: item.installedSoftware || [],
             });
           });
         });
@@ -121,7 +129,9 @@ export default function FloorPlanAssetPickerModal({ isOpen, onClose, onSelectAss
       const matchCode = (item.assetCode || '').toLowerCase().includes(q);
       const matchRoom = (item.roomName || '').toLowerCase().includes(q);
       const matchBuilding = item.buildingName.toLowerCase().includes(q);
-      if (!matchName && !matchCode && !matchRoom && !matchBuilding) return false;
+      const matchPc = (item.pcName || '').toLowerCase().includes(q);
+      const matchOs = (item.osVersion || '').toLowerCase().includes(q);
+      if (!matchName && !matchCode && !matchRoom && !matchBuilding && !matchPc && !matchOs) return false;
     }
     return true;
   });
@@ -209,6 +219,11 @@ export default function FloorPlanAssetPickerModal({ isOpen, onClose, onSelectAss
                         {item.assetCode && (
                           <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-semibold text-slate-700">
                             {item.assetCode}
+                          </span>
+                        )}
+                        {item.pcName && (
+                          <span className="rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-mono font-bold text-emerald-800">
+                            💻 {item.pcName}
                           </span>
                         )}
                         <span className="text-xs text-slate-400 font-medium">

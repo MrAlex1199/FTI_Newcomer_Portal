@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import useAuth from '../../hooks/useAuth.js';
 import useLanguage from '../../hooks/useLanguage.js';
 import { useToast } from '../../hooks/ToastContext.jsx';
@@ -50,6 +51,15 @@ export default function MaintenanceReportModal({
         reporterName: user?.name || 'พนักงาน',
         reporterEmail: user?.email || '',
         reporterPhone: phone.trim(),
+        // IT Specs snapshot
+        pcName: asset.pcName || '',
+        osVersion: asset.osVersion || '',
+        cpu: asset.cpu || '',
+        ram: asset.ram || '',
+        storage: asset.storage || '',
+        specs: asset.specs || '',
+        peripherals: Array.isArray(asset.peripherals) ? asset.peripherals : (asset.peripherals ? [asset.peripherals] : []),
+        installedSoftware: Array.isArray(asset.installedSoftware) ? asset.installedSoftware : (asset.installedSoftware ? [asset.installedSoftware] : []),
       };
 
       const res = await maintenanceService.create(payload);
@@ -63,8 +73,8 @@ export default function MaintenanceReportModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
+  const modalNode = (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
       <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-amber-50/70 px-6 py-4">
@@ -89,10 +99,22 @@ export default function MaintenanceReportModal({
         {/* Asset Details Preview Card */}
         <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center justify-between text-xs">
           <div>
-            <span className="font-bold text-slate-900">{asset.name}</span>
-            <span className="ml-2 font-mono text-slate-500 font-semibold">
-              ({asset.code || asset.licensePlate || 'ID: ' + asset.id})
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-slate-900">{asset.name}</span>
+              <span className="font-mono text-slate-500 font-semibold">
+                ({asset.code || asset.licensePlate || 'ID: ' + asset.id})
+              </span>
+              {asset.pcName && (
+                <span className="font-mono font-bold text-[10px] text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">
+                  💻 {asset.pcName}
+                </span>
+              )}
+              {asset.osVersion && (
+                <span className="text-[10px] text-sky-800 bg-sky-100 px-1.5 py-0.5 rounded border border-sky-200">
+                  🪟 {asset.osVersion}
+                </span>
+              )}
+            </div>
             <div className="text-[11px] text-indigo-600 font-medium mt-0.5">
               📍 {asset.buildingName} • {t('floorNumberLabel', { floor: asset.floorNumber || 1 })} • {asset.roomName || t('commonArea')}
             </div>
@@ -187,5 +209,7 @@ export default function MaintenanceReportModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }
 

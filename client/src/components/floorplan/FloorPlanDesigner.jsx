@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Stage,
   Layer,
@@ -22,6 +23,7 @@ import {
   generateId,
   ROOM_PALETTE,
   getWallCoords,
+  calculatePlanBounds,
 } from './snapUtils.js';
 import RoomEditModal from './RoomEditModal.jsx';
 import AssetEditModal from './AssetEditModal.jsx';
@@ -29,6 +31,8 @@ import useLanguage from '../../hooks/useLanguage.js';
 import VehicleShape from './VehicleShape.jsx';
 import FloorPlanImageOverlay from './FloorPlanImageOverlay.jsx';
 import DxfImportModal from './DxfImportModal.jsx';
+import FloorElevatorControl from './FloorElevatorControl.jsx';
+import ConfirmDialog from '../common/ConfirmDialog.jsx';
 import { exportToPng, exportToPdf, exportToDxf } from '../../utils/exportFloorPlan.js';
 import floorPlanService from '../../services/floorPlanService.js';
 
@@ -39,8 +43,27 @@ export default function FloorPlanDesigner({
   onSave,
   isSaving = false,
   onClose,
+  currentFacility = null,
+  floorPlansInBuilding = [],
+  currentFloorNumber = 1,
+  onSelectFloor = null,
 }) {
   const { t } = useLanguage();
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+
+  // Pending guards for floor switch and exit
+  const [floorSwitchPendingFloor, setFloorSwitchPendingFloor] = useState(null);
+  const [exitPending, setExitPending] = useState(false);
+
+  // Container dimensions
+  const containerRef = useRef(null);
+  const [containerSize, setContainerSize] = useState({
+    width: typeof window !== 'undefined' ? (window.innerWidth > 1200 ? 1200 : window.innerWidth - 60) : 1200,
+    height: 720,
+  });
 
   const [showCopyModal, setShowCopyModal] = useState(false);
   const otherFloorPlans = allFloorPlans.filter((p) => p._id !== floorPlan?._id);
@@ -144,6 +167,182 @@ export default function FloorPlanDesigner({
     if (previous.dxfLayer) setDxfLayer(previous.dxfLayer);
     setSelectedId(null);
     setHistory((prev) => prev.slice(0, prev.length - 1));
+  };
+
+  // Sync state when floorPlan changes (e.g. when admin switches floor)
+  useEffect(() => {
+    if (floorPlan) {
+      setRooms(floorPlan.rooms || []);
+      setWalls(floorPlan.walls || []);
+      setDoors(floorPlan.doors || []);
+      setAssets(floorPlan.assets || []);
+      setGridSize(floorPlan.gridSize || DEFAULT_GRID_SIZE);
+      setScaleMetersPerGrid(floorPlan.scaleMetersPerGrid || DEFAULT_METERS_PER_GRID);
+      if (floorPlan.backgroundImage) setBackgroundImage(floorPlan.backgroundImage);
+      if (floorPlan.dxfLayer) setDxfLayer(floorPlan.dxfLayer);
+      setHistory([]);
+      setSelectedId(null);
+    }
+  }, [floorPlan?._id]);
+
+  // ResizeObserver for dynamic canvas sizing
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { clientWidth, clientHeight } = containerRef.current;
+        if (clientWidth > 0 && clientHeight > 0) {
+          setContainerSize({ width: clientWidth, height: clientHeight });
+        }
+      }
+    };
+    updateSize();
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerSize({
+            width: Math.round(width),
+            height: Math.round(height),
+          });
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [isFullscreen]);
+
+  // Auto-fit to screen function
+  const fitToScreen = useCallback((overrideW, overrideH) => {
+    const w = overrideW || containerSize.width;
+    const h = overrideH || containerSize.height;
+    if (!w || !h) return;
+
+    const bounds = calculatePlanBounds({
+      rooms,
+      walls,
+      doors,
+      assets,
+      backgroundImage,
+    });
+
+    const padding = 48;
+    const availableW = Math.max(100, w - padding * 2);
+    const availableH = Math.max(100, h - padding * 2);
+
+    const scaleX = availableW / bounds.width;
+    const scaleY = availableH / bounds.height;
+    const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.2), 2.2);
+
+    const centerX = bounds.minX + bounds.width / 2;
+    const centerY = bounds.minY + bounds.height / 2;
+
+    const newPosX = Math.round(w / 2 - centerX * newScale);
+    const newPosY = Math.round(h / 2 - centerY * newScale);
+
+    if (stageRef.current) {
+      stageRef.current.scale({ x: newScale, y: newScale });
+      stageRef.current.position({ x: newPosX, y: newPosY });
+      stageRef.current.batchDraw();
+    }
+
+    setStageScale(Number(newScale.toFixed(2)));
+    setStagePos({ x: newPosX, y: newPosY });
+  }, [containerSize, rooms, walls, doors, assets, backgroundImage]);
+
+  // Fullscreen handlers
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  // Auto-fit only on floor plan/floor change or fullscreen toggle (prevents infinite re-render loop)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        fitToScreen(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [floorPlan?._id, floorPlan?.floorNumber, isFullscreen, fitToScreen]);
+
+  const toggleNativeFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsNativeFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsNativeFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsNativeFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Lock body scroll when in windowed fullscreen
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+    document.body.style.overflow = '';
+  }, [isFullscreen]);
+
+  // Floor switch with unsaved changes guard
+  const handleFloorSelectWithGuard = (targetFloor) => {
+    if (targetFloor === currentFloorNumber) return;
+    if (history.length > 0) {
+      setFloorSwitchPendingFloor(targetFloor);
+    } else if (onSelectFloor) {
+      onSelectFloor(targetFloor);
+    }
+  };
+
+  const handleConfirmFloorSwitchSave = () => {
+    handleSavePlan();
+    if (floorSwitchPendingFloor && onSelectFloor) {
+      onSelectFloor(floorSwitchPendingFloor);
+    }
+    setFloorSwitchPendingFloor(null);
+  };
+
+  const handleConfirmFloorSwitchDiscard = () => {
+    setHistory([]);
+    if (floorSwitchPendingFloor && onSelectFloor) {
+      onSelectFloor(floorSwitchPendingFloor);
+    }
+    setFloorSwitchPendingFloor(null);
+  };
+
+  const handleCloseWithGuard = () => {
+    if (history.length > 0) {
+      setExitPending(true);
+    } else if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleConfirmExitSave = () => {
+    handleSavePlan();
+    setExitPending(false);
+    if (onClose) onClose();
+  };
+
+  const handleConfirmExitDiscard = () => {
+    setHistory([]);
+    setExitPending(false);
+    if (onClose) onClose();
   };
 
   const handleBgFileSelect = async (e) => {
@@ -312,12 +511,20 @@ export default function FloorPlanDesigner({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         handleDeleteSelected();
       } else if (e.key === 'Escape') {
-        setSelectedId(null);
-        setSelectedType(null);
-        setIsDrawing(false);
-        setCurrentShape(null);
-        setPolygonPoints([]);
-        setPolygonCursorPos(null);
+        if (selectedId || isDrawing || polygonPoints.length > 0 || currentShape) {
+          setSelectedId(null);
+          setSelectedType(null);
+          setIsDrawing(false);
+          setCurrentShape(null);
+          setPolygonPoints([]);
+          setPolygonCursorPos(null);
+        } else if (isFullscreen) {
+          if (document.fullscreenElement) {
+            document.exitFullscreen?.().catch(() => {});
+          } else {
+            setIsFullscreen(false);
+          }
+        }
       } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         handleUndo();
@@ -779,16 +986,117 @@ export default function FloorPlanDesigner({
     }
   };
 
+  // Throttled React state synchronization ref
+  const syncTimerRef = useRef(null);
+
+  const scheduleSyncState = useCallback((scale, pos) => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+    syncTimerRef.current = setTimeout(() => {
+      setStageScale(Number(scale.toFixed(3)));
+      setStagePos(pos);
+    }, 80);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, []);
+
+  // High-Performance Native Wheel Zoom (Direct GPU Transform, Zero React Re-render)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const oldScale = stage.scaleX();
+      if (!oldScale || oldScale <= 0) return;
+
+      // Normalize wheel delta across devices and deltaModes
+      let delta = -e.deltaY;
+      if (e.deltaMode === 1) delta *= 20; // LINE mode (Firefox Windows)
+      if (e.deltaMode === 2) delta *= 500; // PAGE mode
+
+      // Exponential scaling: smooth on Mac Trackpad Pinch, responsive on Mouse Wheel
+      const isPinch = e.ctrlKey;
+      const zoomFactor = isPinch ? 0.008 : 0.0018;
+      const multiplier = Math.min(Math.max(Math.exp(delta * zoomFactor), 0.7), 1.4);
+
+      const newScale = Math.min(Math.max(oldScale * multiplier, 0.15), 4.0);
+      if (Math.abs(newScale - oldScale) < 0.0001) return;
+
+      const rect = container.getBoundingClientRect();
+      const pointer = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+
+      const stagePosNow = stage.position();
+      const mousePointTo = {
+        x: (pointer.x - stagePosNow.x) / oldScale,
+        y: (pointer.y - stagePosNow.y) / oldScale,
+      };
+
+      const newPos = {
+        x: Math.round(pointer.x - mousePointTo.x * newScale),
+        y: Math.round(pointer.y - mousePointTo.y * newScale),
+      };
+
+      // 1. Direct hardware-accelerated canvas update (0.1ms, NO React Re-render!)
+      stage.scale({ x: newScale, y: newScale });
+      stage.position(newPos);
+      stage.batchDraw();
+
+      // 2. Throttled sync to React state for toolbar percentage indicator
+      scheduleSyncState(newScale, newPos);
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+    };
+  }, [scheduleSyncState]);
+
+  // Viewport-centered Zoom for Toolbar +/- Buttons
   const handleZoom = (direction) => {
-    setStageScale((prev) => {
-      const next = direction === 'in' ? prev * 1.2 : prev / 1.2;
-      return Math.min(Math.max(next, 0.4), 2.5);
-    });
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = stage.scaleX() || stageScale;
+    const factor = direction === 'in' ? 1.25 : 1 / 1.25;
+    const newScale = Math.min(Math.max(oldScale * factor, 0.15), 4.0);
+    if (Math.abs(newScale - oldScale) < 0.0001) return;
+
+    const centerX = (containerRef.current?.clientWidth || containerSize.width) / 2;
+    const centerY = (containerRef.current?.clientHeight || containerSize.height) / 2;
+
+    const stagePosNow = stage.position() || stagePos;
+    const centerPointTo = {
+      x: (centerX - stagePosNow.x) / oldScale,
+      y: (centerY - stagePosNow.y) / oldScale,
+    };
+
+    const newPos = {
+      x: Math.round(centerX - centerPointTo.x * newScale),
+      y: Math.round(centerY - centerPointTo.y * newScale),
+    };
+
+    stage.scale({ x: newScale, y: newScale });
+    stage.position(newPos);
+    stage.batchDraw();
+
+    setStageScale(Number(newScale.toFixed(3)));
+    setStagePos(newPos);
   };
 
   const handleResetView = () => {
-    setStageScale(1);
-    setStagePos({ x: 40, y: 40 });
+    fitToScreen();
   };
 
   const renderGridLines = () => {
@@ -829,8 +1137,14 @@ export default function FloorPlanDesigner({
   const selectedRoomObj = rooms.find((r) => r.id === selectedId);
   const selectedAssetObj = assets.find((a) => a.id === selectedId);
 
-  return (
-    <div className="flex h-full flex-col bg-slate-100 select-none overflow-hidden rounded-2xl border border-slate-200 shadow-xl">
+  const designerNode = (
+    <div
+      className={`flex flex-col select-none overflow-hidden transition-all duration-150 ${
+        isFullscreen
+          ? 'fixed inset-0 z-[65] w-screen h-screen m-0 p-0 bg-slate-900 rounded-none border-none'
+          : 'h-full bg-slate-100 rounded-2xl border border-slate-200 shadow-xl'
+      }`}
+    >
       {/* Top Header & Toolbox Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         {/* Left: Tool Selection */}
@@ -1129,6 +1443,7 @@ export default function FloorPlanDesigner({
               type="button"
               onClick={() => handleZoom('out')}
               className="rounded px-1.5 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              title={t('zoomOutTitle')}
             >
               ➖
             </button>
@@ -1136,6 +1451,7 @@ export default function FloorPlanDesigner({
               type="button"
               onClick={handleResetView}
               className="px-1.5 py-1 text-[11px] font-mono text-slate-600 hover:bg-slate-100"
+              title={t('resetViewTitle')}
             >
               {Math.round(stageScale * 100)}%
             </button>
@@ -1143,8 +1459,19 @@ export default function FloorPlanDesigner({
               type="button"
               onClick={() => handleZoom('in')}
               className="rounded px-1.5 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              title={t('zoomInTitle')}
             >
               ➕
+            </button>
+            <div className="h-4 w-px bg-slate-200 mx-0.5" />
+            <button
+              type="button"
+              onClick={() => fitToScreen()}
+              className="rounded px-1.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1"
+              title={t('fitToScreen')}
+            >
+              <span>🎯</span>
+              <span>{t('fitToScreen')}</span>
             </button>
           </div>
 
@@ -1359,6 +1686,29 @@ export default function FloorPlanDesigner({
 
           <div className="h-5 w-px bg-slate-200 mx-0.5" />
 
+          {/* Quick Floor Switcher for Admin in Designer */}
+          {floorPlansInBuilding && floorPlansInBuilding.length > 1 && onSelectFloor && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs">
+              <span className="font-semibold text-slate-500">
+                🏢 {currentFacility?.shortName || currentFacility?.name || t('floorPlan')}:
+              </span>
+              <select
+                value={currentFloorNumber}
+                onChange={(e) => handleFloorSelectWithGuard(Number(e.target.value))}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 outline-none focus:border-primary-500 cursor-pointer"
+              >
+                {floorPlansInBuilding
+                  .slice()
+                  .sort((a, b) => (b.floorNumber || 1) - (a.floorNumber || 1))
+                  .map((plan) => (
+                    <option key={plan._id || plan.floorNumber} value={plan.floorNumber}>
+                      {plan.floorName || `${t('floorLabel') || 'ชั้น'} ${plan.floorNumber}`}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
           {/* Copy Layout Button */}
           {otherFloorPlans.length > 0 && (
             <button
@@ -1381,12 +1731,44 @@ export default function FloorPlanDesigner({
             {isSaving ? '⏳ กำลังบันทึก...' : `💾 ${t('saveFloorPlan') || 'บันทึกแปลน'}`}
           </button>
 
+          {/* Fullscreen Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
+              isFullscreen
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title={isFullscreen ? t('fullscreenMinimize') : t('fullscreenMaximize')}
+          >
+            <span className="text-sm">{isFullscreen ? '🗗' : '⛶'}</span>
+            <span>{isFullscreen ? t('fullscreenMinimize') : t('fullscreenMaximize')}</span>
+          </button>
+
+          {/* Optional Native Fullscreen F11 Button (Visible in Fullscreen) */}
+          {isFullscreen && (
+            <button
+              type="button"
+              onClick={toggleNativeFullscreen}
+              className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition shadow-xs ${
+                isNativeFullscreen
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+              title={t('nativeFullscreen')}
+            >
+              <span>🖥️</span>
+              <span className="hidden md:inline">F11</span>
+            </button>
+          )}
+
           {onClose && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCloseWithGuard}
               className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-100"
-              title="ปิด"
+              title={t('close') || 'ปิด'}
             >
               ✕
             </button>
@@ -1395,11 +1777,14 @@ export default function FloorPlanDesigner({
       </div>
 
       {/* Main Canvas Area */}
-      <div className="relative flex-1 bg-slate-100 overflow-hidden cursor-crosshair">
+      <div
+        ref={containerRef}
+        className="relative flex-1 bg-slate-100 overflow-hidden cursor-crosshair"
+      >
         <Stage
           ref={stageRef}
-          width={window.innerWidth > 1200 ? 1200 : window.innerWidth - 60}
-          height={620}
+          width={containerSize.width}
+          height={containerSize.height}
           scaleX={stageScale}
           scaleY={stageScale}
           x={stagePos.x}
@@ -2274,8 +2659,17 @@ export default function FloorPlanDesigner({
           {tool === 'computer' && <span>คลิกวางโต๊ะคอมพิวเตอร์ ดับเบิลคลิกเพื่อระบุผู้ถือครอง</span>}
           {tool === 'room' && <span>คลิกลากเพื่อสร้างกล่องห้อง (Room Block)</span>}
           {tool === 'wall' && <span>คลิกลากเพื่อสร้างกำแพงตรง (Wall 8px)</span>}
-          {tool === 'select' && <span>คลิกเพื่อหมุนหรือย้าย ดับเบิลคลิกเพื่อแก้ไขข้อมูล</span>}
         </div>
+
+        {/* Floating Elevator Floor Switcher for Designer */}
+        {currentFacility && currentFacility.id !== 'campus' && onSelectFloor && (
+          <FloorElevatorControl
+            currentBuilding={currentFacility}
+            currentFloorNumber={currentFloorNumber}
+            onSelectFloor={handleFloorSelectWithGuard}
+            floorPlansInBuilding={floorPlansInBuilding}
+          />
+        )}
       </div>
 
       {/* Modal: Room Edit */}
@@ -2314,7 +2708,7 @@ export default function FloorPlanDesigner({
 
       {/* Modal: Copy Layout from Another Floor */}
       {showCopyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -2378,6 +2772,90 @@ export default function FloorPlanDesigner({
         onClose={() => setShowDxfModal(false)}
         onImport={handleDxfImport}
       />
+
+      {/* Modal: Unsaved changes confirmation when switching floor */}
+      {floorSwitchPendingFloor !== null && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-600">
+              <span className="text-2xl">⚠️</span>
+              <h3 className="text-base font-bold text-slate-900">
+                {t('unsavedChangesFloorSwitch') || 'คุณมีข้อมูลที่ยังไม่ได้บันทึก'}
+              </h3>
+            </div>
+            <p className="mt-3 text-xs text-slate-600 leading-relaxed">
+              {t('unsavedChangesFloorSwitch') || 'คุณมีข้อมูลที่กำลังแก้ไขอยู่ หากสลับชั้น ข้อมูลที่ยังไม่ได้บันทึกจะหายไป ต้องการบันทึกก่อนสลับชั้นหรือไม่?'}
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setFloorSwitchPendingFloor(null)}
+                className="w-full sm:w-auto rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              >
+                {t('cancel') || 'ยกเลิก'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFloorSwitchDiscard}
+                className="w-full sm:w-auto rounded-xl border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+              >
+                {t('discardAndSwitch') || 'ไม่บันทึกและสลับชั้น'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFloorSwitchSave}
+                className="w-full sm:w-auto rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+              >
+                {t('saveAndSwitch') || '💾 บันทึกและสลับชั้น'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Unsaved changes confirmation when closing designer */}
+      {exitPending && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-600">
+              <span className="text-2xl">⚠️</span>
+              <h3 className="text-base font-bold text-slate-900">
+                {t('unsavedChangesExitPrompt') || 'มีข้อมูลที่ยังไม่ได้บันทึก'}
+              </h3>
+            </div>
+            <p className="mt-3 text-xs text-slate-600 leading-relaxed">
+              {t('unsavedChangesExitPrompt') || 'คุณมีข้อมูลที่กำลังแก้ไขอยู่ หากออกจากโหมดออกแบบ การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป'}
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setExitPending(false)}
+                className="w-full sm:w-auto rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              >
+                {t('cancel') || 'ยกเลิก'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmExitDiscard}
+                className="w-full sm:w-auto rounded-xl border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+              >
+                {t('discardAndExit') || 'ออกโดยไม่บันทึก'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmExitSave}
+                className="w-full sm:w-auto rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+              >
+                {t('saveAndExit') || '💾 บันทึกและออก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  return isFullscreen && typeof document !== 'undefined'
+    ? createPortal(designerNode, document.body)
+    : designerNode;
 }

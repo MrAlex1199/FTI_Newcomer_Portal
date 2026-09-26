@@ -221,6 +221,8 @@ router.get(
         { roomName: regex },
         { buildingName: regex },
         { assignedTechnician: regex },
+        { pcName: regex },
+        { osVersion: regex },
       ];
     }
 
@@ -258,10 +260,47 @@ router.post(
       reporterName,
       reporterEmail,
       reporterPhone,
+      pcName,
+      osVersion,
+      cpu,
+      ram,
+      storage,
+      specs,
+      peripherals,
+      installedSoftware,
     } = req.body;
 
     if (!assetId || !title) {
       throw new ApiError(400, 'กรุณาระบุรหัสทรัพย์สินและหัวข้อแจ้งซ่อม');
+    }
+
+    let finalPcName = pcName || '';
+    let finalOsVersion = osVersion || '';
+    let finalCpu = cpu || '';
+    let finalRam = ram || '';
+    let finalStorage = storage || '';
+    let finalSpecs = specs || '';
+    let finalPeripherals = Array.isArray(peripherals) ? peripherals : [];
+    let finalInstalledSoftware = Array.isArray(installedSoftware) ? installedSoftware : [];
+
+    // Automatic fallback: Retrieve from floor plan asset if not passed
+    if (floorPlanId && (!finalPcName || !finalOsVersion || !finalCpu)) {
+      const fp = await FloorPlan.findById(floorPlanId).lean();
+      const matchedAsset = fp?.assets?.find((a) => a.id === assetId);
+      if (matchedAsset) {
+        if (!finalPcName && matchedAsset.pcName) finalPcName = matchedAsset.pcName;
+        if (!finalOsVersion && matchedAsset.osVersion) finalOsVersion = matchedAsset.osVersion;
+        if (!finalCpu && matchedAsset.cpu) finalCpu = matchedAsset.cpu;
+        if (!finalRam && matchedAsset.ram) finalRam = matchedAsset.ram;
+        if (!finalStorage && matchedAsset.storage) finalStorage = matchedAsset.storage;
+        if (!finalSpecs && matchedAsset.specs) finalSpecs = matchedAsset.specs;
+        if (finalPeripherals.length === 0 && Array.isArray(matchedAsset.peripherals)) {
+          finalPeripherals = matchedAsset.peripherals;
+        }
+        if (finalInstalledSoftware.length === 0 && Array.isArray(matchedAsset.installedSoftware)) {
+          finalInstalledSoftware = matchedAsset.installedSoftware;
+        }
+      }
     }
 
     const ticketNo = await MaintenanceTicket.generateTicketNo();
@@ -285,6 +324,14 @@ router.post(
       reporterName: reporterName || req.user?.name || 'พนักงาน',
       reporterEmail: reporterEmail || req.user?.email || '',
       reporterPhone: reporterPhone || '',
+      pcName: finalPcName,
+      osVersion: finalOsVersion,
+      cpu: finalCpu,
+      ram: finalRam,
+      storage: finalStorage,
+      specs: finalSpecs,
+      peripherals: finalPeripherals,
+      installedSoftware: finalInstalledSoftware,
     });
 
     // Update asset status on floor plan to 'maintenance'

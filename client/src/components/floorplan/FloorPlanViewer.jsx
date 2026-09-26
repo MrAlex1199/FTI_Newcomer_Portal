@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Stage,
   Layer,
@@ -16,6 +17,7 @@ import {
   calculatePolygonArea,
   getPolygonCenter,
   getWallCoords,
+  calculatePlanBounds,
 } from './snapUtils.js';
 import useLanguage from '../../hooks/useLanguage.js';
 import FloorElevatorControl from './FloorElevatorControl.jsx';
@@ -47,11 +49,28 @@ export default function FloorPlanViewer({
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [highlightedAssetId, setHighlightedAssetId] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [copiedPcName, setCopiedPcName] = useState(false);
+
+  const handleCopyPcName = (text) => {
+    if (!text) return;
+    navigator.clipboard?.writeText?.(text).catch(() => {});
+    setCopiedPcName(true);
+    setTimeout(() => setCopiedPcName(false), 2000);
+  };
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
 
   // Canvas Viewport & Zoom/Pan
   const [stageScale, setStageScale] = useState(1.0);
   const [stagePos, setStagePos] = useState({ x: 30, y: 30 });
   const stageRef = useRef(null);
+  const containerRef = useRef(null);
+  const [containerSize, setContainerSize] = useState({
+    width: typeof window !== 'undefined' ? (window.innerWidth > 1200 ? 1200 : window.innerWidth - 60) : 1200,
+    height: 720,
+  });
 
   // Layer Visibility Controls
   const [layers, setLayers] = useState({
@@ -147,23 +166,255 @@ export default function FloorPlanViewer({
     }
   }, [initialFocusAssetId]);
 
-  const handleZoom = (direction) => {
-    setStageScale((prev) => {
-      const next = direction === 'in' ? prev * 1.2 : prev / 1.2;
-      return Math.min(Math.max(next, 0.4), 2.2);
+  // ResizeObserver for dynamic canvas sizing
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { clientWidth, clientHeight } = containerRef.current;
+        if (clientWidth > 0 && clientHeight > 0) {
+          setContainerSize({ width: clientWidth, height: clientHeight });
+        }
+      }
+    };
+    updateSize();
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerSize({
+            width: Math.round(width),
+            height: Math.round(height),
+          });
+        }
+      }
     });
+    observer.observe(containerRef.current);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [isFullscreen]);
+
+  // Auto-fit to screen function
+  const fitToScreen = useCallback((overrideW, overrideH) => {
+    const w = overrideW || containerSize.width;
+    const h = overrideH || containerSize.height;
+    if (!w || !h) return;
+
+    const bounds = calculatePlanBounds({
+      rooms,
+      walls,
+      doors,
+      assets,
+      backgroundImage: floorPlan?.backgroundImage,
+    });
+
+    const padding = 48;
+    const availableW = Math.max(100, w - padding * 2);
+    const availableH = Math.max(100, h - padding * 2);
+
+    const scaleX = availableW / bounds.width;
+    const scaleY = availableH / bounds.height;
+    const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.2), 2.2);
+
+    const centerX = bounds.minX + bounds.width / 2;
+    const centerY = bounds.minY + bounds.height / 2;
+
+    const newPosX = Math.round(w / 2 - centerX * newScale);
+    const newPosY = Math.round(h / 2 - centerY * newScale);
+
+    if (stageRef.current) {
+      stageRef.current.scale({ x: newScale, y: newScale });
+      stageRef.current.position({ x: newPosX, y: newPosY });
+      stageRef.current.batchDraw();
+    }
+
+    setStageScale(Number(newScale.toFixed(2)));
+    setStagePos({ x: newPosX, y: newPosY });
+  }, [containerSize, rooms, walls, doors, assets, floorPlan?.backgroundImage]);
+
+  // Fullscreen handlers
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  // Auto-fit only on floor plan/floor change or fullscreen toggle (prevents infinite re-render loop)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        fitToScreen(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [floorPlan?._id, floorPlan?.floorNumber, isFullscreen, fitToScreen]);
+
+  const toggleNativeFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsNativeFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsNativeFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsNativeFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Lock body scroll and handle Escape key when in windowed fullscreen
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          if (document.fullscreenElement) {
+            document.exitFullscreen?.().catch(() => {});
+          } else {
+            setIsFullscreen(false);
+          }
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+    document.body.style.overflow = '';
+  }, [isFullscreen]);
+
+  // Throttled React state synchronization ref
+  const syncTimerRef = useRef(null);
+
+  const scheduleSyncState = useCallback((scale, pos) => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+    syncTimerRef.current = setTimeout(() => {
+      setStageScale(Number(scale.toFixed(3)));
+      setStagePos(pos);
+    }, 80);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, []);
+
+  // High-Performance Native Wheel Zoom (Direct GPU Transform, Zero React Re-render)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const oldScale = stage.scaleX();
+      if (!oldScale || oldScale <= 0) return;
+
+      // Normalize wheel delta across devices and deltaModes
+      let delta = -e.deltaY;
+      if (e.deltaMode === 1) delta *= 20; // LINE mode (Firefox Windows)
+      if (e.deltaMode === 2) delta *= 500; // PAGE mode
+
+      // Exponential scaling: smooth on Mac Trackpad Pinch, responsive on Mouse Wheel
+      const isPinch = e.ctrlKey;
+      const zoomFactor = isPinch ? 0.008 : 0.0018;
+      const multiplier = Math.min(Math.max(Math.exp(delta * zoomFactor), 0.7), 1.4);
+
+      const newScale = Math.min(Math.max(oldScale * multiplier, 0.15), 4.0);
+      if (Math.abs(newScale - oldScale) < 0.0001) return;
+
+      const rect = container.getBoundingClientRect();
+      const pointer = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+
+      const stagePosNow = stage.position();
+      const mousePointTo = {
+        x: (pointer.x - stagePosNow.x) / oldScale,
+        y: (pointer.y - stagePosNow.y) / oldScale,
+      };
+
+      const newPos = {
+        x: Math.round(pointer.x - mousePointTo.x * newScale),
+        y: Math.round(pointer.y - mousePointTo.y * newScale),
+      };
+
+      // 1. Direct hardware-accelerated canvas update (0.1ms, NO React Re-render!)
+      stage.scale({ x: newScale, y: newScale });
+      stage.position(newPos);
+      stage.batchDraw();
+
+      // 2. Throttled sync to React state for toolbar percentage indicator
+      scheduleSyncState(newScale, newPos);
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+    };
+  }, [scheduleSyncState]);
+
+  // Viewport-centered Zoom for Toolbar +/- Buttons
+  const handleZoom = (direction) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = stage.scaleX() || stageScale;
+    const factor = direction === 'in' ? 1.25 : 1 / 1.25;
+    const newScale = Math.min(Math.max(oldScale * factor, 0.15), 4.0);
+    if (Math.abs(newScale - oldScale) < 0.0001) return;
+
+    const centerX = (containerRef.current?.clientWidth || containerSize.width) / 2;
+    const centerY = (containerRef.current?.clientHeight || containerSize.height) / 2;
+
+    const stagePosNow = stage.position() || stagePos;
+    const centerPointTo = {
+      x: (centerX - stagePosNow.x) / oldScale,
+      y: (centerY - stagePosNow.y) / oldScale,
+    };
+
+    const newPos = {
+      x: Math.round(centerX - centerPointTo.x * newScale),
+      y: Math.round(centerY - centerPointTo.y * newScale),
+    };
+
+    stage.scale({ x: newScale, y: newScale });
+    stage.position(newPos);
+    stage.batchDraw();
+
+    setStageScale(Number(newScale.toFixed(3)));
+    setStagePos(newPos);
   };
 
   const handleResetView = () => {
-    setStageScale(1.0);
-    setStagePos({ x: 30, y: 30 });
+    fitToScreen();
     setSelectedAsset(null);
     setSelectedRoom(null);
     setHighlightedAssetId(null);
   };
 
-  return (
-    <div className="relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  const viewerNode = (
+    <div
+      className={`flex flex-col overflow-hidden bg-white transition-all duration-150 ${
+        isFullscreen
+          ? 'fixed inset-0 z-[65] w-screen h-screen m-0 p-0 rounded-none border-none'
+          : 'relative rounded-2xl border border-slate-200 shadow-sm'
+      }`}
+    >
       {/* Top Search & Filter Bar */}
       <div className="flex flex-col gap-2.5 border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Left: Asset Locator Search Bar & Global 20-Rai Search Button */}
@@ -390,6 +641,16 @@ export default function FloorPlanViewer({
             >
               ➕
             </button>
+            <div className="h-4 w-px bg-slate-200 mx-0.5" />
+            <button
+              type="button"
+              onClick={() => fitToScreen()}
+              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1"
+              title={t('fitToScreen')}
+            >
+              <span>🎯</span>
+              <span>{t('fitToScreen')}</span>
+            </button>
           </div>
 
           {/* Export Dropdown Menu */}
@@ -440,6 +701,38 @@ export default function FloorPlanViewer({
             )}
           </div>
 
+          {/* Fullscreen Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
+              isFullscreen
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title={isFullscreen ? t('fullscreenMinimize') : t('fullscreenMaximize')}
+          >
+            <span className="text-sm">{isFullscreen ? '🗗' : '⛶'}</span>
+            <span>{isFullscreen ? t('fullscreenMinimize') : t('fullscreenMaximize')}</span>
+          </button>
+
+          {/* Optional Native Fullscreen F11 Button (Visible in Fullscreen) */}
+          {isFullscreen && (
+            <button
+              type="button"
+              onClick={toggleNativeFullscreen}
+              className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition shadow-xs ${
+                isNativeFullscreen
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+              title={t('nativeFullscreen')}
+            >
+              <span>🖥️</span>
+              <span className="hidden md:inline">F11</span>
+            </button>
+          )}
+
           {/* Edit Plan Button for Admin */}
           {canEdit && onEditPlan && (
             <button
@@ -454,11 +747,18 @@ export default function FloorPlanViewer({
       </div>
 
       {/* Main Canvas Viewport */}
-      <div className="relative h-[620px] w-full bg-slate-50 overflow-hidden cursor-grab active:cursor-grabbing">
+      <div
+        ref={containerRef}
+        className={`relative w-full bg-slate-50 overflow-hidden cursor-grab active:cursor-grabbing ${
+          isFullscreen
+            ? 'flex-1 h-full'
+            : 'h-[calc(100vh-280px)] min-h-[640px] max-h-[860px]'
+        }`}
+      >
         <Stage
           ref={stageRef}
-          width={window.innerWidth > 1200 ? 1200 : window.innerWidth - 60}
-          height={620}
+          width={containerSize.width}
+          height={containerSize.height}
           scaleX={stageScale}
           scaleY={stageScale}
           x={stagePos.x}
@@ -1170,8 +1470,119 @@ export default function FloorPlanViewer({
               </div>
             )}
 
-            {/* Hardware Specs */}
-            {selectedAsset.specs && (
+            {/* Admin-Only IT Computer & System Specifications Card */}
+            {canEdit && selectedAsset.type === 'computer' && (
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-50/90 via-blue-50/40 to-slate-50 p-3.5 border border-indigo-200/80 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                  <div className="flex items-center gap-1.5 text-indigo-950 font-bold text-xs">
+                    <span className="text-base">🖥️</span>
+                    <span>{t('itSpecsAdminTitle')}</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-indigo-600 text-white tracking-wider uppercase">
+                    Admin
+                  </span>
+                </div>
+
+                {/* PC Name / Hostname with Copy Button */}
+                {selectedAsset.pcName && (
+                  <div className="flex items-center justify-between rounded-xl bg-white p-2.5 border border-indigo-100 shadow-2xs">
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{t('pcNameLabel')}</div>
+                      <div className="font-mono font-bold text-indigo-900 text-xs mt-0.5">{selectedAsset.pcName}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPcName(selectedAsset.pcName)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition flex items-center gap-1 shrink-0"
+                      title={t('copyPcNameBtn')}
+                    >
+                      <span>{copiedPcName ? '✅' : '📋'}</span>
+                      <span>{copiedPcName ? t('pcNameCopied') : t('copyPcNameBtn')}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Operating System Badge */}
+                {selectedAsset.osVersion && (
+                  <div className="rounded-xl bg-white p-2.5 border border-slate-200 shadow-2xs flex items-center gap-2.5">
+                    <span className="text-lg">🪟</span>
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{t('osVersionLabel')}</div>
+                      <div className="font-semibold text-slate-800 text-xs mt-0.5">{selectedAsset.osVersion}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hardware Grid: CPU, RAM, Storage */}
+                {(selectedAsset.cpu || selectedAsset.ram || selectedAsset.storage) && (
+                  <div className="space-y-1.5 text-[11px]">
+                    {selectedAsset.cpu && (
+                      <div className="rounded-xl bg-white p-2 border border-slate-200 shadow-2xs flex items-center justify-between">
+                        <span className="text-slate-500 font-medium">⚡ {t('cpuLabel')}</span>
+                        <span className="font-mono font-bold text-slate-800 text-right">{selectedAsset.cpu}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {selectedAsset.ram && (
+                        <div className="rounded-xl bg-white p-2 border border-slate-200 shadow-2xs">
+                          <div className="text-[10px] text-slate-400 font-medium">🧠 {t('ramLabel')}</div>
+                          <div className="font-mono font-bold text-slate-800 mt-0.5">{selectedAsset.ram}</div>
+                        </div>
+                      )}
+                      {selectedAsset.storage && (
+                        <div className="rounded-xl bg-white p-2 border border-slate-200 shadow-2xs">
+                          <div className="text-[10px] text-slate-400 font-medium">💾 {t('storageLabel')}</div>
+                          <div className="font-mono font-bold text-slate-800 mt-0.5">{selectedAsset.storage}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Peripherals List */}
+                {selectedAsset.peripherals && selectedAsset.peripherals.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <span>🔌</span>
+                      <span>{t('peripheralsLabel')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedAsset.peripherals.map((item, idx) => (
+                        <span
+                          key={`periph-${idx}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[10px] font-medium shadow-2xs"
+                        >
+                          <span>⌨️</span> {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Installed Software List */}
+                {selectedAsset.installedSoftware && selectedAsset.installedSoftware.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-indigo-900/80 font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <span>📦</span>
+                      <span>{t('installedSoftwareLabel')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedAsset.installedSoftware.map((sw, idx) => (
+                        <span
+                          key={`sw-${idx}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-100/70 border border-indigo-200 text-indigo-800 text-[10px] font-medium"
+                        >
+                          <span>💿</span> {sw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* General Hardware Specs (Shown if no dedicated IT card or for non-admin) */}
+            {selectedAsset.specs && (!canEdit || selectedAsset.type !== 'computer') && (
               <div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
                   {t('specsLabel')}
@@ -1363,4 +1774,8 @@ export default function FloorPlanViewer({
       </div>
     </div>
   );
+
+  return isFullscreen && typeof document !== 'undefined'
+    ? createPortal(viewerNode, document.body)
+    : viewerNode;
 }

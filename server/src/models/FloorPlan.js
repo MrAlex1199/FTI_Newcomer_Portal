@@ -88,6 +88,14 @@ const assetSchema = new mongoose.Schema(
     driverName: { type: String, trim: true, default: '' },
     parkingSlot: { type: String, trim: true, default: '' },
     vehicleModel: { type: String, trim: true, default: '' },
+    // IT Computer & Workstation Specs Fields
+    pcName: { type: String, trim: true, default: '' },
+    osVersion: { type: String, trim: true, default: '' },
+    cpu: { type: String, trim: true, default: '' },
+    ram: { type: String, trim: true, default: '' },
+    storage: { type: String, trim: true, default: '' },
+    peripherals: { type: [String], default: [] },
+    installedSoftware: { type: [String], default: [] },
   },
   { _id: false }
 );

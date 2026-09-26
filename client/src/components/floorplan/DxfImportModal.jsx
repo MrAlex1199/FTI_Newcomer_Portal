@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { parseDxfText, extractDxfLayers, convertDxfToKonva } from '../../utils/dxfToKonva.js';
 
 export default function DxfImportModal({ isOpen, onClose, onImport }) {
@@ -111,8 +112,8 @@ export default function DxfImportModal({ isOpen, onClose, onImport }) {
     setErrorMsg('');
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+  const modalNode = (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-900 to-indigo-950 px-6 py-4 text-white">
@@ -338,4 +339,6 @@ export default function DxfImportModal({ isOpen, onClose, onImport }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }
