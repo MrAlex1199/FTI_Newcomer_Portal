@@ -86,6 +86,12 @@ router.get(
           pending: 0,
           inProgress: 0,
           resolved: 0,
+          totalDurationHours: 0,
+          resolvedWithDuration: 0,
+          slaMet: 0,
+          slaBreached: 0,
+          mttrHours: 0,
+          slaRate: 100,
         };
       }
       buildingBreakdown[bKey].total++;
@@ -110,10 +116,17 @@ router.get(
         totalResolutionHours += durationHours;
         resolvedWithDurationCount++;
 
+        if (buildingBreakdown[bKey]) {
+          buildingBreakdown[bKey].totalDurationHours += durationHours;
+          buildingBreakdown[bKey].resolvedWithDuration++;
+        }
+
         if (durationHours <= slaLimit) {
           slaMetCount++;
+          if (buildingBreakdown[bKey]) buildingBreakdown[bKey].slaMet++;
         } else {
           slaBreachedCount++;
+          if (buildingBreakdown[bKey]) buildingBreakdown[bKey].slaBreached++;
         }
 
         // Monthly resolved trend
@@ -128,6 +141,7 @@ router.get(
         const openHours = Math.max(0, (now - new Date(t.createdAt)) / (1000 * 60 * 60));
         if (openHours > slaLimit) {
           slaBreachedCount++;
+          if (buildingBreakdown[bKey]) buildingBreakdown[bKey].slaBreached++;
         }
       }
     });
@@ -142,6 +156,16 @@ router.get(
     const slaComplianceRate =
       evaluatedSlaCount > 0 ? Math.round((slaMetCount / evaluatedSlaCount) * 100 * 10) / 10 : 100;
 
+    // Compute metrics for each building
+    Object.values(buildingBreakdown).forEach((b) => {
+      b.mttrHours =
+        b.resolvedWithDuration > 0
+          ? Math.round((b.totalDurationHours / b.resolvedWithDuration) * 10) / 10
+          : 0;
+      const bEvaluated = b.slaMet + b.slaBreached;
+      b.slaRate = bEvaluated > 0 ? Math.round((b.slaMet / bEvaluated) * 100 * 10) / 10 : 100;
+    });
+
     // Convert monthlyTrend map to sorted array
     const sortedMonthlyTrend = Object.values(monthlyTrend).sort((a, b) =>
       a.month.localeCompare(b.month)
@@ -151,6 +175,7 @@ router.get(
       success: true,
       data: {
         total,
+        totalTickets: total,
         statusCounts: {
           pending: pendingCount,
           inProgress: inProgressCount,
@@ -170,6 +195,7 @@ router.get(
         },
         slaHoursReference: SLA_HOURS,
         urgencyBreakdown,
+        urgencyCounts: urgencyBreakdown,
         categoryBreakdown,
         buildingBreakdown: Object.values(buildingBreakdown),
         monthlyTrend: sortedMonthlyTrend,

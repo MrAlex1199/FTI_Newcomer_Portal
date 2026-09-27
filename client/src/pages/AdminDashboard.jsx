@@ -30,8 +30,21 @@ export default function AdminDashboard() {
           maintenanceService.getAll({ limit: 100 }),
         ]);
         if (mounted) {
-          setKpiData(kpiRes?.data || null);
-          setMaintenanceTickets(ticketsRes?.data || []);
+          const rawKpi = kpiRes?.data || kpiRes || {};
+          const kpi = {
+            ...rawKpi,
+            totalTickets: rawKpi?.totalTickets ?? rawKpi?.total ?? 0,
+            total: rawKpi?.total ?? rawKpi?.totalTickets ?? 0,
+            urgencyCounts: rawKpi?.urgencyCounts || rawKpi?.urgencyBreakdown || {},
+            urgencyBreakdown: rawKpi?.urgencyBreakdown || rawKpi?.urgencyCounts || {},
+          };
+          const tickets = Array.isArray(ticketsRes)
+            ? ticketsRes
+            : Array.isArray(ticketsRes?.data)
+            ? ticketsRes.data
+            : [];
+          setKpiData(kpi);
+          setMaintenanceTickets(tickets);
         }
       } catch (err) {
         console.error('Failed to load maintenance KPI summary on Admin Dashboard:', err);

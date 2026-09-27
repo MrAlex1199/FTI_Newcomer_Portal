@@ -291,6 +291,15 @@ const DEFAULT_IT_TOPICS_SEED = [
   { key: 'software_request', name: 'Software Installation & Requests', icon: '📦', sortOrder: 11 },
 ];
 
+const cleanTopicName = (name, icon) => {
+  if (!name) return '';
+  let str = name.trim();
+  if (icon && str.startsWith(icon.trim())) {
+    str = str.slice(icon.trim().length).trim();
+  }
+  return str.replace(/^(\p{Extended_Pictographic}|\uFE0F|\u200D)+\s*/u, '').trim() || name.trim();
+};
+
 /**
  * List all knowledge topics with auto-seeding for it_help and article counts
  */
@@ -337,6 +346,7 @@ export const listKnowledgeTopics = asyncHandler(async (req, res) => {
 
   const data = topics.map((topic) => ({
     ...topic,
+    name: cleanTopicName(topic.name, topic.icon),
     articleCount: countMap[String(topic._id)] || 0,
   }));
 
@@ -348,10 +358,11 @@ export const listKnowledgeTopics = asyncHandler(async (req, res) => {
  */
 export const createKnowledgeTopic = asyncHandler(async (req, res) => {
   const { name, icon, parentId, category = 'it_help', sortOrder = 0, description = '' } = req.body;
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `topic-${Date.now()}`;
+  const sanitizedName = cleanTopicName(name, icon);
+  const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `topic-${Date.now()}`;
 
   const topic = await KnowledgeTopic.create({
-    name,
+    name: sanitizedName,
     slug,
     icon: icon || '📁',
     parentId: parentId || null,
@@ -372,9 +383,11 @@ export const updateKnowledgeTopic = asyncHandler(async (req, res) => {
   if (!topic) throw ApiError.notFound('Topic not found');
 
   const { name, icon, parentId, sortOrder, description } = req.body;
+  const targetIcon = icon !== undefined ? icon : topic.icon;
   if (name !== undefined) {
-    topic.name = name;
-    topic.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || topic.slug;
+    const sanitizedName = cleanTopicName(name, targetIcon);
+    topic.name = sanitizedName;
+    topic.slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || topic.slug;
   }
   if (icon !== undefined) topic.icon = icon;
   if (parentId !== undefined) {

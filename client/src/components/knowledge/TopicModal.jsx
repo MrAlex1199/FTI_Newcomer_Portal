@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Modal from '../common/Modal.jsx';
 import useLanguage from '../../hooks/useLanguage.js';
+import { getCleanTopicName } from '../../utils/knowledgeUtils.js';
 
 const EMOJI_PRESETS = ['📁', '📂', '💻', '🌐', '🔒', '🖨️', '📧', '🛠️', '📱', '⚙️', '📖', '💡', '🛡️', '🚀', '📦', '🔑', '🖥️', '📡'];
 
@@ -24,7 +25,7 @@ export default function TopicModal({
 
   useEffect(() => {
     if (initial) {
-      setName(initial.name || '');
+      setName(getCleanTopicName(initial.name || '', initial.icon));
       setIcon(initial.icon || '📁');
       setParentId(initial.parentId ? String(initial.parentId) : '');
       setDescription(initial.description || '');
@@ -80,7 +81,7 @@ export default function TopicModal({
         if (!descendantIds.has(String(item._id))) {
           result.push({
             id: String(item._id),
-            label: `${'— '.repeat(depth)}${item.icon || '📁'} ${item.name}`,
+            label: `${'— '.repeat(depth)}${item.icon || '📁'} ${getCleanTopicName(item.name, item.icon)}`,
           });
           traverse(String(item._id), depth + 1);
         }
@@ -96,7 +97,7 @@ export default function TopicModal({
     if (!name.trim()) return;
 
     onSubmit({
-      name: name.trim(),
+      name: getCleanTopicName(name.trim(), icon.trim()),
       icon: icon.trim() || '📁',
       parentId: parentId || null,
       description: description.trim(),

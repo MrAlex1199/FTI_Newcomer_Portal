@@ -4,6 +4,7 @@ import ContentBadge from '../content/ContentBadge.jsx';
 import ImageGallery from '../content/ImageGallery.jsx';
 import CommentSection from '../content/CommentSection.jsx';
 import useLanguage from '../../hooks/useLanguage.js';
+import { getCleanTopicName } from '../../utils/knowledgeUtils.js';
 
 export default function KnowledgeReader({
   article,
@@ -97,7 +98,7 @@ export default function KnowledgeReader({
             <span key={item._id} className="flex items-center gap-1.5">
               <span className="text-slate-300">/</span>
               <span className="font-medium text-slate-600">
-                {item.icon} {item.name}
+                {item.icon} {getCleanTopicName(item.name, item.icon)}
               </span>
             </span>
           ))}
@@ -105,7 +106,7 @@ export default function KnowledgeReader({
             <span className="flex items-center gap-1.5">
               <span className="text-slate-300">/</span>
               <span className="font-medium text-slate-600">
-                {topic.icon || '📁'} {topic.name}
+                {topic.icon || '📁'} {getCleanTopicName(topic.name, topic.icon)}
               </span>
             </span>
           )}

@@ -3,6 +3,7 @@ import Modal from '../common/Modal.jsx';
 import ImageUpload from '../common/ImageUpload.jsx';
 import MarkdownRenderer from './MarkdownRenderer.jsx';
 import useLanguage from '../../hooks/useLanguage.js';
+import { getCleanTopicName } from '../../utils/knowledgeUtils.js';
 
 function slugify(text) {
   return String(text || '')
@@ -133,7 +134,7 @@ export default function MarkdownEditorModal({
         result.push({
           id: String(item._id),
           slug: item.slug,
-          label: `${'— '.repeat(depth)}${item.icon || '📁'} ${item.name}`,
+          label: `${'— '.repeat(depth)}${item.icon || '📁'} ${getCleanTopicName(item.name, item.icon)}`,
         });
         traverse(String(item._id), depth + 1);
       });

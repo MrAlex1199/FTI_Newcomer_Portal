@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import useLanguage from '../../hooks/useLanguage.js';
+import { getCleanTopicName } from '../../utils/knowledgeUtils.js';
 
 /**
  * Recursive Tree Node for Folders and Articles (Obsidian-Style)
@@ -59,7 +60,7 @@ function FolderTreeNode({
 
           {/* Folder Icon & Name */}
           <span className="shrink-0 text-sm">{topic.icon || (isExpanded ? '📂' : '📁')}</span>
-          <span className="truncate font-medium text-xs">{topic.name}</span>
+          <span className="truncate font-medium text-xs">{getCleanTopicName(topic.name, topic.icon)}</span>
         </div>
 
         {/* Action icons on hover */}

@@ -8,28 +8,28 @@
 export const MOCK_TOPICS = [
   // 1. Root Topics
   {
-    name: '💻 ซอฟต์แวร์และแอปพลิเคชัน (Software & Applications)',
+    name: 'ซอฟต์แวร์และแอปพลิเคชัน (Software & Applications)',
     slug: 'software-apps',
     icon: '💻',
     description: 'ระบบปฏิบัติการ โปรแกรมสำนักงาน ระบบ ERP และเครื่องมือการทำงานในองค์กร',
     sortOrder: 1,
   },
   {
-    name: '🖥️ ฮาร์ดแวร์และอุปกรณ์ (Hardware & Equipment)',
+    name: 'ฮาร์ดแวร์และอุปกรณ์ (Hardware & Equipment)',
     slug: 'hardware-devices',
     icon: '🖥️',
     description: 'คอมพิวเตอร์ ชิ้นส่วนภายใน (CPU, RAM, SSD), เครื่องพิมพ์ จอภาพ และระบบกล้อง CCTV',
     sortOrder: 2,
   },
   {
-    name: '🌐 เครือข่ายและการเชื่อมต่อ (Network & Connectivity)',
+    name: 'เครือข่ายและการเชื่อมต่อ (Network & Connectivity)',
     slug: 'network-connectivity',
     icon: '🌐',
     description: 'Wi-Fi สำนักงาน, LAN, VPN เชื่อมต่อระยะไกล และการวินิจฉัยเครือข่าย',
     sortOrder: 3,
   },
   {
-    name: '🔒 ความปลอดภัยและนโยบาย (IT Security & Policies)',
+    name: 'ความปลอดภัยและนโยบาย (IT Security & Policies)',
     slug: 'security-policies',
     icon: '🔒',
     description: 'การยืนยันตัวตน 2FA, การป้องกันภัยไซเบอร์ และระเบียบการยืมคืนอุปกรณ์ไอที',
@@ -38,7 +38,7 @@ export const MOCK_TOPICS = [
 
   // 2. Subtopics: Software & Applications
   {
-    name: '🪟 ระบบปฏิบัติการ (Operating Systems)',
+    name: 'ระบบปฏิบัติการ (Operating Systems)',
     slug: 'os-systems',
     icon: '🪟',
     parentSlug: 'software-apps',
@@ -62,7 +62,7 @@ export const MOCK_TOPICS = [
     sortOrder: 2,
   },
   {
-    name: '📊 โปรแกรมสำนักงาน (Office & Productivity)',
+    name: 'โปรแกรมสำนักงาน (Office & Productivity)',
     slug: 'office-productivity',
     icon: '📊',
     parentSlug: 'software-apps',
@@ -94,7 +94,7 @@ export const MOCK_TOPICS = [
     sortOrder: 3,
   },
   {
-    name: '🏢 ระบบงานองค์กร (Enterprise Systems)',
+    name: 'ระบบงานองค์กร (Enterprise Systems)',
     slug: 'enterprise-systems',
     icon: '🏢',
     parentSlug: 'software-apps',
@@ -120,7 +120,7 @@ export const MOCK_TOPICS = [
 
   // 3. Subtopics: Hardware & Equipment
   {
-    name: '⚡ คอมพิวเตอร์และชิ้นส่วน (Workstations & Components)',
+    name: 'คอมพิวเตอร์และชิ้นส่วน (Workstations & Components)',
     slug: 'workstations-components',
     icon: '⚡',
     parentSlug: 'hardware-devices',
@@ -152,7 +152,7 @@ export const MOCK_TOPICS = [
     sortOrder: 3,
   },
   {
-    name: '🖨️ เครื่องพิมพ์และสแกนเนอร์ (Printers & Scanners)',
+    name: 'เครื่องพิมพ์และสแกนเนอร์ (Printers & Scanners)',
     slug: 'printers-scanners',
     icon: '🖨️',
     parentSlug: 'hardware-devices',
@@ -160,7 +160,7 @@ export const MOCK_TOPICS = [
     sortOrder: 2,
   },
   {
-    name: '🔌 จอภาพและอุปกรณ์ต่อพ่วง (Displays & Docks)',
+    name: 'จอภาพและอุปกรณ์ต่อพ่วง (Displays & Docks)',
     slug: 'displays-peripherals',
     icon: '🔌',
     parentSlug: 'hardware-devices',
@@ -168,7 +168,7 @@ export const MOCK_TOPICS = [
     sortOrder: 3,
   },
   {
-    name: '📹 ระบบกล้องวงจรปิด (CCTV & Surveillance)',
+    name: 'ระบบกล้องวงจรปิด (CCTV & Surveillance)',
     slug: 'cctv-surveillance',
     icon: '📹',
     parentSlug: 'hardware-devices',
@@ -178,7 +178,7 @@ export const MOCK_TOPICS = [
 
   // 4. Subtopics: Network & Connectivity
   {
-    name: '📶 Wi-Fi & เครือข่ายสำนักงาน',
+    name: 'Wi-Fi & เครือข่ายสำนักงาน',
     slug: 'wifi-lan',
     icon: '📶',
     parentSlug: 'network-connectivity',
@@ -186,7 +186,7 @@ export const MOCK_TOPICS = [
     sortOrder: 1,
   },
   {
-    name: '🛡️ VPN & รีโมตทำงานทางไกล',
+    name: 'VPN & รีโมตทำงานทางไกล',
     slug: 'vpn-remote-access',
     icon: '🛡️',
     parentSlug: 'network-connectivity',
@@ -194,7 +194,7 @@ export const MOCK_TOPICS = [
     sortOrder: 2,
   },
   {
-    name: '🛠️ การวินิจฉัยและแก้ปัญหาเครือข่าย',
+    name: 'การวินิจฉัยและแก้ปัญหาเครือข่าย',
     slug: 'network-troubleshooting',
     icon: '🛠️',
     parentSlug: 'network-connectivity',
@@ -204,7 +204,7 @@ export const MOCK_TOPICS = [
 
   // 5. Subtopics: IT Security & Policies
   {
-    name: '🔑 บัญชีผู้ใช้และระบบ 2FA (Accounts & MFA)',
+    name: 'บัญชีผู้ใช้และระบบ 2FA (Accounts & MFA)',
     slug: 'accounts-mfa',
     icon: '🔑',
     parentSlug: 'security-policies',
@@ -212,7 +212,7 @@ export const MOCK_TOPICS = [
     sortOrder: 1,
   },
   {
-    name: '🛡️ ความปลอดภัยไซเบอร์และ Phishing',
+    name: 'ความปลอดภัยไซเบอร์และ Phishing',
     slug: 'cybersecurity-phishing',
     icon: '🛡️',
     parentSlug: 'security-policies',
@@ -220,7 +220,7 @@ export const MOCK_TOPICS = [
     sortOrder: 2,
   },
   {
-    name: '🎧 บริการไอที ยืมคืนอุปกรณ์ และ SLA',
+    name: 'บริการไอที ยืมคืนอุปกรณ์ และ SLA',
     slug: 'it-helpdesk-loans',
     icon: '🎧',
     parentSlug: 'security-policies',
