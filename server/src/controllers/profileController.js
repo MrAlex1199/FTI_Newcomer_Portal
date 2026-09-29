@@ -50,7 +50,7 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).select('+profileImagePublicId');
   if (!user) throw ApiError.unauthorized('User no longer exists');
 
-  const hasTextChanges = ['email', 'firstName', 'lastName', 'nickname']
+  const hasTextChanges = ['email', 'firstName', 'lastName', 'nickname', 'shortBio', 'bio', 'projectTitle', 'lessonsLearned', 'adviceForNextBatch']
     .some((field) => Object.prototype.hasOwnProperty.call(req.body, field));
   if (!hasTextChanges && !req.file) {
     throw ApiError.badRequest('No profile changes were supplied');
@@ -86,7 +86,7 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) user.email = req.body.email;
 
     const target = linkedRecord || user;
-    for (const field of ['firstName', 'lastName', 'nickname']) {
+    for (const field of ['firstName', 'lastName', 'nickname', 'shortBio', 'bio', 'projectTitle', 'lessonsLearned', 'adviceForNextBatch']) {
       if (Object.prototype.hasOwnProperty.call(req.body, field)) target[field] = req.body[field];
     }
     if (uploaded) {

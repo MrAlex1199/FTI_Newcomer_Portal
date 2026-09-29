@@ -1,4 +1,149 @@
 import { Link, useParams } from 'react-router-dom';
 import { useDepartment } from '../hooks/useDepartments.js'; import useLanguage from '../hooks/useLanguage.js'; import DataTable from '../components/common/DataTable.jsx'; import AppShell from '../components/layout/AppShell.jsx';
-export default function DepartmentDetail() { const { id } = useParams(); const { t } = useLanguage(); const { data: department, isLoading, isError, error } = useDepartment(id); if (isLoading) return <AppShell><div className="py-12 text-center text-gray-500">{t('loadingDepartment')}</div></AppShell>; if (isError) return <AppShell><div className="py-12 text-center text-red-600">{error?.response?.data?.message || t('unableLoad')}</div></AppShell>; if (!department) return null; const employeeColumns = [{ key: 'employeeCode', header: t('code') }, { key: 'name', header: t('name'), render: (item) => `${item.firstName} ${item.lastName}` }, { key: 'position', header: t('position') }, { key: 'status', header: t('status'), render: (item) => item.isActive ? t('active') : t('inactive') }]; const internColumns = [{ key: 'name', header: t('name'), render: (item) => <Link to={`/interns/${item._id}`} className="text-primary-600 hover:underline">{item.firstName} {item.lastName}</Link> }, { key: 'university', header: t('university') }, { key: 'major', header: t('major') }, { key: 'status', header: t('status'), render: (item) => item.status || '—' }]; return <AppShell><div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6"><div><p className="text-sm text-gray-500">{t('departments')} / {t('details')}</p><h1 className="text-2xl font-bold text-gray-800 mt-1">{department.name} <span className="text-base font-normal text-gray-400">({department.code})</span></h1><p className="text-gray-500 mt-1">{department.description || t('noDescriptionProvided')}</p></div><Link to={`/employees?department=${department._id}`} className="text-sm bg-primary-600 text-white px-4 py-2 rounded-md text-center">{t('viewFilteredEmployees')}</Link></div><div className="grid gap-4 sm:grid-cols-3 mb-6"><Stat label={t('employees')} value={department.employeeCount} /><Stat label={t('interns')} value={department.internCount} /><Stat label={t('manager')} value={department.managerId ? `${department.managerId.firstName} ${department.managerId.lastName}` : t('notAssigned')} /></div><section className="bg-white rounded-lg border border-gray-200 p-4 mb-6"><h2 className="font-semibold text-gray-800 mb-3">{t('departmentInformation')}</h2><div className="grid gap-3 sm:grid-cols-2 text-sm"><Info label={t('location')} value={department.location || '—'} /><Info label={t('extension')} value={department.extension || '—'} /><Info label={t('responsibilities')} value={(department.responsibilities || []).join(', ') || '—'} /><Info label={t('contactTopics')} value={(department.contactTopics || []).join(', ') || '—'} /></div></section><section className="mb-6"><h2 className="font-semibold text-gray-800 mb-3">{t('employees')}</h2><DataTable columns={employeeColumns} rows={department.employees} emptyTitle={t('noAssignedEmployees')} emptyMessage={t('assignedEmployeesHelp')} /></section><section><h2 className="font-semibold text-gray-800 mb-3">{t('interns')}</h2><DataTable columns={internColumns} rows={department.interns} emptyTitle={t('noAssignedInterns')} emptyMessage={t('assignedInternsHelp')} /></section></AppShell>; }
-function Stat({ label, value }) { return <div className="bg-white rounded-lg border border-gray-200 p-4"><p className="text-sm text-gray-500">{label}</p><p className="text-xl font-semibold text-gray-800 mt-1">{value}</p></div>; } function Info({ label, value }) { return <div><p className="text-xs uppercase tracking-wide text-gray-400">{label}</p><p className="text-gray-700 mt-1">{value}</p></div>; }
+export default function DepartmentDetail() {
+  const { id } = useParams();
+  const { t } = useLanguage();
+  const { data: department, isLoading, isError, error } = useDepartment(id);
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="py-12 text-center text-gray-500">{t('loadingDepartment')}</div>
+      </AppShell>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AppShell>
+        <div className="py-12 text-center text-red-600">{error?.response?.data?.message || t('unableLoad')}</div>
+      </AppShell>
+    );
+  }
+
+  if (!department) return null;
+
+  const employeeColumns = [
+    { key: 'employeeCode', header: t('code') },
+    {
+      key: 'name',
+      header: t('name'),
+      render: (item) => (
+        <Link to={`/employees/${item._id}`} className="font-semibold text-primary-600 hover:text-primary-700 hover:underline">
+          {item.firstName} {item.lastName}
+        </Link>
+      ),
+    },
+    { key: 'position', header: t('position') },
+    {
+      key: 'status',
+      header: t('status'),
+      render: (item) => (item.isActive ? t('active') : t('inactive')),
+    },
+  ];
+
+  const internColumns = [
+    {
+      key: 'name',
+      header: t('name'),
+      render: (item) => (
+        <Link to={`/interns/${item._id}`} className="font-semibold text-primary-600 hover:text-primary-700 hover:underline">
+          {item.firstName} {item.lastName}
+        </Link>
+      ),
+    },
+    { key: 'university', header: t('university') },
+    { key: 'major', header: t('major') },
+    { key: 'status', header: t('status'), render: (item) => item.status || '—' },
+  ];
+
+  return (
+    <AppShell>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <div>
+          <p className="text-sm text-gray-500">
+            {t('departments')} / {t('details')}
+          </p>
+          <h1 className="text-2xl font-bold text-gray-800 mt-1">
+            {department.name} <span className="text-base font-normal text-gray-400">({department.code})</span>
+          </h1>
+          <p className="text-gray-500 mt-1">{department.description || t('noDescriptionProvided')}</p>
+        </div>
+        <Link
+          to={`/employees?department=${department._id}`}
+          className="text-sm bg-primary-600 text-white px-4 py-2 rounded-xl text-center shadow-xs hover:bg-primary-500 transition-colors"
+        >
+          {t('viewFilteredEmployees')}
+        </Link>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        <Stat label={t('employees')} value={department.employeeCount} />
+        <Stat label={t('interns')} value={department.internCount} />
+        <Stat
+          label={t('manager')}
+          value={
+            department.managerId ? (
+              <Link
+                to={`/employees/${department.managerId._id}`}
+                className="text-primary-600 hover:text-primary-700 hover:underline"
+              >
+                {department.managerId.firstName} {department.managerId.lastName}
+              </Link>
+            ) : (
+              t('notAssigned')
+            )
+          }
+        />
+      </div>
+
+      <section className="bg-white rounded-2xl border border-gray-200/90 p-5 mb-6 shadow-2xs">
+        <h2 className="font-bold text-gray-800 mb-3">{t('departmentInformation')}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <Info label={t('location')} value={department.location || '—'} />
+          <Info label={t('extension')} value={department.extension || '—'} />
+          <Info label={t('responsibilities')} value={(department.responsibilities || []).join(', ') || '—'} />
+          <Info label={t('contactTopics')} value={(department.contactTopics || []).join(', ') || '—'} />
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h2 className="font-bold text-gray-800 mb-3">{t('employees')}</h2>
+        <DataTable
+          columns={employeeColumns}
+          rows={department.employees}
+          emptyTitle={t('noAssignedEmployees')}
+          emptyMessage={t('assignedEmployeesHelp')}
+        />
+      </section>
+
+      <section>
+        <h2 className="font-bold text-gray-800 mb-3">{t('interns')}</h2>
+        <DataTable
+          columns={internColumns}
+          rows={department.interns}
+          emptyTitle={t('noAssignedInterns')}
+          emptyMessage={t('assignedInternsHelp')}
+        />
+      </section>
+    </AppShell>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200/90 p-4 shadow-2xs">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <div className="text-xl font-bold text-gray-800 mt-1 truncate">{value}</div>
+    </div>
+  );
+}
+
+function Info({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-gray-400 font-semibold">{label}</p>
+      <p className="text-gray-700 mt-1">{value}</p>
+    </div>
+  );
+}

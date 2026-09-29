@@ -71,8 +71,13 @@ export const listEmployees = asyncHandler(async (req, res) => {
  */
 export const getEmployee = asyncHandler(async (req, res) => {
   const employee = await Employee.findById(req.params.id)
-    .populate('departmentId', 'name code')
-    .populate('managerId', 'firstName lastName employeeCode');
+    .populate('departmentId', 'name code description location extension responsibilities')
+    .populate('managerId', 'firstName lastName nickname employeeCode position profileImage workEmail extension')
+    .populate({
+      path: 'directReports',
+      match: isManager(req.user.role) ? {} : { isPublished: true },
+      select: 'firstName lastName nickname employeeCode position profileImage isActive',
+    });
 
   if (!employee || (!isManager(req.user.role) && !employee.isPublished)) {
     throw ApiError.notFound('Employee not found');

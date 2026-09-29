@@ -516,6 +516,8 @@ export default function ItHelp() {
                   onSelectArticle={handleSelectArticle}
                   onSelectTopic={handleSelectTopic}
                   canManage={canManage}
+                  search={search}
+                  onSearchChange={setSearch}
                   onOpenCreateTopic={(parentId) => {
                     setTopicEditing(null);
                     setTopicDefaultParentId(parentId || null);

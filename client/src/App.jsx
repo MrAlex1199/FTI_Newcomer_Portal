@@ -7,6 +7,8 @@ import RoleGuard from './components/common/RoleGuard.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Employees from './pages/Employees.jsx';
+import EmployeeDetail from './pages/EmployeeDetail.jsx';
+import useAuth from './hooks/useAuth.js';
 import Departments from './pages/Departments.jsx';
 import DepartmentDetail from './pages/DepartmentDetail.jsx';
 import Interns from './pages/Interns.jsx';
@@ -32,6 +34,18 @@ const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
 const AdminAuditLogs = lazy(() => import('./pages/AdminAuditLogs.jsx'));
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback.jsx'));
 import Unauthorized from './pages/Unauthorized.jsx';
+
+function ProfileRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.employeeId) {
+    return <EmployeeDetail isSelf />;
+  }
+  if (user?.internId) {
+    return <InternDetail isSelf />;
+  }
+  return <ProfileSettings />;
+}
 
 /**
  * Route map for Task 4:
@@ -64,6 +78,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Employees />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/employees/:id"
+            element={
+              <ProtectedRoute>
+                <EmployeeDetail />
               </ProtectedRoute>
             }
           />
@@ -225,7 +248,7 @@ function App() {
             path="/profile"
             element={
               <ProtectedRoute>
-                <ProfileSettings />
+                <ProfileRoute />
               </ProtectedRoute>
             }
           />

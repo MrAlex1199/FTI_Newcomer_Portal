@@ -9,9 +9,9 @@ const INTERN_SORT_FIELDS = ['createdAt', 'firstName', 'lastName', 'university', 
 const isManager = (req) => can(req.user.role, 'interns:manage');
 const visibilityFilter = (req) => (isManager(req) ? {} : { isPublished: true });
 const POPULATE = [
-  ['departmentId', 'name code'],
-  ['batchId', 'code title year startDate endDate'],
-  ['mentorId', 'firstName lastName employeeCode position'],
+  ['departmentId', 'name code description location extension'],
+  ['batchId', 'code title year startDate endDate description groupPhoto'],
+  ['mentorId', 'firstName lastName nickname employeeCode position profileImage workEmail extension'],
 ];
 
 const populateIntern = (query) => POPULATE.reduce((current, [path, select]) => current.populate(path, select), query);
@@ -95,7 +95,22 @@ export const listInterns = asyncHandler(async (req, res) => {
 export const getIntern = asyncHandler(async (req, res) => {
   const intern = await populateIntern(Intern.findById(req.params.id));
   if (!intern || (!isManager(req) && !intern.isPublished)) throw ApiError.notFound('Intern not found');
-  res.status(200).json({ success: true, data: { intern: serializeIntern(intern, req) } });
+
+  let fellowBatchmates = [];
+  if (intern.batchId?._id) {
+    fellowBatchmates = await Intern.find({
+      batchId: intern.batchId._id,
+      _id: { $ne: intern._id },
+      ...(isManager(req) ? {} : { isPublished: true }),
+    })
+      .select('firstName lastName nickname university major profileImage status')
+      .limit(8);
+  }
+
+  const serialized = serializeIntern(intern, req);
+  serialized.fellowBatchmates = fellowBatchmates;
+
+  res.status(200).json({ success: true, data: { intern: serialized } });
 });
 
 export const createIntern = asyncHandler(async (req, res) => {

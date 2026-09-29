@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { ImageWithFallback } from '../common/ImageUpload.jsx';
 import useLanguage from '../../hooks/useLanguage.js';
+import ExecutiveLeadershipView from './ExecutiveLeadershipView.jsx';
 
 const collectNodes = (nodes, output = []) => {
   (nodes || []).forEach((node) => {
@@ -13,23 +15,81 @@ const collectNodes = (nodes, output = []) => {
 };
 
 const initialsFor = (node) =>
-  `${node.firstName?.[0] || ''}${node.lastName?.[0] || ''}`.toUpperCase() || '??';
+  `${node?.firstName?.[0] || ''}${node?.lastName?.[0] || ''}`.toUpperCase() || '??';
 
-function NodeAvatar({ node, size = 'md' }) {
+const EXECUTIVE_KEYWORDS = [
+  'ceo',
+  'president',
+  'chief',
+  'c-level',
+  'managing director',
+  'md',
+  'director general',
+  'vice president',
+  'vp',
+  'เลขาธิการ',
+  'รองเลขาธิการ',
+  'ประธาน',
+  'รองประธาน',
+  'ผู้อำนวยการใหญ่',
+  'กรรมการผู้จัดการ',
+  'ผู้อำนวยการบริหาร',
+];
+
+const MANAGER_KEYWORDS = [
+  'manager',
+  'head',
+  'lead',
+  'supervisor',
+  'ผู้อำนวยการ',
+  'ผู้จัดการ',
+  'หัวหน้า',
+  'ผู้ช่วยผู้จัดการ',
+];
+
+export const getEmployeeTier = (node, isRoot = false) => {
+  if (!node) return 'staff';
+  const pos = (node.position || '').toLowerCase();
+  if (isRoot || EXECUTIVE_KEYWORDS.some((kw) => pos.includes(kw))) {
+    return 'executive';
+  }
+  if ((node.children && node.children.length > 0) || MANAGER_KEYWORDS.some((kw) => pos.includes(kw))) {
+    return 'manager';
+  }
+  return 'staff';
+};
+
+function NodeAvatar({ node, size = 'md', tier = 'staff' }) {
   const sizeClass =
     size === 'sm'
       ? 'w-9 h-9 text-xs'
       : size === 'lg'
       ? 'w-16 h-16 text-lg'
+      : size === 'xl'
+      ? 'w-20 h-20 text-xl'
       : 'w-12 h-12 text-sm';
 
+  const ringColor =
+    tier === 'executive'
+      ? 'ring-2 ring-amber-400 shadow-amber-200/50'
+      : tier === 'manager'
+      ? 'ring-2 ring-indigo-400 shadow-indigo-200/50'
+      : 'ring-1 ring-gray-200';
+
   return (
-    <ImageWithFallback
-      src={node.profileImage}
-      alt={node.fullName}
-      className={`${sizeClass} rounded-full object-cover shrink-0 border-2 border-white shadow-sm ring-1 ring-gray-200`}
-      fallback={initialsFor(node)}
-    />
+    <div className="relative shrink-0">
+      <ImageWithFallback
+        src={node.profileImage}
+        alt={node.fullName}
+        className={`${sizeClass} rounded-2xl object-cover shrink-0 border-2 border-white shadow-sm ${ringColor}`}
+        fallback={initialsFor(node)}
+      />
+      {tier === 'executive' && (
+        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs">
+          👑
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -41,16 +101,24 @@ export default function OrganizationChart({
 }) {
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('hierarchy'); // 'hierarchy' | 'department'
+  const [viewMode, setViewMode] = useState('tree'); // 'tree' | 'departments' | 'executives'
   const [layoutStyle, setLayoutStyle] = useState('compact'); // 'compact' | 'horizontal'
   const [focusedId, setFocusedId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [selected, setSelected] = useState(null);
 
+  // Canvas Pan & Zoom state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const containerRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // All flat nodes and map
   const allNodes = useMemo(() => {
     const list = collectNodes([...(tree?.roots || []), ...(tree?.orphans || [])]);
-    // Deduplicate by ID
     const seen = new Set();
     return list.filter((item) => {
       if (!item.id || seen.has(item.id)) return false;
@@ -64,6 +132,11 @@ export default function OrganizationChart({
     allNodes.forEach((node) => map.set(node.id, node));
     return map;
   }, [allNodes]);
+
+  // Root ID set for tier detection
+  const rootIdSet = useMemo(() => {
+    return new Set((tree?.roots || []).map((r) => r.id));
+  }, [tree]);
 
   // Parent map for reporting lines and breadcrumbs
   const parentMap = useMemo(() => {
@@ -85,11 +158,34 @@ export default function OrganizationChart({
     [allNodes]
   );
 
+  // Top Stats Summary
+  const stats = useMemo(() => {
+    let executivesCount = 0;
+    let managersCount = 0;
+    const deptsSet = new Set();
+
+    allNodes.forEach((n) => {
+      const tier = getEmployeeTier(n, rootIdSet.has(n.id));
+      if (tier === 'executive') executivesCount += 1;
+      else if (tier === 'manager') managersCount += 1;
+      if (n.department?.name) deptsSet.add(n.department.name);
+    });
+
+    return {
+      total: allNodes.length,
+      executives: executivesCount,
+      managers: managersCount,
+      departments: deptsSet.size,
+    };
+  }, [allNodes, rootIdSet]);
+
   // Auto-expand all nodes initially
   useEffect(() => {
     setExpandedIds(new Set(nodesWithChildren.map((n) => n.id)));
     setFocusedId(null);
     setSelected(null);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [tree, nodesWithChildren]);
 
   // Search matches
@@ -155,17 +251,70 @@ export default function OrganizationChart({
     return trail;
   }, [focusedNode, parentMap]);
 
-  // Active roots for Hierarchy View
+  // Active roots for Hierarchy Tree View
   const activeRoots = useMemo(() => {
     if (focusedNode) return [focusedNode];
     return tree?.roots || [];
   }, [focusedNode, tree]);
 
-  // Department grouping for Department View
+  // Pan & Zoom handlers
+  const handleZoomIn = () => setZoom((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 1.8));
+  const handleZoomOut = () => setZoom((prev) => Math.max(Number((prev - 0.15).toFixed(2)), 0.4));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleFitScreen = useCallback(() => {
+    if (!containerRef.current || !canvasRef.current) {
+      handleResetZoom();
+      return;
+    }
+    const containerWidth = containerRef.current.clientWidth;
+    const canvasWidth = canvasRef.current.scrollWidth || 1000;
+    if (canvasWidth > 0 && containerWidth > 0) {
+      const calculatedZoom = Math.max(0.4, Math.min(1.1, (containerWidth - 60) / canvasWidth));
+      setZoom(Number(calculatedZoom.toFixed(2)));
+      setPan({ x: 0, y: 0 });
+    }
+  }, []);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return; // only left click
+    // If click inside interactive elements (buttons, card clicks), don't drag canvas
+    if (e.target.closest('button, a, input, select, textarea')) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    setPan({
+      x: dragStartRef.current.panX + dx,
+      y: dragStartRef.current.panY + dy,
+    });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) setIsDragging(false);
+  };
+
+  // Fullscreen toggle
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  // Department grouping for Department Teams View
   const departmentGroups = useMemo(() => {
     const groups = new Map();
 
-    // Group all nodes by department
     allNodes.forEach((node) => {
       const deptName = node.department?.name || t('departmentNotAssigned');
       const deptId = node.department?.id || 'unassigned';
@@ -185,31 +334,114 @@ export default function OrganizationChart({
       group.members.push(node);
     });
 
-    // Determine department head for each group
     groups.forEach((group) => {
-      // Find person with 'manager', 'head', 'director', 'president' or least manager within department
+      // Find person with manager/director keywords or first member
       const headCandidate = group.members.find((m) => {
         const pos = (m.position || '').toLowerCase();
         return (
           pos.includes('president') ||
           pos.includes('director') ||
           pos.includes('manager') ||
-          pos.includes('head')
+          pos.includes('head') ||
+          pos.includes('ผู้อำนวยการ') ||
+          pos.includes('ผู้จัดการ') ||
+          pos.includes('หัวหน้า')
         );
       });
       group.head = headCandidate || group.members[0];
-      // Remaining members
       group.teamMembers = group.members.filter((m) => m.id !== group.head?.id);
     });
 
     return Array.from(groups.values());
   }, [allNodes, t]);
 
-  const totalCount = allNodes.length;
+  const handleFocusExecutive = (id) => {
+    setFocusedId(id);
+    setViewMode('tree');
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Top Toolbar */}
+    <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-100 p-4 sm:p-6 overflow-y-auto' : ''}`}>
+      {/* 1. TOP STATS BANNER */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Workforce */}
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md transition-shadow flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0 font-bold border border-blue-100">
+            👥
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+              {stats.total}
+            </p>
+            <p className="text-xs font-semibold text-gray-500 truncate">
+              {t('totalWorkforce')}
+            </p>
+          </div>
+        </div>
+
+        {/* C-Suite Executives */}
+        <div
+          onClick={() => setViewMode('executives')}
+          className="bg-white rounded-2xl border border-amber-200/90 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-xl shrink-0 font-bold border border-amber-200/80 group-hover:scale-105 transition-transform">
+            👑
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <p className="text-2xl font-extrabold text-amber-950 leading-tight">
+                {stats.executives}
+              </p>
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+                {t('openCard')} →
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-gray-500 truncate">
+              {t('cSuiteExecutives')}
+            </p>
+          </div>
+        </div>
+
+        {/* Managers & Leads */}
+        <div className="bg-white rounded-2xl border border-indigo-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md transition-shadow flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0 font-bold border border-indigo-100">
+            👔
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+              {stats.managers}
+            </p>
+            <p className="text-xs font-semibold text-gray-500 truncate">
+              {t('managersAndLeads')}
+            </p>
+          </div>
+        </div>
+
+        {/* Departments & Divisions */}
+        <div
+          onClick={() => setViewMode('departments')}
+          className="bg-white rounded-2xl border border-emerald-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0 font-bold border border-emerald-100 group-hover:scale-105 transition-transform">
+            🏢
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+                {stats.departments}
+              </p>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                {t('openCard')} →
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-gray-500 truncate">
+              {t('allDivisions')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. SMART TOOLBAR */}
       <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Search Box */}
@@ -232,7 +464,7 @@ export default function OrganizationChart({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('searchPeopleHelp')}
-              className="w-full pl-9.5 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder:text-gray-400"
+              className="w-full pl-9.5 pr-8 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder:text-gray-400"
             />
             {search && (
               <button
@@ -245,13 +477,13 @@ export default function OrganizationChart({
             )}
           </div>
 
-          {/* Department Filter & View Switcher */}
+          {/* Department Filter & 3-in-1 View Switcher */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Department Filter */}
             <select
               value={departmentId || ''}
               onChange={(e) => onDepartmentChange(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none font-medium"
+              className="px-3.5 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none font-semibold cursor-pointer"
             >
               <option value="">{t('allDepartments')}</option>
               {departments.map((dept) => (
@@ -261,134 +493,189 @@ export default function OrganizationChart({
               ))}
             </select>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80">
+            {/* View Mode Toggle: 3-in-1 Smart Views */}
+            <div className="flex items-center bg-gray-100/90 p-1 rounded-xl border border-gray-200/90 shadow-2xs">
               <button
                 type="button"
-                onClick={() => setViewMode('hierarchy')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === 'hierarchy'
+                onClick={() => setViewMode('tree')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'tree'
                     ? 'bg-white text-primary-700 shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                title={t('hierarchyView')}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                  />
-                </svg>
-                {t('hierarchyView')}
+                <span>🌳</span>
+                <span>{t('hierarchyView')}</span>
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('department')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === 'department'
+                onClick={() => setViewMode('departments')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'departments'
                     ? 'bg-white text-primary-700 shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                title={t('departmentView')}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-                {t('departmentView')}
+                <span>🏢</span>
+                <span>{t('departmentView')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('executives')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'executives'
+                    ? 'bg-white text-amber-700 shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title={t('executiveLeadershipView')}
+              >
+                <span>👑</span>
+                <span>{t('executiveLeadershipView')}</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Status / Quick Action Row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
-          <div className="flex items-center gap-3 text-gray-500">
-            <span>
-              {search.trim()
-                ? t('matches', { count: matchingIds.size, suffix: matchingIds.size === 1 ? '' : 'es' })
-                : t('peopleCount', { count: totalCount })}
-            </span>
-            {viewMode === 'hierarchy' && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                <button
-                  type="button"
-                  onClick={expandAll}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  {t('expandAll')}
-                </button>
-                <span className="text-gray-300">|</span>
-                <button
-                  type="button"
-                  onClick={collapseAll}
-                  className="text-gray-500 hover:text-gray-700 font-medium"
-                >
-                  {t('collapseAll')}
-                </button>
-                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                {/* Layout Style Toggle: Compact vs Horizontal */}
-                <div className="inline-flex items-center p-0.5 bg-gray-100 rounded-lg border border-gray-200/80">
-                  <button
-                    type="button"
-                    onClick={() => setLayoutStyle('compact')}
-                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                      layoutStyle === 'compact'
-                        ? 'bg-white text-primary-800 shadow-xs'
-                        : 'text-gray-500 hover:text-gray-800'
-                    }`}
-                    title={t('layoutCompactHelp')}
-                  >
-                    <span>📑</span>
-                    <span>{t('layoutCompact')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLayoutStyle('horizontal')}
-                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                      layoutStyle === 'horizontal'
-                        ? 'bg-white text-primary-800 shadow-xs'
-                        : 'text-gray-500 hover:text-gray-800'
-                    }`}
-                    title={t('layoutHorizontalHelp')}
-                  >
-                    <span>📐</span>
-                    <span>{t('layoutHorizontal')}</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+        {/* Sub-toolbar: Tree Controls (Zoom, Pan, Layout, Expand/Collapse) */}
+        {viewMode === 'tree' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-gray-100 text-xs">
+            {/* Left: Search match or total count + Expand/Collapse */}
+            <div className="flex flex-wrap items-center gap-2.5 text-gray-500">
+              <span className="font-semibold text-gray-700">
+                {search.trim()
+                  ? t('matches', { count: matchingIds.size, suffix: matchingIds.size === 1 ? '' : 'es' })
+                  : t('peopleCount', { count: stats.total })}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <button
+                type="button"
+                onClick={expandAll}
+                className="text-primary-600 hover:text-primary-700 font-bold cursor-pointer"
+              >
+                {t('expandAll')}
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                type="button"
+                onClick={collapseAll}
+                className="text-gray-500 hover:text-gray-700 font-semibold cursor-pointer"
+              >
+                {t('collapseAll')}
+              </button>
 
-          <span className="text-gray-400">{t('clickDetails')}</span>
-        </div>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+
+              {/* Layout Toggle: Compact vs Horizontal */}
+              <div className="inline-flex items-center p-0.5 bg-gray-100 rounded-lg border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setLayoutStyle('compact')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    layoutStyle === 'compact'
+                      ? 'bg-white text-primary-800 shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                  title={t('layoutCompactHelp')}
+                >
+                  <span>📑</span>
+                  <span>{t('layoutCompact')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutStyle('horizontal')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    layoutStyle === 'horizontal'
+                      ? 'bg-white text-primary-800 shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                  title={t('layoutHorizontalHelp')}
+                >
+                  <span>📐</span>
+                  <span>{t('layoutHorizontal')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Canvas Toolkit (Zoom, Fit, Fullscreen) */}
+            <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200/80">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.4}
+                className="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold flex items-center justify-center disabled:opacity-40 transition-colors cursor-pointer"
+                title={t('zoomOut')}
+              >
+                -
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-mono font-bold text-[11px] transition-colors cursor-pointer"
+                title={t('resetView')}
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoom >= 1.8}
+                className="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold flex items-center justify-center disabled:opacity-40 transition-colors cursor-pointer"
+                title={t('zoomIn')}
+              >
+                +
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFitScreen}
+                className="px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-primary-700 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                title={t('fitScreen')}
+              >
+                <span>🔍</span>
+                <span>{t('fitScreen')}</span>
+              </button>
+
+              <div className="w-px h-4 bg-gray-200 mx-0.5" />
+
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                title={isFullscreen ? t('exitFullscreen') : t('fullscreenMode')}
+              >
+                {isFullscreen ? '✕' : '⛶'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Focus Breadcrumb Banner (if drill-down is active) */}
+      {/* 3. FOCUS BREADCRUMB BANNER */}
       {focusedNode && (
-        <div className="flex items-center justify-between gap-3 bg-blue-50/80 border border-blue-200/80 rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl px-4 py-3 shadow-xs">
           <div className="flex items-center gap-2 overflow-x-auto text-xs py-0.5">
-            <span className="font-semibold text-blue-900 shrink-0">🎯 {t('focusedOn', { name: focusedNode.fullName })}:</span>
+            <span className="font-bold text-blue-900 shrink-0">
+              🎯 {t('focusedOn', { name: focusedNode.fullName })}:
+            </span>
             <button
               type="button"
               onClick={() => setFocusedId(null)}
-              className="text-blue-700 hover:underline shrink-0"
+              className="text-blue-700 hover:underline shrink-0 font-medium"
             >
               {t('viewFullOrg')}
             </button>
-            {breadcrumbs.map((crumb, idx) => (
-              <span key={crumb.id} className="flex items-center gap-1 text-blue-500 shrink-0">
+            {breadcrumbs.map((crumb) => (
+              <span key={crumb.id} className="flex items-center gap-1 text-blue-400 shrink-0">
                 <span>/</span>
                 <button
                   type="button"
                   onClick={() => setFocusedId(crumb.id)}
-                  className={`hover:underline ${
-                    crumb.id === focusedId ? 'font-bold text-blue-950' : 'text-blue-700'
+                  className={`hover:underline cursor-pointer ${
+                    crumb.id === focusedId ? 'font-extrabold text-blue-950' : 'text-blue-700 font-medium'
                   }`}
                 >
                   {crumb.fullName}
@@ -400,23 +687,51 @@ export default function OrganizationChart({
           <button
             type="button"
             onClick={() => setFocusedId(null)}
-            className="px-2.5 py-1 text-xs font-semibold text-blue-800 bg-white hover:bg-blue-100 rounded-lg border border-blue-200 shrink-0 transition-colors"
+            className="px-3 py-1 text-xs font-bold text-blue-800 bg-white hover:bg-blue-100 rounded-xl border border-blue-200 shrink-0 transition-colors shadow-2xs cursor-pointer"
           >
             ✕ {t('viewFullOrg')}
           </button>
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* 4. MAIN CONTENT AREA */}
       {allNodes.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center text-gray-500">
+        <div className="bg-white rounded-3xl border border-gray-200 p-12 text-center text-gray-500 shadow-xs">
           {t('noMatchingEmployees')}
         </div>
-      ) : viewMode === 'hierarchy' ? (
-        /* ================= MODE A: HIERARCHY TREE VIEW ================= */
-        <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
-          <div className="overflow-x-auto py-10 px-6 min-h-[500px]">
-            <div className="flex flex-col items-center min-w-max mx-auto space-y-12">
+      ) : viewMode === 'tree' ? (
+        /* ================= VIEW 1: INTERACTIVE ORG TREE (DRAG-TO-PAN CANVAS) ================= */
+        <div className="relative bg-slate-50/80 border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden">
+          {/* Floating Pan/Zoom Canvas Hint */}
+          <div className="absolute bottom-3 left-4 z-20 pointer-events-none hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/60 backdrop-blur-md text-white/90 text-[11px] font-medium shadow-sm">
+            <span>🖱️</span>
+            <span>{t('panCanvasHint')}</span>
+          </div>
+
+          {/* Canvas Viewport */}
+          <div
+            ref={containerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className={`w-full overflow-hidden select-none min-h-[580px] max-h-[820px] relative ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            style={{
+              backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          >
+            <div
+              ref={canvasRef}
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'top center',
+                transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+              }}
+              className="py-12 px-8 flex flex-col items-center min-w-max mx-auto space-y-12"
+            >
               {activeRoots.map((root) => (
                 <TreeNode
                   key={root.id}
@@ -428,18 +743,20 @@ export default function OrganizationChart({
                   selectedId={selected?.id}
                   matchingIds={matchingIds}
                   layoutStyle={layoutStyle}
+                  rootIdSet={rootIdSet}
                   t={t}
                 />
               ))}
 
               {/* Unassigned / Orphans Section */}
               {!focusedNode && tree?.orphans?.length > 0 && (
-                <div className="w-full pt-8 border-t border-dashed border-gray-200">
+                <div className="w-full pt-10 border-t-2 border-dashed border-gray-300/80">
                   <div className="text-center mb-6">
-                    <h4 className="text-sm font-semibold text-gray-700">
-                      {t('unassignedManager')}
-                    </h4>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                      <span>⚠️</span>
+                      <span>{t('unassignedManager')}</span>
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
                       {t('unassignedManagerHelp')}
                     </p>
                   </div>
@@ -452,6 +769,7 @@ export default function OrganizationChart({
                         onFocus={setFocusedId}
                         isSelected={selected?.id === orphan.id}
                         isMatch={matchingIds.has(orphan.id)}
+                        tier="staff"
                         t={t}
                       />
                     ))}
@@ -461,131 +779,159 @@ export default function OrganizationChart({
             </div>
           </div>
         </div>
+      ) : viewMode === 'executives' ? (
+        /* ================= VIEW 3: EXECUTIVE LEADERSHIP ================= */
+        <ExecutiveLeadershipView
+          tree={tree}
+          allNodes={allNodes}
+          onFocusExecutive={handleFocusExecutive}
+          onSelectExecutive={setSelected}
+          t={t}
+        />
       ) : (
-        /* ================= MODE B: DEPARTMENT TEAMS VIEW ================= */
+        /* ================= VIEW 2: DEPARTMENT TEAMS GRID ================= */
         <div className="grid gap-6 md:grid-cols-2">
           {departmentGroups.map((group) => (
             <div
               key={group.id}
-              className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-xs hover:border-gray-300 transition-all flex flex-col"
+              className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs hover:border-primary-300 hover:shadow-md transition-all flex flex-col justify-between"
             >
-              {/* Department Header */}
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 font-bold flex items-center justify-center text-xs">
-                    {group.code || group.name.slice(0, 2).toUpperCase()}
+              <div>
+                {/* Department Header */}
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-indigo-100 text-primary-800 font-extrabold flex items-center justify-center text-sm border border-primary-200 shadow-2xs">
+                      {group.code || group.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-gray-900 leading-tight">
+                        {group.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 font-medium">
+                        {group.code && `${group.code} • `}
+                        {group.members.length} {t('peopleCount', { count: group.members.length })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">
-                      {group.name}
-                    </h3>
-                    <p className="text-[11px] text-gray-400">
-                      {group.code && `${group.code} • `}
-                      {group.members.length} {t('peopleCount', { count: group.members.length })}
-                    </p>
-                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                    {group.members.length}
+                  </span>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                  {group.members.length}
-                </span>
+
+                {/* Department Head (Featured) */}
+                {group.head && (
+                  <div className="mb-4">
+                    <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1 mb-2">
+                      👑 {t('departmentHead')}
+                    </span>
+                    <div
+                      onClick={() => setSelected(group.head)}
+                      className={`p-3.5 rounded-2xl border bg-gradient-to-r from-amber-50/60 via-amber-50/20 to-white border-amber-200 hover:border-amber-400 hover:shadow-sm cursor-pointer transition-all flex items-center justify-between gap-3 ${
+                        selected?.id === group.head.id ? 'ring-2 ring-primary-500' : ''
+                      } ${matchingIds.has(group.head.id) ? 'bg-amber-100/60 ring-2 ring-amber-400' : ''}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <NodeAvatar node={group.head} size="md" tier="manager" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {group.head.fullName}
+                            {group.head.nickname && (
+                              <span className="text-xs font-normal text-gray-500 ml-1">
+                                ({group.head.nickname})
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-amber-950 font-medium truncate mt-0.5">
+                            {group.head.position}
+                          </p>
+                        </div>
+                      </div>
+
+                      {group.head.children?.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedId(group.head.id);
+                            setViewMode('tree');
+                          }}
+                          className="px-2.5 py-1.5 text-[11px] font-bold text-primary-700 bg-white border border-primary-200 rounded-xl hover:bg-primary-50 shrink-0 shadow-2xs transition-colors cursor-pointer"
+                          title={t('focusTeam')}
+                        >
+                          🎯 {t('focusTeam')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Team Members List */}
+                {group.teamMembers.length > 0 && (
+                  <div className="space-y-2 mb-2">
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                      {t('teamMembers')} ({group.teamMembers.length})
+                    </span>
+                    <div className="grid gap-2 max-h-64 overflow-y-auto pr-1">
+                      {group.teamMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          onClick={() => setSelected(member)}
+                          className={`p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50/80 cursor-pointer transition-all flex items-center justify-between gap-3 ${
+                            selected?.id === member.id ? 'ring-2 ring-primary-500 bg-primary-50/20' : ''
+                          } ${matchingIds.has(member.id) ? 'bg-amber-50 ring-2 ring-amber-300' : ''}`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <NodeAvatar node={member} size="sm" tier="staff" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-gray-800 truncate">
+                                {member.fullName}
+                                {member.nickname && (
+                                  <span className="text-gray-400 font-normal ml-1">
+                                    ({member.nickname})
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[11px] text-gray-500 truncate">
+                                {member.position}
+                              </p>
+                            </div>
+                          </div>
+
+                          {member.children?.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFocusedId(member.id);
+                                setViewMode('tree');
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-primary-700 hover:bg-white rounded-lg shrink-0 border border-transparent hover:border-gray-200 transition-colors cursor-pointer"
+                              title={t('focusTeam')}
+                            >
+                              🎯
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Department Head (Featured) */}
+              {/* Department Branch Explore Button */}
               {group.head && (
-                <div className="mb-4">
-                  <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1 mb-1.5">
-                    👑 {t('departmentHead')}
-                  </span>
-                  <div
-                    onClick={() => setSelected(group.head)}
-                    className={`p-3 rounded-xl border bg-amber-50/40 border-amber-200 hover:border-amber-300 hover:shadow-sm cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                      selected?.id === group.head.id ? 'ring-2 ring-primary-500' : ''
-                    } ${matchingIds.has(group.head.id) ? 'bg-amber-100/60 ring-2 ring-amber-400' : ''}`}
+                <div className="pt-3 border-t border-gray-100 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusedId(group.head.id);
+                      setViewMode('tree');
+                    }}
+                    className="w-full py-2 px-3 rounded-xl font-bold text-xs text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <NodeAvatar node={group.head} size="md" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">
-                          {group.head.fullName}
-                          {group.head.nickname && (
-                            <span className="text-xs font-normal text-gray-500 ml-1">
-                              ({group.head.nickname})
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-amber-900 font-medium truncate">
-                          {group.head.position}
-                        </p>
-                      </div>
-                    </div>
-
-                    {group.head.children?.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFocusedId(group.head.id);
-                          setViewMode('hierarchy');
-                        }}
-                        className="px-2 py-1 text-[11px] font-medium text-primary-700 bg-white border border-primary-200 rounded-lg hover:bg-primary-50 shrink-0"
-                        title={t('focusTeam')}
-                      >
-                        🎯 {t('focusTeam')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Team Members List */}
-              {group.teamMembers.length > 0 && (
-                <div className="space-y-2 flex-1">
-                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                    {t('teamMembers')} ({group.teamMembers.length})
-                  </span>
-                  <div className="grid gap-2 sm:grid-cols-1">
-                    {group.teamMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        onClick={() => setSelected(member)}
-                        className={`p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50/60 cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                          selected?.id === member.id ? 'ring-2 ring-primary-500 bg-primary-50/20' : ''
-                        } ${matchingIds.has(member.id) ? 'bg-amber-50 ring-2 ring-amber-300' : ''}`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <NodeAvatar node={member} size="sm" />
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate">
-                              {member.fullName}
-                              {member.nickname && (
-                                <span className="text-gray-400 font-normal ml-1">
-                                  ({member.nickname})
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-[11px] text-gray-500 truncate">
-                              {member.position}
-                            </p>
-                          </div>
-                        </div>
-
-                        {member.children?.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFocusedId(member.id);
-                              setViewMode('hierarchy');
-                            }}
-                            className="p-1 text-gray-400 hover:text-primary-600 rounded shrink-0"
-                            title={t('focusTeam')}
-                          >
-                            🎯
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                    <span>🎯</span>
+                    <span>{t('viewDivisionTree')} ({group.name})</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -593,7 +939,7 @@ export default function OrganizationChart({
         </div>
       )}
 
-      {/* Employee Detail Slide-over Drawer */}
+      {/* 5. INTERACTIVE EMPLOYEE DETAIL SLIDE-OVER DRAWER */}
       {selected && (
         <div
           className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs transition-opacity"
@@ -601,148 +947,215 @@ export default function OrganizationChart({
           onClick={() => setSelected(null)}
         >
           <aside
-            className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl p-6 flex flex-col"
+            className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl p-6 flex flex-col justify-between"
             role="dialog"
             aria-modal="true"
             aria-label={`${selected.fullName} details`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-gray-100">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-600">
-                  {t('employeeProfile')}
-                </p>
-                <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {selected.fullName}
-                </h2>
-                {selected.nickname && (
-                  <p className="text-xs text-gray-500">
-                    {t('nickname')}: <span className="font-semibold text-gray-700">{selected.nickname}</span>
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold transition-colors"
-                aria-label={t('closeDetails')}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Profile Highlight */}
-            <div className="flex items-center gap-4 py-5 border-b border-gray-100">
-              <NodeAvatar node={selected} size="lg" />
-              <div>
-                <p className="text-sm font-bold text-gray-900">
-                  {selected.position || t('positionNotSpecified')}
-                </p>
-                <p className="text-xs text-primary-700 font-medium mt-0.5">
-                  {selected.department?.name || t('departmentNotAssigned')}
-                </p>
-                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
-                  {selected.isActive ? t('active') : t('inactive')}
-                </span>
-              </div>
-            </div>
-
-            {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-2.5 py-4 border-b border-gray-100">
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {t('employeeCodeLabel')}
-                </p>
-                <p className="text-xs font-bold text-gray-800 mt-0.5">
-                  {selected.employeeCode || '—'}
-                </p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {t('departmentCode')}
-                </p>
-                <p className="text-xs font-bold text-gray-800 mt-0.5">
-                  {selected.department?.code || '—'}
-                </p>
-              </div>
-            </div>
-
-            {/* Direct Reporting Relationship */}
-            <div className="py-4 space-y-4 flex-1">
-              {/* Reports To (Manager) */}
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                  {t('reportsTo')}
-                </p>
-                {parentMap.get(selected.id) ? (
-                  <div
-                    onClick={() => setSelected(parentMap.get(selected.id))}
-                    className="p-3 rounded-xl border border-gray-200 hover:border-primary-400 bg-gray-50/50 hover:bg-primary-50/20 cursor-pointer transition-all flex items-center gap-3"
-                  >
-                    <NodeAvatar node={parentMap.get(selected.id)} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-gray-800 truncate">
-                        {parentMap.get(selected.id).fullName}
-                      </p>
-                      <p className="text-[11px] text-gray-500 truncate">
-                        {parentMap.get(selected.id).position}
-                      </p>
-                    </div>
-                    <span className="text-xs text-primary-600 font-semibold">→</span>
+            <div>
+              {/* Drawer Header */}
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-gray-100">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600">
+                      {t('employeeProfile')}
+                    </span>
+                    {/* Management Tier Pill */}
+                    {(() => {
+                      const tier = getEmployeeTier(selected, rootIdSet.has(selected.id));
+                      return tier === 'executive' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                          👑 {t('executiveTier')}
+                        </span>
+                      ) : tier === 'manager' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-300">
+                          👔 {t('managementLevel')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                          👤 {t('teamMemberLevel')}
+                        </span>
+                      );
+                    })()}
                   </div>
-                ) : (
-                  <p className="text-xs text-gray-500 italic bg-gray-50 p-2.5 rounded-xl">
-                    {t('noManager')}
-                  </p>
-                )}
+                  <h2 className="text-xl font-extrabold text-gray-900 mt-1">
+                    {selected.fullName}
+                  </h2>
+                  {selected.nickname && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t('nickname')}: <span className="font-bold text-gray-800">{selected.nickname}</span>
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+                  aria-label={t('closeDetails')}
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Direct Reports (Subordinates) */}
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                  {t('directReports')} ({selected.children?.length || 0})
+              {/* Profile Highlight Card */}
+              <div className="flex items-center gap-4 py-5 border-b border-gray-100">
+                <NodeAvatar
+                  node={selected}
+                  size="lg"
+                  tier={getEmployeeTier(selected, rootIdSet.has(selected.id))}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-extrabold text-gray-900 leading-tight">
+                    {selected.position || t('positionNotSpecified')}
+                  </p>
+                  <p className="text-xs text-primary-700 font-bold mt-1">
+                    🏢 {selected.department?.name || t('departmentNotAssigned')}
+                  </p>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                    ● {selected.isActive ? t('active') : t('inactive')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-2.5 py-4 border-b border-gray-100">
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    {t('employeeCodeLabel')}
+                  </p>
+                  <p className="text-xs font-mono font-bold text-gray-800 mt-0.5">
+                    {selected.employeeCode || '—'}
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    {t('departmentCode')}
+                  </p>
+                  <p className="text-xs font-mono font-bold text-gray-800 mt-0.5">
+                    {selected.department?.code || '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct Contact Chips */}
+              <div className="py-4 border-b border-gray-100 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  {t('contactDirectly')}
                 </p>
-                {selected.children?.length > 0 ? (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {selected.children.map((child) => (
-                      <div
-                        key={child.id}
-                        onClick={() => setSelected(child)}
-                        className="p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer transition-all flex items-center gap-2.5"
-                      >
-                        <NodeAvatar node={child} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-gray-800 truncate">
-                            {child.fullName}
-                          </p>
-                          <p className="text-[11px] text-gray-500 truncate">
-                            {child.position}
-                          </p>
-                        </div>
-                        <span className="text-xs text-gray-400">→</span>
+                <div className="flex flex-wrap gap-2">
+                  {selected.workEmail && (
+                    <a
+                      href={`mailto:${selected.workEmail}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition-colors"
+                    >
+                      <span>✉️</span>
+                      <span>{selected.workEmail}</span>
+                    </a>
+                  )}
+                  {selected.phone && (
+                    <a
+                      href={`tel:${selected.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-colors"
+                    >
+                      <span>📞</span>
+                      <span>{selected.phone}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Reporting Lines Section */}
+              <div className="py-4 space-y-4">
+                {/* Reports To (Manager) */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                    {t('reportsTo')}
+                  </p>
+                  {parentMap.get(selected.id) ? (
+                    <div
+                      onClick={() => setSelected(parentMap.get(selected.id))}
+                      className="p-3 rounded-2xl border border-gray-200 hover:border-primary-400 bg-gray-50/60 hover:bg-primary-50/20 cursor-pointer transition-all flex items-center gap-3"
+                    >
+                      <NodeAvatar
+                        node={parentMap.get(selected.id)}
+                        size="sm"
+                        tier={getEmployeeTier(parentMap.get(selected.id), rootIdSet.has(parentMap.get(selected.id).id))}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-gray-800 truncate">
+                          {parentMap.get(selected.id).fullName}
+                        </p>
+                        <p className="text-[11px] text-gray-500 truncate">
+                          {parentMap.get(selected.id).position}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic bg-gray-50 p-2.5 rounded-xl">
-                    {t('noDirectReports')}
+                      <span className="text-xs text-primary-600 font-bold">→</span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                      👑 {t('noManager')} ({t('executiveTier')})
+                    </p>
+                  )}
+                </div>
+
+                {/* Direct Reports (Subordinates) */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                    {t('directReports')} ({selected.children?.length || 0})
                   </p>
-                )}
+                  {selected.children?.length > 0 ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {selected.children.map((child) => (
+                        <div
+                          key={child.id}
+                          onClick={() => setSelected(child)}
+                          className="p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer transition-all flex items-center gap-2.5"
+                        >
+                          <NodeAvatar
+                            node={child}
+                            size="sm"
+                            tier={getEmployeeTier(child, false)}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-800 truncate">
+                              {child.fullName}
+                            </p>
+                            <p className="text-[11px] text-gray-500 truncate">
+                              {child.position}
+                            </p>
+                          </div>
+                          <span className="text-xs text-gray-400">→</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                      {t('noDirectReports')}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-gray-100 space-y-2">
+            <div className="pt-4 border-t border-gray-100 space-y-2 mt-4">
+              <Link
+                to={`/employees/${selected.id}`}
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-primary-600 hover:bg-primary-500 shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>👤</span>
+                <span>{t('viewFullProfile') || 'ดูโปรไฟล์เต็ม'}</span>
+              </Link>
               {selected.children?.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
                     setFocusedId(selected.id);
-                    setViewMode('hierarchy');
+                    setViewMode('tree');
                     setSelected(null);
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                 >
                   🎯 {t('focusTeam')}
                 </button>
@@ -750,7 +1163,7 @@ export default function OrganizationChart({
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 {t('closeDetails')}
               </button>
@@ -772,18 +1185,21 @@ function TreeNode({
   selectedId,
   matchingIds,
   layoutStyle = 'compact',
+  rootIdSet,
   t,
 }) {
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const childCount = node.children?.length || 0;
 
-  // Determine if all children of this node are leaf nodes (individual contributors without subordinates)
-  const allChildrenAreLeaves =
-    hasChildren && node.children.every((child) => !child.children || child.children.length === 0);
+  const isRoot = rootIdSet?.has(node.id) || false;
+  const tier = getEmployeeTier(node, isRoot);
 
   // Compact layout rule: When compact mode is enabled, node has 2+ subordinates, and all of them are leaves,
   // stack them vertically under their manager so they don't blow out horizontally and crowd adjacent department branches.
+  const allChildrenAreLeaves =
+    hasChildren && node.children.every((child) => !child.children || child.children.length === 0);
+
   const useCompactSubordinates =
     layoutStyle === 'compact' && hasChildren && allChildrenAreLeaves && childCount >= 2;
 
@@ -799,44 +1215,64 @@ function TreeNode({
         hasChildren={hasChildren}
         isExpanded={isExpanded}
         onToggleExpand={() => onToggleExpand(node.id)}
+        tier={tier}
         t={t}
       />
 
       {/* Stem connector leading down to children */}
       {hasChildren && isExpanded && (
-        <div className="w-0.5 h-6 bg-primary-200" />
+        <div className="w-0.5 h-6 bg-gradient-to-b from-primary-400 to-primary-300" />
       )}
 
-      {/* Children branches: Case 1 - Compact Subordinate Stacking (Fixes 2+ subordinates crowding others) */}
+      {/* Children branches: Case 1 - Compact Subordinate Stacking */}
       {hasChildren && isExpanded && useCompactSubordinates && (
         <div className="relative flex flex-col items-center pt-0">
-          <div className="relative pl-6 py-2 flex flex-col space-y-3">
-            {/* Continuous vertical trunk line on left */}
-            <div className="absolute left-2.5 top-0 bottom-6 w-0.5 bg-primary-200" />
+          <div className="relative pt-4 flex flex-col space-y-3">
+            {/* Top feeder bridge: connects from parent center stem (50%) to left spine (-left-6) */}
+            <div className="absolute top-0 right-1/2 -left-6 h-4 border-t-2 border-l-2 border-primary-300 rounded-tl-lg pointer-events-none" />
 
-            {node.children.map((child) => (
-              <div key={child.id} className="relative flex items-center">
-                {/* Horizontal branch tick leading into child card */}
-                <div className="absolute -left-3.5 top-1/2 w-3.5 h-0.5 bg-primary-200 -translate-y-1/2" />
-                <EmployeeCard
-                  node={child}
-                  onSelect={onSelect}
-                  onFocus={onFocus}
-                  isSelected={selectedId === child.id}
-                  isMatch={matchingIds.has(child.id)}
-                  hasChildren={false}
-                  isExpanded={false}
-                  onToggleExpand={() => {}}
-                  compact={true}
-                  t={t}
-                />
-              </div>
-            ))}
+            {node.children.map((child, index) => {
+              const isFirst = index === 0;
+              const isLast = index === childCount - 1;
+
+              return (
+                <div key={child.id} className="relative flex items-center">
+                  {/* Horizontal branch tick into child card */}
+                  <div className="absolute -left-6 top-1/2 w-6 h-0.5 bg-primary-300 -translate-y-1/2 pointer-events-none" />
+
+                  {/* Vertical spine coming from above into this card's branch */}
+                  <div
+                    className={`absolute -left-6 w-0.5 bg-primary-300 pointer-events-none ${
+                      isFirst ? 'top-0 h-1/2' : '-top-3 bottom-1/2'
+                    }`}
+                  />
+
+                  {/* Vertical spine continuing downward to next sibling (only if not the last child) */}
+                  {!isLast && (
+                    <div className="absolute -left-6 top-1/2 bottom-0 w-0.5 bg-primary-300 pointer-events-none" />
+                  )}
+
+                  <EmployeeCard
+                    node={child}
+                    onSelect={onSelect}
+                    onFocus={onFocus}
+                    isSelected={selectedId === child.id}
+                    isMatch={matchingIds.has(child.id)}
+                    hasChildren={false}
+                    isExpanded={false}
+                    onToggleExpand={() => {}}
+                    compact={true}
+                    tier={getEmployeeTier(child, false)}
+                    t={t}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Children branches: Case 2 - Standard / Horizontal with Self-Centering Pure CSS Connectors */}
+      {/* Children branches: Case 2 - Standard / Horizontal with pure CSS bus connectors */}
       {hasChildren && isExpanded && !useCompactSubordinates && (
         <div className="relative flex flex-col items-center pt-0">
           <div className="flex items-start justify-center">
@@ -845,11 +1281,9 @@ function TreeNode({
                 {/* Self-balancing horizontal bus connector */}
                 {childCount > 1 && (
                   <div className="absolute top-0 left-0 right-0 h-0.5">
-                    {/* Left half-bar: connects this card center to left sibling */}
                     {index > 0 && (
                       <div className="absolute top-0 left-0 w-1/2 h-0.5 bg-primary-200" />
                     )}
-                    {/* Right half-bar: connects this card center to right sibling */}
                     {index < childCount - 1 && (
                       <div className="absolute top-0 right-0 w-1/2 h-0.5 bg-primary-200" />
                     )}
@@ -868,6 +1302,7 @@ function TreeNode({
                   selectedId={selectedId}
                   matchingIds={matchingIds}
                   layoutStyle={layoutStyle}
+                  rootIdSet={rootIdSet}
                   t={t}
                 />
               </div>
@@ -879,7 +1314,7 @@ function TreeNode({
   );
 }
 
-/* ================= INDIVIDUAL EMPLOYEE CARD ================= */
+/* ================= INDIVIDUAL EMPLOYEE CARD (UI/UX PROMAX MULTI-TIER) ================= */
 function EmployeeCard({
   node,
   onSelect,
@@ -890,54 +1325,92 @@ function EmployeeCard({
   isExpanded,
   onToggleExpand,
   compact = false,
+  tier = 'staff',
   t,
 }) {
+  // Multi-tier styling according to UI/UX Promax
+  const tierStyles = {
+    executive: {
+      card: 'bg-gradient-to-b from-amber-50/70 via-white to-white border-amber-300 shadow-md hover:border-amber-400 hover:shadow-xl',
+      pill: 'bg-amber-100 text-amber-900 border border-amber-300/80',
+      title: 'text-amber-950 font-bold',
+      badge: '👑',
+    },
+    manager: {
+      card: 'bg-gradient-to-b from-indigo-50/40 via-white to-white border-indigo-200/90 shadow-2xs hover:border-indigo-400 hover:shadow-lg',
+      pill: 'bg-indigo-50 text-indigo-900 border border-indigo-200',
+      title: 'text-indigo-900 font-bold',
+      badge: '👔',
+    },
+    staff: {
+      card: 'bg-white border-gray-200/90 shadow-2xs hover:border-primary-300 hover:shadow-md',
+      pill: 'bg-slate-100 text-slate-700 border border-slate-200/80',
+      title: 'text-primary-700 font-medium',
+      badge: null,
+    },
+  }[tier] || {
+    card: 'bg-white border-gray-200/90',
+    pill: 'bg-slate-100 text-slate-700',
+    title: 'text-primary-700 font-medium',
+    badge: null,
+  };
+
   return (
     <div
       onClick={() => onSelect(node)}
-      className={`relative w-64 bg-white rounded-2xl border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 select-none ${
-        compact ? 'p-2.5' : 'p-3.5'
-      } ${
+      className={`relative w-68 rounded-2xl border transition-all duration-200 cursor-pointer select-none hover:-translate-y-1 ${
+        compact ? 'p-3' : 'p-4'
+      } ${tierStyles.card} ${
         isSelected
-          ? 'ring-2 ring-primary-500 border-primary-400 bg-primary-50/10'
+          ? 'ring-2 ring-primary-500 !border-primary-500 !bg-primary-50/20'
           : isMatch
-          ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-50/30'
-          : 'border-gray-200/90 hover:border-primary-300'
+          ? 'ring-2 ring-amber-400 !border-amber-400 !bg-amber-100/40'
+          : ''
       }`}
     >
-      {/* Department accent pill at top */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 tracking-wide truncate max-w-[150px]">
+      {/* Top Department Accent Row */}
+      <div className="flex items-center justify-between mb-2.5">
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide truncate max-w-[155px] ${tierStyles.pill}`}
+        >
           {node.department?.name || t('departmentNotAssigned')}
         </span>
-        {node.employeeCode && (
-          <span className="text-[10px] text-gray-400 font-mono">
-            {node.employeeCode}
-          </span>
-        )}
+
+        <div className="flex items-center gap-1">
+          {tierStyles.badge && (
+            <span className="text-xs" title={t(tier === 'executive' ? 'executiveTier' : 'managementLevel')}>
+              {tierStyles.badge}
+            </span>
+          )}
+          {node.employeeCode && (
+            <span className="text-[10px] text-gray-400 font-mono font-bold">
+              {node.employeeCode}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Profile Row */}
-      <div className="flex items-center gap-2.5">
-        <NodeAvatar node={node} size={compact ? 'sm' : 'md'} />
+      <div className="flex items-center gap-3">
+        <NodeAvatar node={node} size={compact ? 'sm' : 'md'} tier={tier} />
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-bold text-gray-900 truncate leading-tight">
+          <h4 className="text-sm font-extrabold text-gray-900 truncate leading-tight">
             {node.fullName}
           </h4>
           {node.nickname && (
-            <span className="text-xs text-gray-400 font-normal">
+            <span className="text-xs text-gray-500 font-medium">
               ({node.nickname})
             </span>
           )}
-          <p className="text-xs text-primary-700 font-medium truncate mt-0.5">
+          <p className={`text-xs truncate mt-0.5 ${tierStyles.title}`}>
             {node.position || t('positionNotSpecified')}
           </p>
         </div>
       </div>
 
-      {/* Action / Report Pill Row */}
+      {/* Direct Reports Pill & Actions */}
       {(!compact || hasChildren) && (
-        <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-1">
+        <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-1.5">
           {hasChildren ? (
             <button
               type="button"
@@ -945,9 +1418,9 @@ function EmployeeCard({
                 e.stopPropagation();
                 onToggleExpand();
               }}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isExpanded
-                  ? 'bg-primary-100/70 text-primary-800 hover:bg-primary-200/70'
+                  ? 'bg-primary-100 text-primary-800 hover:bg-primary-200'
                   : 'bg-primary-50 text-primary-700 hover:bg-primary-100'
               }`}
             >
@@ -957,7 +1430,7 @@ function EmployeeCard({
               </span>
             </button>
           ) : (
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[11px] text-gray-400 font-medium">
               {t('noDirectReports')}
             </span>
           )}
@@ -969,7 +1442,7 @@ function EmployeeCard({
                 e.stopPropagation();
                 onFocus(node.id);
               }}
-              className="p-1 rounded-lg text-gray-400 hover:text-primary-700 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-xl text-gray-400 hover:text-primary-700 hover:bg-gray-100 transition-colors cursor-pointer"
               title={t('focusTeam')}
             >
               🎯

@@ -239,11 +239,19 @@ export default function ObsidianTree({
   onOpenEditTopic,
   onDeleteTopic,
   onOpenCreateArticle,
-  search = '',
+  search: externalSearch,
   onSearchChange,
 }) {
   const { t } = useLanguage();
+  const [internalSearch, setInternalSearch] = useState('');
   const [expandedFolders, setExpandedFolders] = useState(() => new Set());
+
+  const search = externalSearch !== undefined ? externalSearch : internalSearch;
+
+  const handleSearchChange = (val) => {
+    setInternalSearch(val);
+    onSearchChange?.(val);
+  };
 
   // Build Parent -> Children map for topics
   const { rootTopics, childTopicsMap } = useMemo(() => {
@@ -303,12 +311,27 @@ export default function ObsidianTree({
     setExpandedFolders(new Set());
   };
 
-  // Filtered lists if search query is active
+  // Filtered topics if search query is active
+  const filteredTopics = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    return topics.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.description?.toLowerCase().includes(q) ||
+        t.slug?.toLowerCase().includes(q)
+    );
+  }, [topics, search]);
+
+  // Filtered articles if search query is active
   const filteredArticles = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.toLowerCase();
     return articles.filter(
-      (a) => a.title?.toLowerCase().includes(q) || a.summary?.toLowerCase().includes(q)
+      (a) =>
+        a.title?.toLowerCase().includes(q) ||
+        a.summary?.toLowerCase().includes(q) ||
+        (Array.isArray(a.tags) && a.tags.some((tag) => tag?.toLowerCase().includes(q)))
     );
   }, [articles, search]);
 
@@ -351,11 +374,21 @@ export default function ObsidianTree({
           <span className="absolute left-2.5 top-2 text-xs text-slate-400">🔍</span>
           <input
             type="text"
-            placeholder={t('searchDocs')}
+            placeholder={t('searchDocs') || 'ค้นหาบทความหรือหัวข้อ...'}
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100"
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100 transition-all"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => handleSearchChange('')}
+              className="absolute right-2 top-1.5 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              title={t('clear') || 'Clear search'}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Manager Action: New Root Folder & New Note */}
@@ -385,32 +418,77 @@ export default function ObsidianTree({
       <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
         {/* If searching, show direct matches */}
         {search.trim() ? (
-          <div>
-            <p className="px-2 py-1 text-[11px] font-semibold text-slate-400">
-              ผลการค้นหา ({filteredArticles.length})
-            </p>
-            {filteredArticles.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">
-                ไม่พบเนื้อหาที่ตรงกับคำค้นหา
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                {filteredArticles.map((art) => (
-                  <div
-                    key={art._id}
-                    onClick={() => onSelectArticle(art)}
-                    className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs cursor-pointer transition ${
-                      selectedArticleId === art._id
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>📄</span>
-                    <span className="truncate">{art.title}</span>
-                  </div>
-                ))}
+          <div className="space-y-3">
+            {/* Matching Topics (Folders) */}
+            {filteredTopics.length > 0 && (
+              <div>
+                <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  📁 {t('topics') || 'หัวข้อ'} ({filteredTopics.length})
+                </p>
+                <div className="space-y-1">
+                  {filteredTopics.map((topic) => (
+                    <div
+                      key={topic._id}
+                      onClick={() => onSelectTopic(topic)}
+                      className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs cursor-pointer transition ${
+                        selectedTopicId === topic._id
+                          ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm shrink-0">{topic.icon || '📁'}</span>
+                        <span className="truncate font-medium">{getCleanTopicName(topic.name)}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">→</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Matching Articles */}
+            <div>
+              <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                📄 {t('articles') || 'บทความ'} ({filteredArticles.length})
+              </p>
+              {filteredArticles.length === 0 && filteredTopics.length === 0 ? (
+                <div className="px-2 py-6 text-center text-xs text-slate-400">
+                  <p className="text-xl mb-1">🔍</p>
+                  <p>{t('noResults') || 'ไม่พบเนื้อหาหรือหัวข้อที่ตรงกับคำค้นหา'}</p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {filteredArticles.map((art) => (
+                    <div
+                      key={art._id}
+                      onClick={() => onSelectArticle(art)}
+                      className={`group flex items-center justify-between rounded-xl px-2.5 py-2 text-xs cursor-pointer transition ${
+                        selectedArticleId === art._id
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span>📄</span>
+                        <span className="truncate font-medium">{art.title}</span>
+                      </div>
+                      {art.status === 'draft' && (
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.2 text-[9px] uppercase font-bold ${
+                            selectedArticleId === art._id
+                              ? 'bg-blue-800 text-blue-200'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <>

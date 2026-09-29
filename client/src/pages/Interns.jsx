@@ -4,7 +4,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell.jsx';
 import useAuth from '../hooks/useAuth.js';
 import useLanguage from '../hooks/useLanguage.js';
-import { useInterns, useCreateIntern, useUpdateIntern, useDeleteIntern } from '../hooks/useInterns.js';
+import {
+  useInterns,
+  useCreateIntern,
+  useUpdateIntern,
+  useDeleteIntern,
+} from '../hooks/useInterns.js';
 import { useInternBatches } from '../hooks/useInternBatches.js';
 import { useDepartments } from '../hooks/useDepartments.js';
 import { useEmployees } from '../hooks/useEmployees.js';
@@ -14,7 +19,432 @@ import Pagination from '../components/common/Pagination.jsx';
 import Modal from '../components/common/Modal.jsx';
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
 import InternForm from '../components/interns/InternForm.jsx';
+import InternCard from '../components/interns/InternCard.jsx';
 import StatusBadge from '../components/interns/StatusBadge.jsx';
+import ViewSwitcher from '../components/common/ViewSwitcher.jsx';
 import { ImageWithFallback } from '../components/common/ImageUpload.jsx';
-const PAGE_SIZE = 10;
-export default function Interns() { const { hasPermission } = useAuth(); const { t } = useLanguage(); const canManage = hasPermission('interns:manage'); const [searchParams] = useSearchParams(); const [search, setSearch] = useState(''); const [department, setDepartment] = useState(() => searchParams.get('department') || ''); const [batch, setBatch] = useState(() => searchParams.get('batch') || ''); const [status, setStatus] = useState(''); const [page, setPage] = useState(1); const { data, isLoading, isError, error, isFetching, refetch } = useInterns({ search, department, batch, status, page, limit: PAGE_SIZE }); const { data: departmentData = [] } = useDepartments(); const { data: batchData } = useInternBatches({ page: 1, limit: 100 }); const { data: employeeData } = useEmployees({ page: 1, limit: 100 }); const batches = batchData?.data || []; const employees = employeeData?.data || []; const createMut = useCreateIntern(); const updateMut = useUpdateIntern(); const deleteMut = useDeleteIntern(); const [formOpen, setFormOpen] = useState(() => searchParams.get('create') === '1'); const [editing, setEditing] = useState(null); const [deleting, setDeleting] = useState(null); const [serverErrors, setServerErrors] = useState({}); const [formError, setFormError] = useState(''); const [uploadProgress, setUploadProgress] = useState(0); const reset = (setter) => (value) => { setter(value); setPage(1); }; const open = (item = null) => { setEditing(item); setServerErrors({}); setFormError(''); setFormOpen(true); }; const submit = async (payload, file) => { setServerErrors({}); setFormError(''); const onUploadProgress = (event) => { if (event.total) setUploadProgress(Math.round((event.loaded / event.total) * 100)); }; try { if (editing) await updateMut.mutateAsync({ id: editing._id, payload, file, onUploadProgress }); else await createMut.mutateAsync({ payload, file, onUploadProgress }); setFormOpen(false); setUploadProgress(0); } catch (requestError) { const response = requestError.response?.data; if (response?.errors) setServerErrors(response.errors); setFormError(response?.message || t('saveInternError')); } }; const remove = async () => { try { await deleteMut.mutateAsync(deleting._id); setDeleting(null); } catch {} }; const columns = [{ key: 'name', header: t('interns'), render: (item) => <div className="flex items-center gap-2"><ImageWithFallback src={item.profileImage} alt={`${item.firstName} ${item.lastName}`} className="w-8 h-8 rounded-full object-cover" fallback={`${item.firstName?.[0] || ''}${item.lastName?.[0] || ''}`} /><Link to={`/interns/${item._id}`} className="font-medium text-primary-600 hover:underline">{item.firstName} {item.lastName}</Link></div> }, { key: 'university', header: t('university'), render: (item) => <div>{item.university}<p className="text-xs text-gray-400">{item.major || '—'}</p></div> }, { key: 'department', header: t('departments'), render: (item) => item.departmentId?.name || '—' }, { key: 'batch', header: t('batch'), render: (item) => item.batchId ? <Link to={`/intern-batches/${item.batchId._id}`} className="text-primary-600 hover:underline">{item.batchId.code}</Link> : '—' }, { key: 'mentor', header: t('mentor'), render: (item) => item.mentorId ? `${item.mentorId.firstName} ${item.mentorId.lastName}` : '—' }, { key: 'status', header: t('status'), render: (item) => <StatusBadge status={item.status} /> }]; if (canManage) columns.push({ key: 'actions', header: '', className: 'text-right', render: (item) => <div className="flex justify-end gap-2"><button onClick={() => open(item)} className="text-primary-600 hover:underline text-sm">{t('edit')}</button><button onClick={() => setDeleting(item)} className="text-red-600 hover:underline text-sm">{t('delete')}</button></div> }); return <AppShell><div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8"><p className="text-gray-500 mb-4">{t('internsSubtitle')}</p><div className="flex flex-col lg:flex-row gap-3 mb-4"><SearchBar value={search} onSearch={reset(setSearch)} placeholder={t('searchInterns')} /><select value={department} onChange={(event) => reset(setDepartment)(event.target.value)} className="px-3 py-2 border border-gray-300 rounded-md"><option value="">{t('allDepartments')}</option>{departmentData.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select><select value={batch} onChange={(event) => reset(setBatch)(event.target.value)} className="px-3 py-2 border border-gray-300 rounded-md"><option value="">{t('allBatches')}</option>{batches.map((item) => <option key={item._id} value={item._id}>{item.code}</option>)}</select><select value={status} onChange={(event) => reset(setStatus)(event.target.value)} className="px-3 py-2 border border-gray-300 rounded-md"><option value="">{t('allStatuses')}</option><option value="upcoming">{t('upcoming')}</option><option value="active">{t('active')}</option><option value="completed">{t('completed')}</option></select>{canManage && <button onClick={() => open()} className="lg:ml-auto bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium">{t('addIntern')}</button>}</div><DataTable columns={columns} rows={data?.data} loading={isLoading} error={isError ? error : null} onRetry={refetch} emptyTitle={t('noInterns')} emptyMessage={search || department || batch || status ? t('adjustFilters') : t('addFirstIntern')} />{data?.pagination && <Pagination {...data.pagination} onPageChange={setPage} disabled={isFetching} />}<Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? t('editIntern') : t('addIntern')} size="lg">{formError && <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{formError}</p>}<InternForm initial={editing} departments={departmentData} batches={batches} employees={employees} onSubmit={submit} onCancel={() => setFormOpen(false)} submitting={createMut.isPending || updateMut.isPending} uploadProgress={uploadProgress} serverErrors={serverErrors} /></Modal><ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={remove} title={t('deleteIntern')} message={deleting ? t('deleteConfirm', { name: `${deleting.firstName} ${deleting.lastName}` }) : ''} confirmLabel={t('delete')} loading={deleteMut.isPending} /></div></AppShell>; }
+
+const PAGE_SIZE = 12;
+
+export default function Interns() {
+  const { hasPermission } = useAuth();
+  const { t, language } = useLanguage();
+  const canManage = hasPermission('interns:manage');
+  const [searchParams] = useSearchParams();
+
+  const [search, setSearch] = useState('');
+  const [department, setDepartment] = useState(() => searchParams.get('department') || '');
+  const [batch, setBatch] = useState(() => searchParams.get('batch') || '');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState('grid');
+
+  const { data, isLoading, isError, error, isFetching, refetch } = useInterns({
+    search,
+    department,
+    batch,
+    status,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const { data: departmentData = [] } = useDepartments();
+  const { data: batchData } = useInternBatches({ page: 1, limit: 100 });
+  const { data: employeeData } = useEmployees({ page: 1, limit: 100 });
+
+  const batches = batchData?.data || [];
+  const employees = employeeData?.data || [];
+
+  const createMut = useCreateIntern();
+  const updateMut = useUpdateIntern();
+  const deleteMut = useDeleteIntern();
+
+  const [formOpen, setFormOpen] = useState(() => searchParams.get('create') === '1');
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [serverErrors, setServerErrors] = useState({});
+  const [formError, setFormError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const reset = (setter) => (value) => {
+    setter(value);
+    setPage(1);
+  };
+
+  const open = (item = null) => {
+    setEditing(item);
+    setServerErrors({});
+    setFormError('');
+    setFormOpen(true);
+  };
+
+  const submit = async (payload, file) => {
+    setServerErrors({});
+    setFormError('');
+    const onUploadProgress = (event) => {
+      if (event.total) setUploadProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    try {
+      if (editing) await updateMut.mutateAsync({ id: editing._id, payload, file, onUploadProgress });
+      else await createMut.mutateAsync({ payload, file, onUploadProgress });
+      setFormOpen(false);
+      setUploadProgress(0);
+    } catch (requestError) {
+      const response = requestError.response?.data;
+      if (response?.errors) setServerErrors(response.errors);
+      setFormError(response?.message || t('saveInternError'));
+    }
+  };
+
+  const remove = async () => {
+    try {
+      await deleteMut.mutateAsync(deleting._id);
+      setDeleting(null);
+    } catch {}
+  };
+
+  const totalInterns = data?.pagination?.total ?? data?.data?.length ?? 0;
+  const activeInterns = (data?.data || []).filter((i) => i.status === 'active').length;
+
+  const columns = [
+    {
+      key: 'name',
+      header: t('interns'),
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <ImageWithFallback
+            src={item.profileImage}
+            alt={`${item.firstName} ${item.lastName}`}
+            className="w-8 h-8 rounded-full object-cover"
+            fallback={`${item.firstName?.[0] || ''}${item.lastName?.[0] || ''}`}
+          />
+          <Link to={`/interns/${item._id}`} className="font-medium text-primary-600 hover:underline">
+            {item.firstName} {item.lastName}
+          </Link>
+        </div>
+      ),
+    },
+    {
+      key: 'university',
+      header: t('university'),
+      render: (item) => (
+        <div>
+          <span className="font-medium text-slate-800">{item.university}</span>
+          <p className="text-xs text-gray-400">{item.major || '—'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: t('departments'),
+      render: (item) => item.departmentId?.name || '—',
+    },
+    {
+      key: 'batch',
+      header: t('batch'),
+      render: (item) =>
+        item.batchId ? (
+          <Link to={`/intern-batches/${item.batchId._id}`} className="text-primary-600 hover:underline font-mono font-semibold">
+            {item.batchId.code}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'mentor',
+      header: t('mentor'),
+      render: (item) =>
+        item.mentorId ? (
+          <Link to={`/employees/${item.mentorId._id}`} className="font-medium text-slate-700 hover:text-primary-600 hover:underline">
+            {item.mentorId.firstName} {item.mentorId.lastName}
+          </Link>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'status',
+      header: t('status'),
+      render: (item) => <StatusBadge status={item.status} />,
+    },
+  ];
+
+  if (canManage) {
+    columns.push({
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (item) => (
+        <div className="flex justify-end items-center gap-2.5">
+          <Link to={`/interns/${item._id}`} className="text-primary-600 hover:underline text-xs font-semibold">
+            {t('viewProfile')}
+          </Link>
+          <button onClick={() => open(item)} className="text-slate-600 hover:underline text-xs font-medium">
+            {t('edit')}
+          </button>
+          <button onClick={() => setDeleting(item)} className="text-red-600 hover:underline text-xs font-medium">
+            {t('delete')}
+          </button>
+        </div>
+      ),
+    });
+  } else {
+    columns.push({
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (item) => (
+        <div className="flex justify-end">
+          <Link to={`/interns/${item._id}`} className="text-primary-600 hover:underline text-xs font-semibold">
+            {t('viewProfile')} →
+          </Link>
+        </div>
+      ),
+    });
+  }
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">
+        {/* Top Header & Stat Banner */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 pb-6">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-xl text-purple-600 ring-1 ring-purple-100">
+                🎓
+              </span>
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {t('interns')}
+                </h1>
+                <p className="text-xs font-medium text-slate-500 mt-0.5">
+                  {t('internsSubtitle') || 'ทำเนียบนักศึกษาฝึกงานและผู้ร่วมโครงการสหกิจศึกษา FTI'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Quick Stat Pill */}
+            <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-white border border-slate-200/90 px-3.5 py-1.5 shadow-2xs text-xs font-semibold text-slate-600">
+              <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+              <span>{t('totalCount', { count: totalInterns })}</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-purple-700">{t('activeCount', { count: activeInterns })}</span>
+            </div>
+
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => open()}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-primary-500 hover:shadow-md active:scale-95"
+              >
+                <span>➕</span>
+                <span>{t('addIntern')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter & View Switcher Toolbar */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 flex-1">
+            <div className="relative flex-1 min-w-[200px]">
+              <SearchBar
+                value={search}
+                onSearch={reset(setSearch)}
+                placeholder={t('searchInterns')}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-3.5 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 transition-all"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => reset(setSearch)('')}
+                  className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <select
+              value={department}
+              onChange={(e) => reset(setDepartment)(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:bg-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 transition-all"
+            >
+              <option value="">🏢 {t('allDepartments')}</option>
+              {departmentData.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={batch}
+              onChange={(e) => reset(setBatch)(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:bg-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 transition-all"
+            >
+              <option value="">🚀 {t('allBatches')}</option>
+              {batches.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.code}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={status}
+              onChange={(e) => reset(setStatus)(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:bg-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 transition-all"
+            >
+              <option value="">📌 {t('allStatuses')}</option>
+              <option value="upcoming">{t('upcoming')}</option>
+              <option value="active">{t('active')}</option>
+              <option value="completed">{t('completed')}</option>
+            </select>
+
+            {(search || department || batch || status) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setDepartment('');
+                  setBatch('');
+                  setStatus('');
+                  setPage(1);
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+              >
+                {language === 'th' ? 'ล้างตัวกรอง' : 'Clear filters'}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between lg:justify-end gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+            <span className="text-xs text-slate-400 font-medium">
+              {language === 'th' ? `แสดงผล ${data?.data?.length || 0} จาก ${totalInterns} คน` : `Showing ${data?.data?.length || 0} of ${totalInterns}`}
+            </span>
+            <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} />
+          </div>
+        </div>
+
+        {/* Content Body: Card Grid or Table */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-56 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs animate-pulse space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 rounded-2xl bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-slate-200" />
+                    <div className="h-3 w-1/2 rounded bg-slate-100" />
+                  </div>
+                </div>
+                <div className="h-6 w-full rounded bg-slate-100" />
+                <div className="h-4 w-2/3 rounded bg-slate-100" />
+                <div className="h-8 w-full border-t border-slate-100 pt-3" />
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-8 text-center">
+            <p className="text-sm font-semibold text-rose-700">{error?.message || t('errorLoading')}</p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="mt-3 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-500"
+            >
+              {t('retry')}
+            </button>
+          </div>
+        ) : (data?.data || []).length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+            <span className="text-4xl">🎓</span>
+            <h3 className="mt-3 text-base font-bold text-slate-800">{t('noInterns')}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {search || department || batch || status ? t('adjustFilters') : t('addFirstIntern')}
+            </p>
+            {(search || department || batch || status) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setDepartment('');
+                  setBatch('');
+                  setStatus('');
+                  setPage(1);
+                }}
+                className="mt-4 rounded-xl bg-primary-50 border border-primary-200 px-4 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+              >
+                {language === 'th' ? 'ล้างตัวกรองทั้งหมด' : 'Clear all filters'}
+              </button>
+            )}
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+            {data.data.map((item) => (
+              <InternCard
+                key={item._id}
+                intern={item}
+                canManage={canManage}
+                onEdit={open}
+                onDelete={setDeleting}
+              />
+            ))}
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={data?.data}
+            loading={isLoading}
+            error={isError ? error : null}
+            onRetry={refetch}
+            emptyTitle={t('noInterns')}
+            emptyMessage={search || department || batch || status ? t('adjustFilters') : t('addFirstIntern')}
+          />
+        )}
+
+        {/* Pagination */}
+        {data?.pagination && <Pagination {...data.pagination} onPageChange={setPage} disabled={isFetching} />}
+
+        {/* Modal: Create/Edit Intern */}
+        <Modal
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          title={editing ? t('editIntern') : t('addIntern')}
+          size="lg"
+        >
+          {formError && (
+            <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {formError}
+            </p>
+          )}
+          <InternForm
+            initial={editing}
+            departments={departmentData}
+            batches={batches}
+            employees={employees}
+            onSubmit={submit}
+            onCancel={() => setFormOpen(false)}
+            submitting={createMut.isPending || updateMut.isPending}
+            uploadProgress={uploadProgress}
+            serverErrors={serverErrors}
+          />
+        </Modal>
+
+        {/* Confirm Delete Dialog */}
+        <ConfirmDialog
+          open={!!deleting}
+          onClose={() => setDeleting(null)}
+          onConfirm={remove}
+          title={t('deleteIntern')}
+          message={deleting ? t('deleteConfirm', { name: `${deleting.firstName} ${deleting.lastName}` }) : ''}
+          confirmLabel={t('delete')}
+          loading={deleteMut.isPending}
+        />
+      </div>
+    </AppShell>
+  );
+}

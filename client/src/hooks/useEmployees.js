@@ -17,11 +17,23 @@ export function useEmployees(params) {
   });
 }
 
-/** Invalidate all employee list queries and department labels/counts. */
+/**
+ * Single employee profile query hook by id.
+ */
+export function useEmployee(id) {
+  return useQuery({
+    queryKey: ['employee', id],
+    queryFn: () => employeeService.get(id),
+    enabled: Boolean(id),
+  });
+}
+
+/** Invalidate all employee list queries, single employee query, and department labels/counts. */
 const useInvalidateEmployees = () => {
   const qc = useQueryClient();
   return () => {
     qc.invalidateQueries({ queryKey: ['employees'] });
+    qc.invalidateQueries({ queryKey: ['employee'] });
     qc.invalidateQueries({ queryKey: ['departments'] });
   };
 };
