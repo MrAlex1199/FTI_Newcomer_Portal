@@ -25,6 +25,7 @@ import floorPlanRoutes from './routes/floorPlans.js';
 import path from 'path';
 import facilitiesRoutes from './routes/facilities.js';
 import maintenanceTicketRoutes from './routes/maintenanceTickets.js';
+import bookingRoutes from './routes/bookings.js';
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/floor-plans', floorPlanRoutes);
 app.use('/api/v1/facilities', facilitiesRoutes);
 app.use('/api/v1/maintenance-tickets', maintenanceTicketRoutes);
+app.use('/api/v1/bookings', bookingRoutes);
 
 // Development-only routes for exercising the authorization layer. Never mounted
 // in production so they can't be reached on a deployed instance.

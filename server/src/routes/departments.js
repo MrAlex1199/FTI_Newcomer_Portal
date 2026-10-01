@@ -23,7 +23,8 @@ router.get('/:id', departmentIdValidator, validate, getDepartment);
 
 // Writes are restricted to the centralized departments:manage permission.
 router.post('/', requirePermission('departments:manage'), createDepartmentValidator, validate, createDepartment);
-router.patch('/:id', requirePermission('departments:manage'), updateDepartmentValidator, validate, updateDepartment);
+// PATCH is permitted for users with departments:manage or the department's assigned manager
+router.patch('/:id', updateDepartmentValidator, validate, updateDepartment);
 router.delete('/:id', requirePermission('departments:manage'), departmentIdValidator, validate, deleteDepartment);
 
 export default router;

@@ -28,3 +28,5 @@ export { default as ChatMessage } from './ChatMessage.js';
 export { default as FloorPlan } from './FloorPlan.js';
 export { default as Facility } from './Facility.js';
 export { default as MaintenanceTicket } from './MaintenanceTicket.js';
+export { default as BookingResource } from './BookingResource.js';
+export { default as Booking } from './Booking.js';

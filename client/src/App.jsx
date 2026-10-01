@@ -25,6 +25,7 @@ import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
 import FloorPlanPage from './pages/FloorPlanPage.jsx';
 import EquipmentMaintenancePage from './pages/EquipmentMaintenancePage.jsx';
+import Bookings from './pages/Bookings.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
 import Chat from './pages/Chat.jsx';
 import FloatingChatWidget from './components/chat/FloatingChatWidget.jsx';
@@ -231,6 +232,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <EquipmentMaintenancePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/bookings"
+            element={
+              <ProtectedRoute>
+                <Bookings />
               </ProtectedRoute>
             }
           />

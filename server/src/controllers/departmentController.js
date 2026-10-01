@@ -3,9 +3,9 @@ import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
 import { can } from '../config/permissions.js';
 
-const MANAGER_PROJECTION = 'firstName lastName employeeCode position departmentId';
-const EMPLOYEE_PROJECTION = 'employeeCode firstName lastName nickname position departmentId managerId isActive isPublished';
-const INTERN_PROJECTION = 'firstName lastName nickname university major departmentId mentorId batchId startDate endDate isPublished';
+const MANAGER_PROJECTION = 'firstName lastName nickname employeeCode position profileImage workEmail phone extension departmentId';
+const EMPLOYEE_PROJECTION = 'employeeCode firstName lastName nickname position departmentId managerId isActive isPublished profileImage workEmail phone extension';
+const INTERN_PROJECTION = 'firstName lastName nickname university major departmentId mentorId batchId startDate endDate status isPublished profileImage email phone';
 
 const canManage = (req) => can(req.user.role, 'departments:manage');
 
@@ -146,14 +146,30 @@ export const updateDepartment = asyncHandler(async (req, res) => {
   const department = await Department.findById(req.params.id);
   if (!department) throw ApiError.notFound('Department not found');
 
+  const isAdmin = canManage(req);
+  const isDepartmentManager = Boolean(
+    req.user.employeeId &&
+    department.managerId &&
+    String(department.managerId) === String(req.user.employeeId)
+  );
+
+  if (!isAdmin && !isDepartmentManager) {
+    throw ApiError.forbidden('You are not authorized to update this department');
+  }
+
+  const allowedFields = isAdmin
+    ? UPDATABLE_FIELDS
+    : ['description', 'location', 'extension', 'responsibilities', 'contactTopics'];
+
   const before = department.toObject();
-  const nextManagerId = Object.prototype.hasOwnProperty.call(req.body, 'managerId')
-    ? req.body.managerId
-    : department.managerId;
+  if (isAdmin) {
+    const nextManagerId = Object.prototype.hasOwnProperty.call(req.body, 'managerId')
+      ? req.body.managerId
+      : department.managerId;
+    await assertManagerForDepartment(nextManagerId, department._id);
+  }
 
-  await assertManagerForDepartment(nextManagerId, department._id);
-
-  for (const field of UPDATABLE_FIELDS) {
+  for (const field of allowedFields) {
     if (field in req.body) department[field] = req.body[field];
   }
 

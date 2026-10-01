@@ -336,6 +336,13 @@ export default function SiteHeader({ rightContent }) {
               onClick={closeDrawer}
             />
             <DrawerLink
+              to="/bookings"
+              active={pathname === '/bookings'}
+              icon="🏢🚗"
+              label={t('bookingsTitle')}
+              onClick={closeDrawer}
+            />
+            <DrawerLink
               to="/company"
               active={pathname === '/company'}
               icon="🏬"
@@ -455,6 +462,7 @@ function ServicesDropdown({ pathname }) {
   const isServicesActive = [
     '/floor-plan',
     '/maintenance',
+    '/bookings',
     '/employees',
     '/departments',
     '/organization',
@@ -537,6 +545,24 @@ function ServicesDropdown({ pathname }) {
               </p>
               <p className="text-xs text-slate-500 truncate">
                 {t('equipmentMaintenanceDesc')}
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            to="/bookings"
+            role="menuitem"
+            className="flex items-start gap-3 rounded-xl p-2.5 transition hover:bg-indigo-50/80 group"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 text-base group-hover:scale-105 transition-transform">
+              🏢🚗
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-700">
+                {t('bookingsTitle')}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                {t('bookingsDesc')}
               </p>
             </div>
           </Link>

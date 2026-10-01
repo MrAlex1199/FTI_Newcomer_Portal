@@ -22,6 +22,7 @@ const MENU_VISUALS = {
   '/getting-started': '/mock-posters/learning.svg',
   '/it-help': '/menu-visuals/Itsupport.jpg',
   '/maintenance': '/menu-visuals/Itsupport.jpg',
+  '/bookings': '/menu-visuals/department.jpg',
   '/company': '/menu-visuals/Company.jpg',
   '/admin/users': '/menu-visuals/organization.svg',
   '/admin/audit-logs': '/mock-posters/learning.svg',
@@ -166,6 +167,13 @@ export default function Dashboard() {
               emoji="🔧"
               title={t('equipmentMaintenance')}
               desc={t('equipmentMaintenanceDesc')}
+            />
+            <NavCard
+              index={8}
+              to="/bookings"
+              emoji="🏢🚗"
+              title={t('bookingsTitle')}
+              desc={t('bookingsSubtitle')}
             />
           </div>
         </section>

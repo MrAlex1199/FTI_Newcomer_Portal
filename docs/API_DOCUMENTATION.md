@@ -729,7 +729,98 @@ Example:
 GET /announcements?status=published&sortBy=publishAt&order=desc&page=1&limit=10
 ```
 
+## Facility & Vehicle Bookings
+
+### Get Booking Resources
+```http
+GET /bookings/resources?type=room
+GET /bookings/resources?type=vehicle
+```
+Response 200:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "...",
+      "name": "Boardroom Executive (ชั้น 4)",
+      "type": "room",
+      "category": "ห้องประชุมใหญ่ผู้บริหาร",
+      "capacity": 30,
+      "locationOrPlate": "อาคาร A ชั้น 4",
+      "amenities": ["จอ 4K Smart Display 85\"", "ระบบ Hybrid Video Conference"],
+      "status": "active"
+    }
+  ]
+}
+```
+
+### Get Bookings
+```http
+GET /bookings?date=2026-10-01
+GET /bookings?myOnly=true
+```
+Response 200:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "...",
+      "resourceId": { ... },
+      "userId": { ... },
+      "title": "Monthly IT Strategy Meeting",
+      "startTime": "2026-10-01T09:00:00.000Z",
+      "endTime": "2026-10-01T10:30:00.000Z",
+      "status": "confirmed"
+    }
+  ]
+}
+```
+
+### Check Availability
+```http
+GET /bookings/check-availability?resourceId=...&startTime=2026-10-01T09:00:00.000Z&endTime=2026-10-01T10:30:00.000Z
+```
+Response 200:
+```json
+{
+  "success": true,
+  "available": true,
+  "conflictingBookings": []
+}
+```
+
+### Create Booking
+```http
+POST /bookings
+Content-Type: application/json
+
+{
+  "resourceId": "...",
+  "title": "Annual Executive Meeting",
+  "startTime": "2026-10-01T09:00:00.000Z",
+  "endTime": "2026-10-01T11:00:00.000Z",
+  "attendeesCount": 15,
+  "roomSetup": "Boardroom",
+  "requestedEquipment": ["ไมโครโฟนเสริม"],
+  "contactName": "Krittpas",
+  "contactPhone": "1101"
+}
+```
+
+### Cancel Booking
+```http
+PATCH /bookings/:id/cancel
+Content-Type: application/json
+
+{
+  "reason": "Meeting rescheduled to next week"
+}
+```
+
 ---
 
-**Version:** 1.0  
-**Last Updated:** September 1, 2026
+**Version:** 1.1  
+**Last Updated:** October 1, 2026
+
