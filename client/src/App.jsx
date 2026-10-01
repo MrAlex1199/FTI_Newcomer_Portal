@@ -26,6 +26,7 @@ import Company from './pages/Company.jsx';
 import FloorPlanPage from './pages/FloorPlanPage.jsx';
 import EquipmentMaintenancePage from './pages/EquipmentMaintenancePage.jsx';
 import Bookings from './pages/Bookings.jsx';
+import PersonalVault from './pages/PersonalVault.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
 import Chat from './pages/Chat.jsx';
 import FloatingChatWidget from './components/chat/FloatingChatWidget.jsx';
@@ -241,6 +242,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Bookings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vault"
+            element={
+              <ProtectedRoute>
+                <PersonalVault />
               </ProtectedRoute>
             }
           />

@@ -30,3 +30,6 @@ export { default as Facility } from './Facility.js';
 export { default as MaintenanceTicket } from './MaintenanceTicket.js';
 export { default as BookingResource } from './BookingResource.js';
 export { default as Booking } from './Booking.js';
+export { default as VaultSettings } from './VaultSettings.js';
+export { default as VaultItem, VAULT_CATEGORIES } from './VaultItem.js';
+

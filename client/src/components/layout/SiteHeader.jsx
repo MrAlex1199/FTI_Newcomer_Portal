@@ -343,6 +343,13 @@ export default function SiteHeader({ rightContent }) {
               onClick={closeDrawer}
             />
             <DrawerLink
+              to="/vault"
+              active={pathname === '/vault'}
+              icon="🔒"
+              label={t('personalVault')}
+              onClick={closeDrawer}
+            />
+            <DrawerLink
               to="/company"
               active={pathname === '/company'}
               icon="🏬"
@@ -409,6 +416,14 @@ export default function SiteHeader({ rightContent }) {
             <span className="text-lg" aria-hidden="true">👤</span>
             <span>{t('profileSettings')}</span>
           </Link>
+          <Link
+            to="/vault"
+            onClick={closeDrawer}
+            className="flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-primary-800 active:scale-95"
+          >
+            <span className="text-lg" aria-hidden="true">🔒</span>
+            <span>{t('personalVault')}</span>
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
@@ -463,6 +478,7 @@ function ServicesDropdown({ pathname }) {
     '/floor-plan',
     '/maintenance',
     '/bookings',
+    '/vault',
     '/employees',
     '/departments',
     '/organization',
@@ -671,6 +687,14 @@ function ProfileMenu({ user, name, image, role, open, setOpen, onLogout, profile
             >
               <span>🏢</span>
               <span>{t('floorPlan') || 'ผังอาคาร & ทรัพย์สิน'}</span>
+            </Link>
+            <Link
+              role="menuitem"
+              to="/vault"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <span>🔒</span>
+              <span>{t('personalVault')}</span>
             </Link>
             {showAdminNav && (
               <Link

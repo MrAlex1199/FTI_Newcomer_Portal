@@ -821,6 +821,136 @@ Content-Type: application/json
 
 ---
 
-**Version:** 1.1  
+## Personal Vault (Zero-Knowledge AES-256-GCM)
+
+All vault endpoints require Bearer JWT authentication. Secret payloads are encrypted/decrypted using AES-256-GCM with a key derived via `scrypt` from the user's 6-digit Master PIN and a unique per-user cryptographic salt.
+
+### Get Vault Status
+```http
+GET /api/v1/vault/status
+```
+Response 200:
+```json
+{
+  "success": true,
+  "data": {
+    "isConfigured": true,
+    "autoLockMinutes": 10,
+    "pinHint": "office pin",
+    "failedAttempts": 0,
+    "isLocked": false,
+    "lockExpiresAt": null
+  }
+}
+```
+
+### Setup Master PIN
+```http
+POST /api/v1/vault/setup-pin
+Content-Type: application/json
+
+{
+  "pin": "123456",
+  "pinHint": "office pin",
+  "autoLockMinutes": 10
+}
+```
+
+### Verify Master PIN
+```http
+POST /api/v1/vault/verify-pin
+Content-Type: application/json
+
+{
+  "pin": "123456"
+}
+```
+
+### Change Master PIN (Re-encrypts all user secrets with new key)
+```http
+POST /api/v1/vault/change-pin
+Content-Type: application/json
+
+{
+  "oldPin": "123456",
+  "newPin": "654321",
+  "pinHint": "updated hint"
+}
+```
+
+### List Vault Items
+Pass `X-Vault-PIN: 123456` in headers to decrypt secret payloads. If omitted, only non-sensitive metadata (title, category, tags) is returned.
+```http
+GET /api/v1/vault/items?category=login&search=portal&favorite=true
+X-Vault-PIN: 123456
+```
+Response 200:
+```json
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "_id": "...",
+      "category": "login",
+      "title": "FTI Intranet Portal",
+      "favorite": true,
+      "tags": ["portal", "work"],
+      "username": "somchai.t",
+      "url": "https://intranet.fti.or.th",
+      "secrets": {
+        "password": "SuperSecretPassword123!"
+      },
+      "isDecrypted": true
+    }
+  ]
+}
+```
+
+### Create Vault Item
+```http
+POST /api/v1/vault/items
+Content-Type: application/json
+X-Vault-PIN: 123456
+
+{
+  "category": "login",
+  "title": "FTI Intranet Portal",
+  "username": "somchai.t",
+  "url": "https://intranet.fti.or.th",
+  "tags": ["portal", "work"],
+  "secrets": {
+    "password": "SuperSecretPassword123!"
+  }
+}
+```
+
+### Update Vault Item
+```http
+PUT /api/v1/vault/items/:id
+Content-Type: application/json
+X-Vault-PIN: 123456
+
+{
+  "title": "Updated Portal Name",
+  "secrets": {
+    "password": "NewSecretPassword2026!"
+  }
+}
+```
+
+### Toggle Favorite
+```http
+PATCH /api/v1/vault/items/:id/favorite
+```
+
+### Delete Vault Item
+```http
+DELETE /api/v1/vault/items/:id
+```
+
+---
+
+**Version:** 1.2  
 **Last Updated:** October 1, 2026
 

@@ -220,8 +220,9 @@ router.get(
     if (urgency && urgency !== 'all') filter.urgency = urgency;
     if (assetType && assetType !== 'all') filter.assetType = assetType;
 
-    if (myTicketsOnly === 'true' && req.user?._id) {
-      filter.reportedBy = req.user._id;
+    const currentUserId = req.user?.id || req.user?._id;
+    if (myTicketsOnly === 'true' && currentUserId) {
+      filter.reportedBy = currentUserId;
     }
 
     if (startDate || endDate) {

@@ -175,6 +175,13 @@ export default function Dashboard() {
               title={t('bookingsTitle')}
               desc={t('bookingsSubtitle')}
             />
+            <NavCard
+              index={9}
+              to="/vault"
+              emoji="🔒"
+              title={t('personalVault')}
+              desc={t('personalVaultDesc')}
+            />
           </div>
         </section>
 
