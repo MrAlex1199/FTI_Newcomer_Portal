@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/utils/seed.js",
-    "seed:mock-announcements": "node src/utils/seedMockAnnouncements.js"
+    "seed:mock-announcements": "node src/utils/seedMockAnnouncements.js",
+    "benchmark": "node src/utils/dbBenchmark.js"
   },
   "keywords": [
     "express",

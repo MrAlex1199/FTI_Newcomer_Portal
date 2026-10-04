@@ -4,6 +4,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 import { can } from '../config/permissions.js';
 import { deleteImage, uploadImage } from '../utils/imageUpload.js';
+import cacheService from '../services/cacheService.js';
 
 const INTERN_SORT_FIELDS = ['createdAt', 'firstName', 'lastName', 'university', 'startDate', 'endDate'];
 const isManager = (req) => can(req.user.role, 'interns:manage');
@@ -133,6 +134,7 @@ export const createIntern = asyncHandler(async (req, res) => {
       ip: req.ip,
       userAgent: req.get('user-agent') || '',
     });
+    cacheService.delByPrefix('departments');
     res.status(201).json({ success: true, data: { intern: serializeIntern(populated, req) } });
   } catch (error) {
     if (uploaded && !intern) await deleteImage(uploaded.publicId);
@@ -185,6 +187,7 @@ export const updateIntern = asyncHandler(async (req, res) => {
       ip: req.ip,
       userAgent: req.get('user-agent') || '',
     });
+    cacheService.delByPrefix('departments');
     if (uploaded && before.profileImagePublicId) await deleteImage(before.profileImagePublicId);
     res.status(200).json({ success: true, data: { intern: serializeIntern(populated, req) } });
   } catch (error) {
@@ -208,5 +211,6 @@ export const deleteIntern = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+  cacheService.delByPrefix('departments');
   res.status(200).json({ success: true, message: 'Intern deleted' });
 });

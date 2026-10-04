@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Employee, Department } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
+import cacheService from './cacheService.js';
 
 export const DEFAULT_MAX_DEPTH = 10;
 export const MAX_MAX_DEPTH = 20;
@@ -58,7 +59,10 @@ const loadOrganizationRecords = async ({ departmentId, includeUnpublished }) => 
   return { records, cacheHit: false };
 };
 
-export const invalidateOrganizationTreeCache = () => treeRecordCache.clear();
+export const invalidateOrganizationTreeCache = () => {
+  treeRecordCache.clear();
+  cacheService.delByPrefix('departments');
+};
 
 const serializeRecord = (record) => ({
   id: String(record._id),

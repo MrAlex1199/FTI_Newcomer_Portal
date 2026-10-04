@@ -152,6 +152,12 @@ const floorPlanSchema = new mongoose.Schema(
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
+// Compound index for querying a specific floor of a building
+floorPlanSchema.index({ buildingId: 1, floorNumber: 1 });
+
+// Multikey index for finding assets directly by id inside floor plans
+floorPlanSchema.index({ 'assets.id': 1 });
+
 const FloorPlan = mongoose.model('FloorPlan', floorPlanSchema);
 
 export default FloorPlan;

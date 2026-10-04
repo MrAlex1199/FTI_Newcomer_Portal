@@ -7,25 +7,25 @@ const CATEGORY_MAP = {
     label: 'รหัสผ่าน',
     enLabel: 'Login',
     icon: '🔑',
-    badge: 'text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800',
+    badge: 'text-blue-700 bg-blue-50 border-blue-200',
   },
   note: {
     label: 'โน้ตความลับ',
     enLabel: 'Secure Note',
     icon: '📝',
-    badge: 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800',
+    badge: 'text-emerald-700 bg-emerald-50 border-emerald-200',
   },
   card: {
     label: 'บัตร/ตัวตน',
     enLabel: 'Card / ID',
     icon: '💳',
-    badge: 'text-purple-700 bg-purple-50 dark:text-purple-300 dark:bg-purple-900/40 border-purple-200 dark:border-purple-800',
+    badge: 'text-purple-700 bg-purple-50 border-purple-200',
   },
   key: {
     label: 'API & คีย์',
     enLabel: 'API / Key',
     icon: '⚙️',
-    badge: 'text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/40 border-amber-200 dark:border-amber-800',
+    badge: 'text-amber-700 bg-amber-50 border-amber-200',
   },
 };
 
@@ -79,7 +79,7 @@ export default function VaultItemCard({
   };
 
   return (
-    <div className="relative group bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all duration-200 flex flex-col justify-between">
+    <div className="relative group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-blue-400 hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between">
       {/* Top row: Category badge, Favorite, and Actions */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -98,8 +98,8 @@ export default function VaultItemCard({
               title={item.favorite ? 'นำออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}
               className={`p-1.5 rounded-lg transition-colors ${
                 item.favorite
-                  ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30'
-                  : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'text-amber-500 hover:bg-amber-50'
+                  : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100'
               }`}
             >
               <svg
@@ -122,7 +122,7 @@ export default function VaultItemCard({
               type="button"
               onClick={() => onEdit(item)}
               title="แก้ไขข้อมูล"
-              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -136,7 +136,7 @@ export default function VaultItemCard({
 
             {/* Delete button */}
             {confirmDelete ? (
-              <div className="flex items-center gap-1 bg-red-50 dark:bg-red-950/40 p-0.5 rounded-lg border border-red-200 dark:border-red-900">
+              <div className="flex items-center gap-1 bg-red-50 p-0.5 rounded-lg border border-red-200">
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -158,7 +158,7 @@ export default function VaultItemCard({
                 type="button"
                 onClick={() => setConfirmDelete(true)}
                 title="ลบรายการ"
-                className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -174,7 +174,7 @@ export default function VaultItemCard({
         </div>
 
         {/* Title */}
-        <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1 mb-1">
+        <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-1">
           {item.title}
         </h3>
 
@@ -185,7 +185,7 @@ export default function VaultItemCard({
               href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline truncate max-w-full"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline truncate max-w-full font-medium"
             >
               <span>{item.url.replace(/^https?:\/\//, '')}</span>
               <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,15 +196,15 @@ export default function VaultItemCard({
         )}
 
         {/* Category Specific Display */}
-        <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/60 dark:border-slate-800 my-3 text-xs space-y-2">
+        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-200/80 my-3 text-xs space-y-2">
           {/* LOGIN Category */}
           {item.category === 'login' && (
             <>
               {item.username && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-500 dark:text-slate-400 select-none">ชื่อผู้ใช้:</span>
-                  <div className="flex items-center gap-1.5 font-mono text-slate-800 dark:text-slate-200 truncate">
-                    <span className="truncate">{item.username}</span>
+                  <span className="text-slate-500 font-medium select-none">ชื่อผู้ใช้:</span>
+                  <div className="flex items-center gap-1.5 font-mono text-slate-800 truncate">
+                    <span className="truncate font-semibold">{item.username}</span>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(item.username, 'ชื่อผู้ใช้')}
@@ -219,16 +219,16 @@ export default function VaultItemCard({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 select-none">รหัสผ่าน:</span>
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/80">
+                <span className="text-slate-500 font-medium select-none">รหัสผ่าน:</span>
                 <div className="flex items-center gap-1.5 font-mono">
-                  <span className="text-slate-900 dark:text-slate-100 font-semibold tracking-wider">
+                  <span className="text-slate-900 font-semibold tracking-wider">
                     {showSecret && secrets.password ? secrets.password : '••••••••••••'}
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 transition"
+                    className="text-slate-400 hover:text-slate-700 p-0.5 transition"
                     title={showSecret ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                   >
                     {showSecret ? (
@@ -260,13 +260,13 @@ export default function VaultItemCard({
           {/* NOTE Category */}
           {item.category === 'note' && (
             <div>
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+              <div className="flex items-center justify-between text-slate-500 font-medium mb-1">
                 <span>เนื้อหาข้อความ:</span>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    className="text-xs text-blue-600 hover:underline"
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
                   >
                     {showSecret ? 'ซ่อน' : 'เปิดอ่าน'}
                   </button>
@@ -284,7 +284,7 @@ export default function VaultItemCard({
                   )}
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-900 rounded p-2 text-slate-700 dark:text-slate-300 font-sans whitespace-pre-wrap max-h-24 overflow-y-auto leading-relaxed border border-slate-200/50 dark:border-slate-800">
+              <div className="bg-white rounded-lg p-2.5 text-slate-800 font-sans whitespace-pre-wrap max-h-24 overflow-y-auto leading-relaxed border border-slate-200">
                 {showSecret
                   ? secrets.secretNote || '(ไม่มีเนื้อหา)'
                   : '••••••••••••••••••••••••••••••••••••••••••••••••'}
@@ -296,19 +296,19 @@ export default function VaultItemCard({
           {item.category === 'card' && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 dark:text-slate-400">ประเภท:</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300">{secrets.cardType || 'บัตร'}</span>
+                <span className="text-slate-500 font-medium">ประเภท:</span>
+                <span className="font-semibold text-slate-800">{secrets.cardType || 'บัตร'}</span>
               </div>
               {secrets.cardHolder && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500 dark:text-slate-400">ผู้ถือบัตร:</span>
-                  <span className="font-medium text-slate-700 dark:text-slate-300">{secrets.cardHolder}</span>
+                  <span className="text-slate-500 font-medium">ผู้ถือบัตร:</span>
+                  <span className="font-semibold text-slate-800">{secrets.cardHolder}</span>
                 </div>
               )}
               <div className="flex items-center justify-between font-mono">
-                <span className="text-slate-500 dark:text-slate-400">หมายเลข:</span>
+                <span className="text-slate-500 font-medium font-sans">หมายเลข:</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  <span className="font-semibold text-slate-900">
                     {showSecret && secrets.cardNumber
                       ? secrets.cardNumber
                       : secrets.cardNumber
@@ -318,7 +318,7 @@ export default function VaultItemCard({
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                    className="text-slate-400 hover:text-slate-700 p-0.5"
                   >
                     {showSecret ? '🙈' : '👁️'}
                   </button>
@@ -336,7 +336,7 @@ export default function VaultItemCard({
                 </div>
               </div>
               {(secrets.cardExpiry || secrets.cardCvv) && (
-                <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-slate-700/50 font-mono">
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 font-mono text-slate-700">
                   <span>EXP: {secrets.cardExpiry || '--/--'}</span>
                   <span>CVV: {showSecret ? secrets.cardCvv : '•••'}</span>
                 </div>
@@ -348,15 +348,15 @@ export default function VaultItemCard({
           {item.category === 'key' && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 dark:text-slate-400">ประเภทคีย์:</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200">
+                <span className="text-slate-500 font-medium">ประเภทคีย์:</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                   {secrets.keyType || 'API Key'}
                 </span>
               </div>
               <div className="flex items-center justify-between font-mono">
-                <span className="text-slate-500 dark:text-slate-400">ค่าคีย์:</span>
+                <span className="text-slate-500 font-medium font-sans">ค่าคีย์:</span>
                 <div className="flex items-center gap-1.5 truncate max-w-[70%]">
-                  <span className="truncate text-slate-800 dark:text-slate-200">
+                  <span className="truncate text-slate-900 font-semibold">
                     {showSecret && secrets.keyValue
                       ? secrets.keyValue
                       : '••••••••••••••••••••••••'}
@@ -364,7 +364,7 @@ export default function VaultItemCard({
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    className="text-slate-400 hover:text-slate-600 p-0.5 flex-shrink-0"
+                    className="text-slate-400 hover:text-slate-700 p-0.5 flex-shrink-0"
                   >
                     {showSecret ? '🙈' : '👁️'}
                   </button>
@@ -386,8 +386,8 @@ export default function VaultItemCard({
 
           {/* Custom Notes if any */}
           {secrets.customNotes && item.category !== 'note' && (
-            <div className="pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 line-clamp-2">
-              <span className="font-semibold mr-1">หมายเหตุ:</span>
+            <div className="pt-1.5 border-t border-slate-200/80 text-slate-700 line-clamp-2">
+              <span className="font-semibold text-slate-800 mr-1">หมายเหตุ:</span>
               {secrets.customNotes}
             </div>
           )}
@@ -395,13 +395,13 @@ export default function VaultItemCard({
       </div>
 
       {/* Bottom tags & Updated time */}
-      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
         <div className="flex flex-wrap gap-1 max-w-[80%]">
           {item.tags && item.tags.length > 0 ? (
             item.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md font-mono"
+                className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-mono border border-slate-200/60"
               >
                 #{tag}
               </span>

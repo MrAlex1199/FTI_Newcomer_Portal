@@ -81,6 +81,12 @@ const maintenanceTicketSchema = new mongoose.Schema(
   }
 );
 
+// Compound and query-optimization indexes
+maintenanceTicketSchema.index({ buildingId: 1, floorNumber: 1 });
+maintenanceTicketSchema.index({ reportedBy: 1, createdAt: -1 });
+maintenanceTicketSchema.index({ status: 1, urgency: 1, createdAt: -1 });
+maintenanceTicketSchema.index({ assetId: 1 });
+
 // Helper to generate Ticket No like MT-2026-0001
 maintenanceTicketSchema.statics.generateTicketNo = async function () {
   const year = new Date().getFullYear();

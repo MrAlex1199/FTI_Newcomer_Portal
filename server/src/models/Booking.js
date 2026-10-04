@@ -133,5 +133,11 @@ const bookingSchema = new mongoose.Schema(
 // Compound index for overlap detection
 bookingSchema.index({ resourceId: 1, status: 1, startTime: 1, endTime: 1 });
 
+// User booking history index (paginated / sorted by latest)
+bookingSchema.index({ bookedBy: 1, createdAt: -1 });
+
+// Date range queries across resources
+bookingSchema.index({ startTime: 1, endTime: 1, status: 1 });
+
 const Booking = mongoose.model('Booking', bookingSchema);
 export default Booking;

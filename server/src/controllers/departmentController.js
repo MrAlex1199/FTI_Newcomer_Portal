@@ -2,6 +2,7 @@ import { Department, Employee, Intern, AuditLog } from '../models/index.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
 import { can } from '../config/permissions.js';
+import cacheService from '../services/cacheService.js';
 
 const MANAGER_PROJECTION = 'firstName lastName nickname employeeCode position profileImage workEmail phone extension departmentId';
 const EMPLOYEE_PROJECTION = 'employeeCode firstName lastName nickname position departmentId managerId isActive isPublished profileImage workEmail phone extension';
@@ -55,16 +56,21 @@ const departmentFilterFor = (req) => (canManage(req) ? {} : { isActive: true });
  * departments for management, with explicit employee and intern counts.
  */
 export const listDepartments = asyncHandler(async (req, res) => {
-  const departments = await Department.find(departmentFilterFor(req))
-    .populate('managerId', MANAGER_PROJECTION)
-    .sort({ sortOrder: 1, name: 1 });
+  const isAdmin = canManage(req);
+  const cacheKey = `departments:list:${isAdmin ? 'admin' : 'public'}`;
 
-  const data = await Promise.all(
-    departments.map(async (department) => {
-      const { employeeCount, internCount } = await getCounts(department._id, req);
-      return serializeDepartment(department, employeeCount, internCount);
-    })
-  );
+  const data = await cacheService.remember(cacheKey, 300, async () => {
+    const departments = await Department.find(departmentFilterFor(req))
+      .populate('managerId', MANAGER_PROJECTION)
+      .sort({ sortOrder: 1, name: 1 });
+
+    return await Promise.all(
+      departments.map(async (department) => {
+        const { employeeCount, internCount } = await getCounts(department._id, req);
+        return serializeDepartment(department, employeeCount, internCount);
+      })
+    );
+  });
 
   res.status(200).json({ success: true, data });
 });
@@ -85,11 +91,13 @@ export const getDepartment = asyncHandler(async (req, res) => {
     Employee.find(employeeFilter)
       .select(EMPLOYEE_PROJECTION)
       .populate('managerId', 'firstName lastName employeeCode')
-      .sort({ lastName: 1, firstName: 1 }),
+      .sort({ lastName: 1, firstName: 1 })
+      .lean(),
     Intern.find(internFilter)
       .select(INTERN_PROJECTION)
       .populate('mentorId', 'firstName lastName employeeCode')
-      .sort({ lastName: 1, firstName: 1 }),
+      .sort({ lastName: 1, firstName: 1 })
+      .lean(),
   ]);
 
   const data = serializeDepartment(department, employees.length, interns.length);
@@ -121,6 +129,8 @@ export const createDepartment = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.delByPrefix('departments');
 
   res.status(201).json({
     success: true,
@@ -188,6 +198,8 @@ export const updateDepartment = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('departments');
+
   res.status(200).json({
     success: true,
     data: { department: serializeDepartment(department, employeeCount, internCount) },
@@ -222,6 +234,8 @@ export const deleteDepartment = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.delByPrefix('departments');
 
   res.status(200).json({ success: true, message: 'Department deleted' });
 });

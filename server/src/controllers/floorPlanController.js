@@ -2,6 +2,9 @@ import { FloorPlan, AuditLog } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { CAMPUS_FACILITIES, INITIAL_CAMPUS_PLANS } from '../data/campusFloorPlansData.js';
+import cacheService from '../services/cacheService.js';
+
+let campusSeeded = false;
 
 export const getFloorPlans = asyncHandler(async (req, res) => {
   const { buildingId } = req.query;
@@ -10,39 +13,42 @@ export const getFloorPlans = asyncHandler(async (req, res) => {
     filter.buildingId = buildingId;
   }
 
-  let plans = await FloorPlan.find(filter).sort({ floorNumber: 1, createdAt: 1 });
+  // Check if we need to seed the full 20-rai campus plans (only check on first run or cold start)
+  if (!campusSeeded) {
+    const totalCount = await FloorPlan.countDocuments();
+    const hasCampusMaster = await FloorPlan.exists({ buildingId: 'campus' });
 
-  // Check if we need to seed the full 20-rai campus plans
-  const totalCount = await FloorPlan.countDocuments();
-  const hasCampusMaster = await FloorPlan.exists({ buildingId: 'campus' });
-
-  if (totalCount < 20 || !hasCampusMaster) {
-    // If old test data is incomplete, clear and seed the full 20-rai campus plans
-    await FloorPlan.deleteMany({});
-    await FloorPlan.insertMany(INITIAL_CAMPUS_PLANS);
-    plans = await FloorPlan.find(filter).sort({ floorNumber: 1, createdAt: 1 });
-  }
-
-  // Ensure "IT Setup Room" exists for unassigned assets
-  const hasItSetupRoom = await FloorPlan.exists({ buildingId: 'it_setup_room' });
-  if (!hasItSetupRoom) {
-    const itSetupRoom = await FloorPlan.create({
-      name: 'คลังสินค้า / IT Setup Room',
-      buildingId: 'it_setup_room',
-      buildingName: 'คลังจัดเก็บและพักรออุปกรณ์ (Warehouse & Setup)',
-      buildingType: 'warehouse',
-      totalFloors: 1,
-      floorNumber: 1,
-      floorName: 'IT Setup',
-      canvasWidth: 800,
-      canvasHeight: 600,
-      updatedBy: req.user ? req.user.id : null,
-    });
-    // Add it to the plans list if it matches the filter
-    if (!buildingId || buildingId === 'it_setup_room') {
-      plans.push(itSetupRoom);
+    if (totalCount < 20 || !hasCampusMaster) {
+      await FloorPlan.deleteMany({});
+      await FloorPlan.insertMany(INITIAL_CAMPUS_PLANS);
     }
+
+    // Ensure "IT Setup Room" exists for unassigned assets
+    const hasItSetupRoom = await FloorPlan.exists({ buildingId: 'it_setup_room' });
+    if (!hasItSetupRoom) {
+      await FloorPlan.create({
+        name: 'คลังสินค้า / IT Setup Room',
+        buildingId: 'it_setup_room',
+        buildingName: 'คลังจัดเก็บและพักรออุปกรณ์ (Warehouse & Setup)',
+        buildingType: 'warehouse',
+        totalFloors: 1,
+        floorNumber: 1,
+        floorName: 'IT Setup',
+        canvasWidth: 800,
+        canvasHeight: 600,
+        updatedBy: req.user ? req.user.id : null,
+      });
+    }
+
+    campusSeeded = true;
   }
+
+  const cacheKey = `floorplans:list:${buildingId || 'all'}`;
+  const plans = await cacheService.remember(cacheKey, 300, async () => {
+    return await FloorPlan.find(filter)
+      .sort({ floorNumber: 1, createdAt: 1 })
+      .lean();
+  });
 
   res.status(200).json({
     success: true,
@@ -58,7 +64,9 @@ export const searchCampusAssets = asyncHandler(async (req, res) => {
   const { q } = req.query;
   const query = (q || '').trim().toLowerCase();
 
-  const allPlans = await FloorPlan.find().select('name buildingId buildingName floorNumber floorName assets');
+  const allPlans = await FloorPlan.find()
+    .select('name buildingId buildingName floorNumber floorName assets')
+    .lean();
   const results = [];
 
   for (const plan of allPlans) {
@@ -78,8 +86,9 @@ export const searchCampusAssets = asyncHandler(async (req, res) => {
         asset.vehicleModel?.toLowerCase().includes(query);
 
       if (match) {
+        const assetObj = asset.toObject ? asset.toObject() : asset;
         results.push({
-          ...asset.toObject(),
+          ...assetObj,
           floorPlanId: plan._id,
           buildingId: plan.buildingId,
           buildingName: plan.buildingName,
@@ -159,6 +168,8 @@ export const duplicateFloorLayout = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('floorplans');
+
   res.status(200).json({
     success: true,
     message: 'คัดลอกโครงร่างแปลนสำเร็จ',
@@ -234,6 +245,8 @@ export const createFloorPlan = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('floorplans');
+
   res.status(201).json({
     success: true,
     data: { floorPlan: plan },
@@ -287,6 +300,8 @@ export const updateFloorPlan = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('floorplans');
+
   res.status(200).json({
     success: true,
     data: { floorPlan: plan },
@@ -313,6 +328,8 @@ export const deleteFloorPlan = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.delByPrefix('floorplans');
 
   res.status(200).json({
     success: true,
@@ -388,6 +405,8 @@ export const moveAsset = asyncHandler(async (req, res) => {
       userAgent: req.get('user-agent') || '',
     });
 
+    cacheService.delByPrefix('floorplans');
+
     return res.status(200).json({
       success: true,
       message: isNew ? 'เพิ่มอุปกรณ์สำเร็จ' : 'แก้ไขอุปกรณ์สำเร็จ',
@@ -432,6 +451,8 @@ export const moveAsset = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.delByPrefix('floorplans');
 
   res.status(200).json({
     success: true,

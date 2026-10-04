@@ -1,6 +1,7 @@
 import { Booking, BookingResource, AuditLog } from '../models/index.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
+import cacheService from '../services/cacheService.js';
 
 // Preset Seed Data to auto-populate if no resources exist yet
 const PRESET_RESOURCES = [
@@ -153,7 +154,9 @@ const PRESET_RESOURCES = [
 ];
 
 // Helper: Ensure preset resources exist safely without race conditions
+let presetChecked = false;
 const ensurePresetResources = async () => {
+  if (presetChecked) return;
   const count = await BookingResource.countDocuments();
   if (count < PRESET_RESOURCES.length) {
     for (const preset of PRESET_RESOURCES) {
@@ -164,6 +167,7 @@ const ensurePresetResources = async () => {
       );
     }
   }
+  presetChecked = true;
 };
 
 /**
@@ -186,7 +190,13 @@ export const listResources = asyncHandler(async (req, res) => {
     filter.status = 'active';
   }
 
-  const resources = await BookingResource.find(filter).sort({ order: 1, createdAt: 1 });
+  const cacheKey = `bookings:resources:${type || 'all'}:${filter.status || 'any'}`;
+  const resources = await cacheService.remember(cacheKey, 300, async () => {
+    return await BookingResource.find(filter)
+      .sort({ order: 1, createdAt: 1 })
+      .lean();
+  });
+
   res.status(200).json({ success: true, data: resources });
 });
 
@@ -240,6 +250,8 @@ export const createResource = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('bookings:resources');
+
   res.status(201).json({ success: true, data: resource });
 });
 
@@ -292,6 +304,8 @@ export const updateResource = asyncHandler(async (req, res) => {
     userAgent: req.get('user-agent') || '',
   });
 
+  cacheService.delByPrefix('bookings:resources');
+
   res.status(200).json({ success: true, data: resource });
 });
 
@@ -320,6 +334,8 @@ export const deleteResource = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.delByPrefix('bookings:resources');
 
   res.status(200).json({ success: true, message: 'Resource deleted successfully' });
 });

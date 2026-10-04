@@ -1,6 +1,7 @@
 import { CompanyInfo, AuditLog } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import cacheService from '../services/cacheService.js';
 
 export const DEFAULT_COMPANY_INFO = {
   key: 'default',
@@ -32,8 +33,13 @@ const companyPayload = (body) => {
 const serialize = (company) => company?.toObject ? company.toObject({ virtuals: true }) : { ...company };
 
 export const getCompanyInfo = asyncHandler(async (_req, res) => {
-  const company = await CompanyInfo.findOne({ key: 'default' }).populate('updatedBy', 'username');
-  res.status(200).json({ success: true, data: { company: serialize(company || DEFAULT_COMPANY_INFO) } });
+  const company = await cacheService.remember('company_info:default', 600, async () => {
+    const doc = await CompanyInfo.findOne({ key: 'default' })
+      .populate('updatedBy', 'username')
+      .lean();
+    return serialize(doc || DEFAULT_COMPANY_INFO);
+  });
+  res.status(200).json({ success: true, data: { company } });
 });
 
 export const updateCompanyInfo = asyncHandler(async (req, res) => {
@@ -55,5 +61,8 @@ export const updateCompanyInfo = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('user-agent') || '',
   });
+
+  cacheService.del('company_info:default');
+
   res.status(200).json({ success: true, data: { company: serialize(company) } });
 });

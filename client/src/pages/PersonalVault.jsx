@@ -226,23 +226,23 @@ export default function PersonalVault() {
   return (
     <AppShell>
       <div className="space-y-6">
-        {/* Top Header & Breadcrumb */}
+        {/* Top Header & Breadcrumb (UI/UX Promax high-contrast) */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+            <div className="flex items-center gap-2 text-sm text-slate-500 mb-1.5 font-medium">
               <span>หน้าแรก</span>
               <span>/</span>
-              <span className="text-slate-800 dark:text-slate-200 font-medium">ตู้นิรภัยส่วนตัว</span>
+              <span className="text-slate-800 font-bold">ตู้นิรภัยส่วนตัว</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/20">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/25 border border-blue-500/40">
                 🔒
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                   ตู้นิรภัยส่วนตัว (Personal Vault)
                 </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
                   ระบบจัดเก็บรหัสผ่านและข้อมูลความลับ เข้ารหัสแบบ Zero-Knowledge (AES-256-GCM)
                 </p>
               </div>
@@ -251,8 +251,8 @@ export default function PersonalVault() {
 
           {/* Quick Security Status Badge */}
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
               AES-256 End-to-End Encrypted
             </span>
           </div>
@@ -260,42 +260,42 @@ export default function PersonalVault() {
 
         {/* STATE 1: Loading Status */}
         {statusLoading && (
-          <div className="py-24 text-center">
-            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-slate-500">กำลังตรวจสอบระบบรักษาความปลอดภัย...</p>
+          <div className="py-24 text-center bg-white rounded-3xl border border-slate-200/90 shadow-xs">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-semibold text-slate-600">กำลังตรวจสอบระบบรักษาความปลอดภัย...</p>
           </div>
         )}
 
-        {/* STATE 2: Vault Not Configured Yet */}
+        {/* STATE 2: Vault Not Configured Yet (Crisp Promax White Card) */}
         {!statusLoading && !status?.isConfigured && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-800 shadow-sm text-center max-w-2xl mx-auto">
-            <div className="w-20 h-20 rounded-3xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-4xl mx-auto mb-6 shadow-inner">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/90 shadow-md text-center max-w-2xl mx-auto">
+            <div className="w-20 h-20 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center text-4xl mx-auto mb-6 shadow-xs border border-blue-100">
               🛡️
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+            <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">
               ตั้งค่าตู้นิรภัยส่วนตัวของคุณ
             </h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+            <p className="text-sm text-slate-600 leading-relaxed mb-8 max-w-lg mx-auto">
               ปกป้องข้อมูลสำคัญ รหัสผ่านระบบภายใน โน้ตลับ และคีย์ความปลอดภัยของคุณด้วยระบบเข้ารหัส
-              <strong className="text-blue-600 dark:text-blue-400 mx-1">Zero-Knowledge AES-256-GCM</strong>
+              <strong className="text-blue-700 font-semibold mx-1">Zero-Knowledge AES-256-GCM</strong>
               ที่จะไม่มีใครสามารถเข้าถึงข้อมูลของคุณได้ แม้แต่ผู้ดูแลระบบ หากไม่มี Master PIN 6 หลักของคุณ
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left mb-8">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xl mb-1 block">🔐</span>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">เข้ารหัสขั้นสูงสุด</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">AES-256-GCM พร้อม Salt และ Scrypt เฉพาะบุคคล</p>
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-blue-300 hover:bg-white transition-all shadow-xs">
+                <span className="text-2xl mb-1.5 block">🔐</span>
+                <h4 className="text-xs font-bold text-slate-900">เข้ารหัสขั้นสูงสุด</h4>
+                <p className="text-[11px] text-slate-500 mt-1 leading-normal">AES-256-GCM พร้อม Salt และ Scrypt เฉพาะบุคคล</p>
               </div>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xl mb-1 block">⏱️</span>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">ล็อกอัตโนมัติ</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">ระบบจะล็อกทันทีเมื่อไม่มีการใช้งานตามเวลาที่ตั้งไว้</p>
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-blue-300 hover:bg-white transition-all shadow-xs">
+                <span className="text-2xl mb-1.5 block">⏱️</span>
+                <h4 className="text-xs font-bold text-slate-900">ล็อกอัตโนมัติ</h4>
+                <p className="text-[11px] text-slate-500 mt-1 leading-normal">ระบบจะล็อกทันทีเมื่อไม่มีการใช้งานตามเวลาที่ตั้งไว้</p>
               </div>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xl mb-1 block">🔑</span>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">สร้างรหัสผ่านแกร่ง</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">เครื่องมือสุ่มสร้างรหัสผ่านที่มีความปลอดภัยสูง</p>
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-blue-300 hover:bg-white transition-all shadow-xs">
+                <span className="text-2xl mb-1.5 block">🔑</span>
+                <h4 className="text-xs font-bold text-slate-900">สร้างรหัสผ่านแกร่ง</h4>
+                <p className="text-[11px] text-slate-500 mt-1 leading-normal">เครื่องมือสุ่มสร้างรหัสผ่านที่มีความปลอดภัยสูง</p>
               </div>
             </div>
 
@@ -305,35 +305,35 @@ export default function PersonalVault() {
                 setIsChangePinMode(false);
                 setSetupModalOpen(true);
               }}
-              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 active:scale-95 transition"
+              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 active:scale-95 transition"
             >
               🔒 ตั้งค่ารหัส Master PIN 6 หลักเพื่อเริ่มต้น
             </button>
           </div>
         )}
 
-        {/* STATE 3: Vault Configured, but Currently LOCKED */}
+        {/* STATE 3: Vault Configured, but Currently LOCKED (Tactile White Keypad Card) */}
         {!statusLoading && status?.isConfigured && !isUnlocked && (
           <div className="max-w-md mx-auto">
-            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl text-center">
+            <div className="bg-white rounded-3xl p-8 border border-slate-200/90 shadow-xl text-center">
               {/* Padlock graphic with glowing ring */}
               <div className="relative w-20 h-20 mx-auto mb-5">
                 <div className="absolute inset-0 rounded-3xl bg-blue-500/20 blur-xl animate-pulse" />
-                <div className="relative w-full h-full rounded-3xl bg-gradient-to-tr from-slate-900 to-slate-800 dark:from-blue-950 dark:to-slate-900 text-white flex items-center justify-center text-3xl shadow-lg border border-slate-700">
+                <div className="relative w-full h-full rounded-3xl bg-gradient-to-tr from-slate-900 to-blue-900 text-white flex items-center justify-center text-3xl shadow-lg border border-slate-800">
                   🔐
                 </div>
               </div>
 
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+              <h2 className="text-xl font-black text-slate-900 mb-1 tracking-tight">
                 ปลดล็อกตู้นิรภัยส่วนตัว
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+              <p className="text-xs text-slate-500 mb-6">
                 กรุณากรอกรหัส Master PIN 6 หลักเพื่อถอดรหัสข้อมูล
               </p>
 
               {/* Lockout Notice if applicable */}
               {status?.isLocked && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl text-xs text-red-600 dark:text-red-400">
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-600">
                   ⚠️ ระบบถูกระงับชั่วคราวเนื่องจากใส่รหัสผิดเกิน 5 ครั้ง กรุณารอสักครู่
                 </div>
               )}
@@ -347,8 +347,8 @@ export default function PersonalVault() {
                       key={index}
                       className={`w-4 h-4 rounded-full transition-all duration-200 ${
                         isFilled
-                          ? 'bg-blue-600 scale-125 shadow-md shadow-blue-500/50'
-                          : 'bg-slate-200 dark:bg-slate-700'
+                          ? 'bg-blue-600 border border-blue-600 scale-125 shadow-md shadow-blue-400'
+                          : 'bg-slate-200 border border-slate-300'
                       }`}
                     />
                   );
@@ -357,7 +357,7 @@ export default function PersonalVault() {
 
               {/* Error message */}
               {pinError && (
-                <div className="text-xs font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 py-2 px-3 rounded-lg mb-4 animate-shake">
+                <div className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 py-2.5 px-3 rounded-xl mb-4 animate-shake">
                   {pinError}
                 </div>
               )}
@@ -370,7 +370,7 @@ export default function PersonalVault() {
                     type="button"
                     disabled={isSubmittingPin || status?.isLocked}
                     onClick={() => handleDigitPress(String(num))}
-                    className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 text-lg font-bold text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-sm"
+                    className="h-14 rounded-2xl bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 text-lg font-bold text-slate-900 border border-slate-200/90 active:scale-95 transition shadow-xs"
                   >
                     {num}
                   </button>
@@ -381,7 +381,7 @@ export default function PersonalVault() {
                   type="button"
                   onClick={handleClear}
                   disabled={isSubmittingPin || status?.isLocked}
-                  className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-xs font-semibold text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-sm"
+                  className="h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 border border-slate-200/90 active:scale-95 transition shadow-xs"
                 >
                   ล้าง
                 </button>
@@ -391,7 +391,7 @@ export default function PersonalVault() {
                   type="button"
                   disabled={isSubmittingPin || status?.isLocked}
                   onClick={() => handleDigitPress('0')}
-                  className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 text-lg font-bold text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-sm"
+                  className="h-14 rounded-2xl bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 text-lg font-bold text-slate-900 border border-slate-200/90 active:scale-95 transition shadow-xs"
                 >
                   0
                 </button>
@@ -401,7 +401,7 @@ export default function PersonalVault() {
                   type="button"
                   onClick={handleBackspace}
                   disabled={isSubmittingPin || status?.isLocked}
-                  className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-sm flex items-center justify-center"
+                  className="h-14 rounded-2xl bg-slate-50 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 border border-slate-200/90 active:scale-95 transition shadow-xs flex items-center justify-center"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -416,7 +416,7 @@ export default function PersonalVault() {
 
               {/* Submitting indicator */}
               {isSubmittingPin && (
-                <div className="flex items-center justify-center gap-2 text-xs text-blue-600 font-medium mb-3">
+                <div className="flex items-center justify-center gap-2 text-xs text-blue-600 font-semibold mb-3">
                   <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                   กำลังถอดรหัสข้อมูล...
                 </div>
@@ -424,16 +424,16 @@ export default function PersonalVault() {
 
               {/* PIN Hint */}
               {status?.pinHint && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <div className="pt-2 border-t border-slate-100 text-xs">
                   {showHint ? (
-                    <div className="text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+                    <div className="text-slate-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
                       💡 คำใบ้รหัส PIN: <strong>{status.pinHint}</strong>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowHint(true)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                      className="text-slate-500 hover:text-slate-800 transition font-medium"
                     >
                       💡 ดูคำใบ้รหัส PIN
                     </button>
@@ -448,27 +448,27 @@ export default function PersonalVault() {
         {!statusLoading && status?.isConfigured && isUnlocked && (
           <div className="space-y-6">
             {/* Active Security Banner & Auto-Lock Status */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-blue-800/40">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-2xl border border-white/10">
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-blue-900/60">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-2xl border border-white/15">
                   🔓
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-bold">ตู้นิรภัยเปิดใช้งานอยู่</h2>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-slate-950">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-slate-950 shadow-xs">
                       UNLOCKED
                     </span>
                   </div>
-                  <p className="text-xs text-blue-200/80">
-                    ข้อมูลทั้งหมดถูกถอดรหัสในหน่วยความจำชั่วคราวอย่างปลอดภัย
+                  <p className="text-xs text-blue-200/90 mt-0.5">
+                    ข้อมูลทั้งหมดถูกถอดรหัสในหน่วยความจำชั่วคราวอย่างปลอดภัย (AES-256-GCM)
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
                 {/* Auto-lock countdown chip */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm text-xs font-mono text-blue-200 border border-white/10">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm text-xs font-mono text-blue-100 border border-white/15">
                   <span>⏳ ล็อกอัตโนมัติใน:</span>
                   <span className="font-bold text-white">{formatTime(secondsLeft)}</span>
                 </div>
@@ -477,7 +477,7 @@ export default function PersonalVault() {
                 <button
                   type="button"
                   onClick={() => setPassGenModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-white transition flex items-center gap-1.5 border border-white/10"
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/15 active:scale-95"
                 >
                   <span>🎲</span>
                   <span>สร้างรหัสผ่าน</span>
@@ -489,7 +489,7 @@ export default function PersonalVault() {
                     setIsChangePinMode(true);
                     setSetupModalOpen(true);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium text-white transition flex items-center gap-1.5 border border-white/10"
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/15 active:scale-95"
                 >
                   <span>⚙️</span>
                   <span>เปลี่ยน PIN</span>
@@ -499,7 +499,7 @@ export default function PersonalVault() {
                 <button
                   type="button"
                   onClick={lockVault}
-                  className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-md shadow-red-900/30"
+                  className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-md shadow-red-950/40 active:scale-95"
                 >
                   <span>🔒</span>
                   <span>ล็อกทันที</span>
@@ -510,30 +510,30 @@ export default function PersonalVault() {
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
-                { id: 'all', label: 'ทั้งหมด', count: stats.total, icon: '📦', color: 'from-blue-500/10 to-indigo-500/10 text-blue-600' },
-                { id: 'login', label: 'รหัสผ่าน', count: stats.logins, icon: '🔑', color: 'from-sky-500/10 to-blue-500/10 text-sky-600' },
-                { id: 'note', label: 'โน้ตลับ', count: stats.notes, icon: '📝', color: 'from-emerald-500/10 to-teal-500/10 text-emerald-600' },
-                { id: 'card', label: 'บัตร/ตัวตน', count: stats.cards, icon: '💳', color: 'from-purple-500/10 to-pink-500/10 text-purple-600' },
-                { id: 'key', label: 'API & คีย์', count: stats.keys, icon: '⚙️', color: 'from-amber-500/10 to-orange-500/10 text-amber-600' },
-                { id: 'favorites', label: 'รายการโปรด', count: stats.favorites, icon: '⭐', color: 'from-rose-500/10 to-amber-500/10 text-amber-500' },
+                { id: 'all', label: 'ทั้งหมด', count: stats.total, icon: '📦' },
+                { id: 'login', label: 'รหัสผ่าน', count: stats.logins, icon: '🔑' },
+                { id: 'note', label: 'โน้ตลับ', count: stats.notes, icon: '📝' },
+                { id: 'card', label: 'บัตร/ตัวตน', count: stats.cards, icon: '💳' },
+                { id: 'key', label: 'API & คีย์', count: stats.keys, icon: '⚙️' },
+                { id: 'favorites', label: 'รายการโปรด', count: stats.favorites, icon: '⭐' },
               ].map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setActiveTab(m.id)}
-                  className={`p-3 rounded-2xl border text-left transition-all ${
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
                     activeTab === m.id
-                      ? 'bg-white dark:bg-slate-900 border-blue-500 shadow-md ring-2 ring-blue-500/20'
-                      : 'bg-white/70 dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                      ? 'bg-white border-blue-600 shadow-md ring-2 ring-blue-500/20'
+                      : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-base">{m.icon}</span>
-                    <span className="text-lg font-black text-slate-800 dark:text-slate-100 font-mono">
+                    <span className="text-lg font-black text-slate-900 font-mono">
                       {m.count}
                     </span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block truncate">
+                  <span className="text-xs font-semibold text-slate-600 block truncate">
                     {m.label}
                   </span>
                 </button>
@@ -541,7 +541,7 @@ export default function PersonalVault() {
             </div>
 
             {/* Controls: Search, Tabs, Add Button */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
               {/* Search Bar */}
               <div className="relative flex-1 max-w-md">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -559,7 +559,7 @@ export default function PersonalVault() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="ค้นหาชื่อ, บัญชี, เว็บไซต์ หรือป้ายกำกับ..."
-                  className="w-full pl-10 pr-9 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition"
+                  className="w-full pl-10 pr-9 py-2 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                 />
                 {searchQuery && (
                   <button
@@ -589,9 +589,9 @@ export default function PersonalVault() {
 
             {/* Vault Items List / Grid */}
             {itemsLoading ? (
-              <div className="py-20 text-center">
-                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs text-slate-500">กำลังโหลดและถอดรหัสข้อมูลความลับ...</p>
+              <div className="py-20 text-center bg-white rounded-3xl border border-slate-200/90 shadow-xs">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs font-semibold text-slate-600">กำลังโหลดและถอดรหัสข้อมูลความลับ...</p>
               </div>
             ) : items.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -605,14 +605,14 @@ export default function PersonalVault() {
                 ))}
               </div>
             ) : (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 border border-slate-200 dark:border-slate-800 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-4">
+              <div className="bg-white rounded-3xl p-12 border border-slate-200/90 text-center shadow-xs">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-4">
                   📂
                 </div>
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <h3 className="text-base font-bold text-slate-900 mb-1">
                   ไม่พบรายการในตู้นิรภัย
                 </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5">
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5 leading-normal">
                   {searchQuery
                     ? `ไม่พบข้อมูลที่ตรงกับ "${searchQuery}" ลองเปลี่ยนคำค้นหา`
                     : 'ยังไม่มีข้อมูลความลับในหมวดหมู่นี้ คุณสามารถเพิ่มรหัสผ่าน โน้ต หรือบัตรได้ทันที'}
@@ -621,28 +621,28 @@ export default function PersonalVault() {
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal('login')}
-                    className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 transition"
+                    className="px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 border border-blue-200 transition"
                   >
                     🔑 เพิ่มรหัสผ่าน
                   </button>
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal('note')}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-100 transition"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 border border-emerald-200 transition"
                   >
                     📝 เพิ่มโน้ตลับ
                   </button>
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal('card')}
-                    className="px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-semibold hover:bg-purple-100 transition"
+                    className="px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 text-xs font-semibold hover:bg-purple-100 border border-purple-200 transition"
                   >
                     💳 เพิ่มบัตร/ตัวตน
                   </button>
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal('key')}
-                    className="px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 transition"
+                    className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 border border-amber-200 transition"
                   >
                     ⚙️ เพิ่ม API Key
                   </button>

@@ -70,6 +70,7 @@ const auditLogSchema = new mongoose.Schema(
 auditLogSchema.index({ createdAt: -1 });
 auditLogSchema.index({ userId: 1, createdAt: -1 });
 auditLogSchema.index({ entity: 1, entityId: 1, createdAt: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1 });
 
 /** Fields that must never be persisted into an audit snapshot. */
 const REDACTED_FIELDS = [

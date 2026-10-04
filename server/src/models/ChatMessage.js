@@ -32,6 +32,8 @@ const chatMessageSchema = new mongoose.Schema(
 );
 
 chatMessageSchema.index({ conversationId: 1, createdAt: 1 });
+chatMessageSchema.index({ conversationId: 1, createdAt: -1 });
+chatMessageSchema.index({ readBy: 1 });
 
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 
