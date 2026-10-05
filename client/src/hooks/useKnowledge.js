@@ -160,6 +160,24 @@ export function useDeleteKnowledgeTopic() {
   });
 }
 
+export function useMergeKnowledgeTopics() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, targetTopicId }) => knowledgeService.mergeTopic(id, targetTopicId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      queryClient.invalidateQueries({ queryKey: ['it-quick-links'] });
+    },
+  });
+}
+
+export function useUploadInlineKnowledgeImage() {
+  return useMutation({
+    mutationFn: (file) => knowledgeService.uploadInlineImage(file),
+  });
+}
+
 export function useSeedMockItKnowledge() {
   const queryClient = useQueryClient();
   return useMutation({

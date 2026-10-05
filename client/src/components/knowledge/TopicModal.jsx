@@ -23,17 +23,23 @@ export default function TopicModal({
   const [description, setDescription] = useState('');
   const [sortOrder, setSortOrder] = useState(0);
 
+  const extractId = (val) => {
+    if (!val) return '';
+    if (typeof val === 'object' && val._id) return String(val._id);
+    return String(val);
+  };
+
   useEffect(() => {
     if (initial) {
       setName(getCleanTopicName(initial.name || '', initial.icon));
       setIcon(initial.icon || '📁');
-      setParentId(initial.parentId ? String(initial.parentId) : '');
+      setParentId(extractId(initial.parentId));
       setDescription(initial.description || '');
       setSortOrder(initial.sortOrder || 0);
     } else {
       setName('');
       setIcon('📁');
-      setParentId(defaultParentId ? String(defaultParentId) : '');
+      setParentId(extractId(defaultParentId));
       setDescription('');
       setSortOrder(0);
     }
@@ -44,7 +50,7 @@ export default function TopicModal({
     if (!initial?._id) return new Set();
     const map = new Map();
     topics.forEach((top) => {
-      const p = top.parentId ? String(top.parentId) : null;
+      const p = extractId(top.parentId) || null;
       if (!map.has(p)) map.set(p, []);
       map.get(p).push(String(top._id));
     });
@@ -68,7 +74,7 @@ export default function TopicModal({
   const parentOptions = useMemo(() => {
     const topicMap = new Map();
     topics.forEach((top) => {
-      const p = top.parentId ? String(top.parentId) : 'root';
+      const p = extractId(top.parentId) || 'root';
       if (!topicMap.has(p)) topicMap.set(p, []);
       topicMap.get(p).push(top);
     });

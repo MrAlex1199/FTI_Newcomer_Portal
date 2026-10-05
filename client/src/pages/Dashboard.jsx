@@ -59,7 +59,7 @@ export default function Dashboard() {
             desc={t('onboardingEssentialsDesc')}
             id="onboarding-essentials-heading"
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <EssentialCard
               to="/getting-started"
               emoji="🚀"
@@ -71,6 +71,16 @@ export default function Dashboard() {
               index={0}
             />
             <EssentialCard
+              to="/document-flows"
+              emoji="🔄"
+              title={t('documentFlows')}
+              desc={t('documentFlowsDesc')}
+              tag="SOP & ISO"
+              gradient="bg-indigo-500"
+              badgeColor="bg-indigo-50 text-indigo-700 border border-indigo-100"
+              index={1}
+            />
+            <EssentialCard
               to="/policies"
               emoji="📋"
               title={t('policies')}
@@ -78,7 +88,7 @@ export default function Dashboard() {
               tag="Rules"
               gradient="bg-emerald-500"
               badgeColor="bg-emerald-50 text-emerald-700 border border-emerald-100"
-              index={1}
+              index={2}
             />
             <EssentialCard
               to="/faq"
@@ -88,7 +98,7 @@ export default function Dashboard() {
               tag="Q&A"
               gradient="bg-amber-500"
               badgeColor="bg-amber-50 text-amber-700 border border-amber-100"
-              index={2}
+              index={3}
             />
             <EssentialCard
               to="/announcements"
@@ -98,7 +108,7 @@ export default function Dashboard() {
               tag="News"
               gradient="bg-rose-500"
               badgeColor="bg-rose-50 text-rose-700 border border-rose-100"
-              index={3}
+              index={4}
             />
           </div>
         </section>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell.jsx';
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
@@ -6,6 +6,7 @@ import ObsidianTree from '../components/knowledge/ObsidianTree.jsx';
 import KnowledgeReader from '../components/knowledge/KnowledgeReader.jsx';
 import ObsidianGraphView from '../components/knowledge/ObsidianGraphView.jsx';
 import TopicModal from '../components/knowledge/TopicModal.jsx';
+import MergeTopicModal from '../components/knowledge/MergeTopicModal.jsx';
 import MarkdownEditorModal from '../components/knowledge/MarkdownEditorModal.jsx';
 import useAuth from '../hooks/useAuth.js';
 import useLanguage from '../hooks/useLanguage.js';
@@ -23,6 +24,7 @@ import {
   useCreateKnowledgeTopic,
   useUpdateKnowledgeTopic,
   useDeleteKnowledgeTopic,
+  useMergeKnowledgeTopics,
   useSeedMockItKnowledge,
 } from '../hooks/useKnowledge.js';
 
@@ -48,6 +50,34 @@ export default function ItHelp() {
   const [selectedTopicId, setSelectedTopicId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('fti_it_help_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('fti_it_help_sidebar_collapsed', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const quickLinksTrackRef = useRef(null);
+
+  const scrollQuickLinks = (offset) => {
+    if (quickLinksTrackRef.current) {
+      quickLinksTrackRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
+
   const [activeViewTab, setActiveViewTab] = useState('notes'); // 'notes' | 'graph'
   const [confirmSeedModalOpen, setConfirmSeedModalOpen] = useState(false);
   const [seedSuccessBanner, setSeedSuccessBanner] = useState(false);
@@ -56,6 +86,9 @@ export default function ItHelp() {
   const [topicModalOpen, setTopicModalOpen] = useState(false);
   const [topicEditing, setTopicEditing] = useState(null);
   const [topicDefaultParentId, setTopicDefaultParentId] = useState(null);
+
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [topicToMerge, setTopicToMerge] = useState(null);
 
   const [editorModalOpen, setEditorModalOpen] = useState(false);
   const [articleEditing, setArticleEditing] = useState(null);
@@ -102,6 +135,7 @@ export default function ItHelp() {
   const createTopicMutation = useCreateKnowledgeTopic();
   const updateTopicMutation = useUpdateKnowledgeTopic();
   const deleteTopicMutation = useDeleteKnowledgeTopic();
+  const mergeTopicMutation = useMergeKnowledgeTopics();
   const seedMockMutation = useSeedMockItKnowledge();
 
   const itDepartment = useMemo(
@@ -278,6 +312,20 @@ export default function ItHelp() {
     }
   };
 
+  const handleMergeTopic = async (sourceId, targetId) => {
+    setActionError('');
+    try {
+      await mergeTopicMutation.mutateAsync({ id: sourceId, targetTopicId: targetId });
+      setMergeModalOpen(false);
+      setTopicToMerge(null);
+      if (selectedTopicId === sourceId) {
+        setSelectedTopicId(targetId);
+      }
+    } catch (err) {
+      setActionError(errorMessage(err, 'Failed to merge folders'));
+    }
+  };
+
   const handleSeedMock = async () => {
     try {
       await seedMockMutation.mutateAsync();
@@ -427,45 +475,108 @@ export default function ItHelp() {
       ) : (
         /* Notes View */
         <>
-          {/* Quick Links Strip */}
+          {/* Compact Quick Links Horizontal Ribbon Slider */}
           {quickLinks.length > 0 && (
-            <section className="mb-5 rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/90 to-indigo-50/70 p-3.5 shadow-2xs">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm">⭐</span>
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                  {t('quickLinks') || 'Quick Links & Common Help'}
-                </span>
+            <section className="mb-4 flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-1.5 shadow-2xs">
+              {/* Badge Label */}
+              <div className="flex items-center gap-1.5 rounded-xl bg-blue-50/90 border border-blue-100/90 px-2.5 py-1 text-xs font-bold text-blue-800 shrink-0 select-none">
+                <span className="text-amber-500">⭐</span>
+                <span className="hidden sm:inline font-semibold">{t('quickLinks') || 'Quick Links'}</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {quickLinks.map((item) => (
-                  <button
-                    type="button"
-                    key={item._id}
-                    onClick={() => setSelectedArticleId(item._id)}
-                    className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                      selectedArticleId === item._id
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-white text-slate-700 border border-blue-100 hover:border-blue-300 hover:bg-blue-50/50 shadow-2xs'
-                    }`}
-                  >
-                    {item.title}
-                  </button>
-                ))}
+
+              {/* Scroll Left Button */}
+              <button
+                type="button"
+                onClick={() => scrollQuickLinks(-240)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50 text-slate-500 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all cursor-pointer shadow-2xs"
+                title="Scroll left"
+                aria-label="Scroll left"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+
+              {/* Scrollable Track */}
+              <div
+                ref={quickLinksTrackRef}
+                className="flex items-center gap-2 overflow-x-auto scroll-smooth py-0.5 no-scrollbar flex-1"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {quickLinks.map((item) => {
+                  const isSelected = selectedArticleId === item._id;
+                  return (
+                    <button
+                      type="button"
+                      key={item._id}
+                      onClick={() => {
+                        setSelectedArticleId(item._id);
+                        setActiveViewTab('notes');
+                      }}
+                      className={`group flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs ring-1 ring-blue-500'
+                          : 'bg-slate-50/90 text-slate-700 border border-slate-200/80 hover:bg-blue-50/70 hover:text-blue-700 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className={`text-[11px] ${isSelected ? 'text-white' : 'text-blue-500'}`}>•</span>
+                      <span className="whitespace-nowrap">{item.title}</span>
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Scroll Right Button */}
+              <button
+                type="button"
+                onClick={() => scrollQuickLinks(240)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50 text-slate-500 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all cursor-pointer shadow-2xs"
+                title="Scroll right"
+                aria-label="Scroll right"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
             </section>
           )}
 
-          {/* Status Filter for Managers & Search on Mobile Toggle */}
+          {/* Status Filter for Managers & Sidebar Toggle */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            {/* Mobile Toggle Button for Tree */}
-            <button
-              type="button"
-              onClick={() => setSidebarOpenMobile(!sidebarOpenMobile)}
-              className="lg:hidden inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs"
-            >
-              <span>📁</span>
-              <span>{sidebarOpenMobile ? (t('hideSidebar') || 'Hide Folders') : (t('showSidebar') || 'Browse Folders')}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Mobile Toggle Button for Tree */}
+              <button
+                type="button"
+                onClick={() => setSidebarOpenMobile(!sidebarOpenMobile)}
+                className="lg:hidden inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+              >
+                <span>📁</span>
+                <span>{sidebarOpenMobile ? (t('hideSidebar') || 'Hide Folders') : (t('showSidebar') || 'Browse Folders')}</span>
+              </button>
+
+              {/* Desktop Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="hidden lg:inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                title={sidebarCollapsed ? (t('showSidebar') || 'Show folders') : (t('hideSidebar') || 'Hide sidebar')}
+              >
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="m14 9-3 3 3 3" />
+                </svg>
+                <span>{sidebarCollapsed ? (t('showSidebar') || 'Show Folders') : (t('hideSidebar') || 'Hide Folders')}</span>
+              </button>
+            </div>
 
             {/* Manager Status Filter */}
             {canManage && (
@@ -502,10 +613,14 @@ export default function ItHelp() {
           {/* Main 2-Pane Obsidian Layout */}
           {!topicsLoading && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-              {/* Left Pane: Obsidian Tree (3.5 / 12 columns on large screens) */}
+              {/* Left Pane: Obsidian Tree (Hidden when sidebarCollapsed on desktop) */}
               <div
-                className={`lg:col-span-4 xl:col-span-3 transition-all ${
-                  sidebarOpenMobile ? 'block' : 'hidden lg:block'
+                className={`transition-all duration-200 ${
+                  sidebarCollapsed
+                    ? 'hidden'
+                    : sidebarOpenMobile
+                    ? 'block lg:col-span-4 xl:col-span-3'
+                    : 'hidden lg:block lg:col-span-4 xl:col-span-3'
                 }`}
               >
                 <ObsidianTree
@@ -518,6 +633,7 @@ export default function ItHelp() {
                   canManage={canManage}
                   search={search}
                   onSearchChange={setSearch}
+                  onToggleCollapse={toggleSidebar}
                   onOpenCreateTopic={(parentId) => {
                     setTopicEditing(null);
                     setTopicDefaultParentId(parentId || null);
@@ -526,6 +642,10 @@ export default function ItHelp() {
                   onOpenEditTopic={(topic) => {
                     setTopicEditing(topic);
                     setTopicModalOpen(true);
+                  }}
+                  onOpenMergeTopic={(topic) => {
+                    setTopicToMerge(topic);
+                    setMergeModalOpen(true);
                   }}
                   onDeleteTopic={(topic) => setDeletingTopic(topic)}
                   onOpenCreateArticle={(topicId) => {
@@ -536,8 +656,12 @@ export default function ItHelp() {
                 />
               </div>
 
-              {/* Right Pane: Reading & Content Canvas (8.5 / 12 columns) */}
-              <div className="lg:col-span-8 xl:col-span-9 min-w-0">
+              {/* Right Pane: Reading & Content Canvas (Expands to 100% full width when sidebarCollapsed) */}
+              <div
+                className={`transition-all duration-200 min-w-0 ${
+                  sidebarCollapsed ? 'lg:col-span-12 w-full' : 'lg:col-span-8 xl:col-span-9'
+                }`}
+              >
                 <KnowledgeReader
                   article={selectedArticle}
                   loading={articleLoading}
@@ -545,6 +669,8 @@ export default function ItHelp() {
                   topicHierarchy={topicHierarchy}
                   canManage={canManage}
                   currentUser={user}
+                  onToggleSidebar={toggleSidebar}
+                  sidebarCollapsed={sidebarCollapsed}
                   onEditArticle={(art) => {
                     setArticleEditing(art);
                     setEditorModalOpen(true);
@@ -587,6 +713,20 @@ export default function ItHelp() {
         onSubmit={handleSaveTopic}
         submitting={createTopicMutation.isPending || updateTopicMutation.isPending}
         formError={actionError}
+      />
+
+      {/* 1.5. Merge Topic / Folder Modal */}
+      <MergeTopicModal
+        open={mergeModalOpen}
+        onClose={() => {
+          setMergeModalOpen(false);
+          setTopicToMerge(null);
+        }}
+        sourceTopic={topicToMerge}
+        topics={topics}
+        onMerge={handleMergeTopic}
+        submitting={mergeTopicMutation.isPending}
+        error={actionError}
       />
 
       {/* 2. Note / Markdown Editor Modal */}

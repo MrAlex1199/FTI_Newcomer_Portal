@@ -24,7 +24,9 @@ export function LanguageProvider({ children }) {
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const value = useMemo(() => ({
     language,
+    currentLanguage: language,
     setLanguage,
+    isTh: language === 'th',
     t: (key, variables) => translate(language, key, variables),
     label: (value) => {
       const key = enumLabels.roles[value] || enumLabels.status[value] || enumLabels.sections[value] || enumLabels.announcementCategories[value] || enumLabels.itHelpTopics[value] || value;

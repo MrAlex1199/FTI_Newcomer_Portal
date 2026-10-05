@@ -20,6 +20,7 @@ import Policies from './pages/Policies.jsx';
 import FAQ from './pages/FAQ.jsx';
 import Announcements from './pages/Announcements.jsx';
 import GettingStarted from './pages/GettingStarted.jsx';
+import DocumentFlows from './pages/DocumentFlows.jsx';
 import ItHelp from './pages/ItHelp.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Company from './pages/Company.jsx';
@@ -188,6 +189,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <GettingStarted />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/document-flows"
+            element={
+              <ProtectedRoute>
+                <DocumentFlows />
               </ProtectedRoute>
             }
           />

@@ -15,10 +15,18 @@ const chatMessageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: [true, 'Message content cannot be empty'],
       trim: true,
       maxlength: [4000, 'Message cannot exceed 4000 characters'],
+      default: '',
     },
+    attachments: [
+      {
+        url: { type: String, required: true },
+        name: { type: String, default: '' },
+        fileType: { type: String, enum: ['image', 'file'], default: 'image' },
+        size: { type: Number, default: 0 },
+      },
+    ],
     readBy: [
       {
         type: mongoose.Schema.Types.ObjectId,

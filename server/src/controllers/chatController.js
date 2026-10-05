@@ -2,13 +2,14 @@ import mongoose from 'mongoose';
 import { Conversation, ChatMessage, User, Employee, Department } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import { uploadImage } from '../utils/imageUpload.js';
 import { getSocketIO, isUserOnline } from '../services/socketService.js';
 
 export const getConversations = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
   const conversations = await Conversation.find({
-    participants: userId,
+    $or: [{ participants: userId }, { type: 'channel' }],
   })
     .sort({ updatedAt: -1 })
     .populate({
@@ -32,7 +33,7 @@ export const getConversations = asyncHandler(async (req, res) => {
   const formatted = conversations.map((conv) => {
     // Find the other participant in a direct conversation
     const otherParticipant = conv.participants.find(
-      (p) => p._id.toString() !== userId
+      (p) => (p._id?.toString() || p.toString()) !== userId
     );
 
     const unreadCount = conv.unreadCounts ? Number(conv.unreadCounts[userId] || 0) : 0;
@@ -185,10 +186,13 @@ export const getMessages = asyncHandler(async (req, res) => {
 export const sendMessage = asyncHandler(async (req, res) => {
   const { id: conversationId } = req.params;
   const currentUserId = req.user.id;
-  const { content } = req.body;
+  const { content, attachments } = req.body;
 
-  if (!content || !content.trim()) {
-    throw ApiError.badRequest('Message content is required');
+  const hasContent = Boolean(content && content.trim());
+  const hasAttachments = Boolean(attachments && attachments.length > 0);
+
+  if (!hasContent && !hasAttachments) {
+    throw ApiError.badRequest('Message content or attachment is required');
   }
 
   const conv = await Conversation.findById(conversationId);
@@ -196,29 +200,42 @@ export const sendMessage = asyncHandler(async (req, res) => {
     throw ApiError.notFound('Conversation not found');
   }
 
-  const isParticipant = conv.participants.some(
-    (p) => p.toString() === currentUserId
+  let isParticipant = conv.participants.some(
+    (p) => (p._id?.toString() || p.toString()) === currentUserId
   );
   if (!isParticipant) {
-    throw ApiError.forbidden('You are not a participant in this conversation');
+    if (conv.type === 'channel') {
+      conv.participants.push(currentUserId);
+      if (!conv.unreadCounts) conv.unreadCounts = new Map();
+      conv.unreadCounts.set(currentUserId, 0);
+      isParticipant = true;
+    } else {
+      throw ApiError.forbidden('You are not a participant in this conversation');
+    }
+  }
+
+  let textPreview = (content || '').trim();
+  if (!textPreview && hasAttachments) {
+    textPreview = attachments[0].fileType === 'image' ? '📷 [รูปภาพ]' : '📎 [ไฟล์แนบ]';
   }
 
   const message = await ChatMessage.create({
     conversationId,
     senderId: currentUserId,
-    content: content.trim(),
+    content: (content || '').trim(),
+    attachments: attachments || [],
     readBy: [currentUserId],
   });
 
   // Update conversation
   conv.lastMessage = {
-    text: content.trim(),
+    text: textPreview,
     senderId: currentUserId,
     createdAt: message.createdAt,
   };
 
   conv.participants.forEach((p) => {
-    const pStr = p.toString();
+    const pStr = p._id?.toString() || p.toString();
     if (pStr !== currentUserId) {
       const current = conv.unreadCounts.get(pStr) || 0;
       conv.unreadCounts.set(pStr, current + 1);
@@ -241,7 +258,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
   if (io) {
     io.to(`conv_${conversationId}`).emit('message:new', populated);
     conv.participants.forEach((p) => {
-      const pStr = p.toString();
+      const pStr = p._id?.toString() || p.toString();
       io.to(`user_${pStr}`).emit('conversation:updated', {
         conversationId: conv._id,
         lastMessage: conv.lastMessage,
@@ -251,6 +268,38 @@ export const sendMessage = asyncHandler(async (req, res) => {
   }
 
   res.status(201).json({ success: true, data: populated });
+});
+
+export const uploadAttachment = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw ApiError.badRequest('No file uploaded');
+  }
+
+  const isImage = req.file.mimetype.startsWith('image/');
+  let url = '';
+
+  if (isImage) {
+    try {
+      const result = await uploadImage(req.file.buffer, 'fti_chat', { maxWidth: 1600 });
+      url = result.url;
+    } catch {
+      const base64 = req.file.buffer.toString('base64');
+      url = `data:${req.file.mimetype};base64,${base64}`;
+    }
+  } else {
+    const base64 = req.file.buffer.toString('base64');
+    url = `data:${req.file.mimetype};base64,${base64}`;
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      url,
+      name: req.file.originalname,
+      fileType: isImage ? 'image' : 'file',
+      size: req.file.size,
+    },
+  });
 });
 
 export const markAsRead = asyncHandler(async (req, res) => {

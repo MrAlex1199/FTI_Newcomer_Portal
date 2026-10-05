@@ -110,9 +110,12 @@ export const initSocketServer = (httpServer) => {
     });
 
     // Send message event
-    socket.on('message:send', async ({ conversationId, content }, callback) => {
+    socket.on('message:send', async ({ conversationId, content, attachments }, callback) => {
       try {
-        if (!conversationId || !content?.trim()) {
+        const hasContent = Boolean(content && content.trim());
+        const hasAttachments = Boolean(attachments && attachments.length > 0);
+
+        if (!conversationId || (!hasContent && !hasAttachments)) {
           return callback?.({ success: false, error: 'Invalid message data' });
         }
 
@@ -122,24 +125,37 @@ export const initSocketServer = (httpServer) => {
         }
 
         // Verify user is in conversation
-        const isParticipant = conv.participants.some(
+        let isParticipant = conv.participants.some(
           (p) => p.toString() === userId
         );
         if (!isParticipant) {
-          return callback?.({ success: false, error: 'Not authorized for this conversation' });
+          if (conv.type === 'channel') {
+            conv.participants.push(userId);
+            if (!conv.unreadCounts) conv.unreadCounts = new Map();
+            conv.unreadCounts.set(userId, 0);
+            isParticipant = true;
+          } else {
+            return callback?.({ success: false, error: 'Not authorized for this conversation' });
+          }
+        }
+
+        let textPreview = (content || '').trim();
+        if (!textPreview && hasAttachments) {
+          textPreview = attachments[0].fileType === 'image' ? '📷 [รูปภาพ]' : '📎 [ไฟล์แนบ]';
         }
 
         // Create ChatMessage
         const message = await ChatMessage.create({
           conversationId,
           senderId: userId,
-          content: content.trim(),
+          content: (content || '').trim(),
+          attachments: attachments || [],
           readBy: [userId],
         });
 
         // Update Conversation lastMessage & unread count
         conv.lastMessage = {
-          text: content.trim(),
+          text: textPreview,
           senderId: userId,
           createdAt: message.createdAt,
         };

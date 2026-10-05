@@ -2,6 +2,7 @@ import { createContext, useCallback, useEffect, useMemo, useRef, useState } from
 import { io } from 'socket.io-client';
 import useAuth from './useAuth.js';
 import chatService from '../services/chatService.js';
+import { playNotificationSound } from '../utils/soundUtils.js';
 
 export const ChatContext = createContext(null);
 
@@ -69,6 +70,11 @@ export function ChatProvider({ children }) {
 
     s.on('message:new', (msg) => {
       const activeId = activeConvRef.current?._id;
+      const senderUid = msg.senderId?._id || msg.senderId;
+      if (user && senderUid && String(senderUid) !== String(user._id)) {
+        playNotificationSound('receive');
+      }
+
       if (activeId && String(msg.conversationId) === String(activeId)) {
         setMessages((prev) => {
           // Prevent duplicates
@@ -194,26 +200,31 @@ export function ChatProvider({ children }) {
   }, [conversations, socket]);
 
   // Send message
-  const sendMessage = useCallback(async (content) => {
-    if (!activeConversation?._id || !content?.trim()) return null;
-    const trimmed = content.trim();
+  const sendMessage = useCallback(async (content, attachments = []) => {
+    if (!activeConversation?._id) return null;
+    const hasContent = Boolean(content && content.trim());
+    const hasAttachments = Boolean(attachments && attachments.length > 0);
+    if (!hasContent && !hasAttachments) return null;
+    const trimmed = (content || '').trim();
+
+    playNotificationSound('send');
 
     // Socket optimistic / direct emit
     if (socket && isConnected) {
       return new Promise((resolve, reject) => {
-        socket.emit('message:send', { conversationId: activeConversation._id, content: trimmed }, (res) => {
+        socket.emit('message:send', { conversationId: activeConversation._id, content: trimmed, attachments }, (res) => {
           if (res?.success) {
             resolve(res.data);
           } else {
             // fallback to REST API
-            chatService.sendMessage(activeConversation._id, trimmed)
+            chatService.sendMessage(activeConversation._id, trimmed, attachments)
               .then(resolve)
               .catch(reject);
           }
         });
       });
     } else {
-      const res = await chatService.sendMessage(activeConversation._id, trimmed);
+      const res = await chatService.sendMessage(activeConversation._id, trimmed, attachments);
       setMessages((prev) => [...prev, res]);
       return res;
     }

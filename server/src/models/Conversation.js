@@ -22,6 +22,16 @@ const conversationSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    icon: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     supportDepartment: {
       type: String,
       enum: ['it', 'hr', null],

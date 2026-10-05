@@ -5,13 +5,39 @@ import useLanguage from '../../hooks/useLanguage.js';
 
 const ROTATION_MS = 6500;
 
+const CATEGORY_GRADIENTS = {
+  urgent: 'from-rose-600 via-red-500 to-amber-500',
+  news: 'from-blue-600 via-indigo-600 to-cyan-500',
+  event: 'from-violet-600 via-purple-500 to-indigo-500',
+  training: 'from-amber-600 via-orange-500 to-yellow-500',
+  holiday: 'from-emerald-600 via-teal-500 to-cyan-500',
+  maintenance: 'from-slate-800 via-zinc-700 to-slate-600',
+  welcome: 'from-teal-600 via-emerald-500 to-cyan-500',
+};
+
+const CATEGORY_EMOJIS = {
+  urgent: '🚨',
+  news: '📢',
+  event: '🎉',
+  training: '🎓',
+  holiday: '🌴',
+  maintenance: '🛠️',
+  welcome: '👋',
+};
+
 export default function AnnouncementCarousel() {
   const { t, label } = useLanguage();
   const { data, isLoading, isError } = useAnnouncements({ limit: 12, audience: 'live' });
-  const slides = useMemo(
-    () => (data?.data || []).filter((announcement) => announcement.coverImage),
-    [data],
-  );
+  const [imageErrors, setImageErrors] = useState({});
+
+  const slides = useMemo(() => {
+    const list = data?.data || [];
+    if (!list.length) return [];
+    // Prioritize announcements with cover images, or include all live announcements
+    const withImages = list.filter((announcement) => Boolean(announcement.coverImage));
+    return withImages.length > 0 ? withImages : list;
+  }, [data]);
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -31,6 +57,10 @@ export default function AnnouncementCarousel() {
   const currentIndex = activeIndex % slides.length;
   const active = slides[currentIndex];
   const goTo = (index) => setActiveIndex((index + slides.length) % slides.length);
+
+  const gradientClass = CATEGORY_GRADIENTS[active.category] || CATEGORY_GRADIENTS.news;
+  const categoryEmoji = CATEGORY_EMOJIS[active.category] || '📢';
+  const hasCover = Boolean(active.coverImage) && !imageErrors[active._id];
 
   return (
     <section
@@ -56,14 +86,35 @@ export default function AnnouncementCarousel() {
           <div className="relative order-2 flex flex-col justify-end p-6 text-white sm:p-8 md:order-1">
             <div className="absolute inset-0 bg-gradient-to-br from-primary-950 via-primary-900 to-gray-900" aria-hidden="true" />
             <div className="relative z-10">
-              <p className="text-xs font-medium uppercase tracking-wide text-primary-200">{label(active.category)}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-primary-200">
+                  {label(active.category)}
+                </span>
+                {active.isPinned && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 text-amber-950 px-2 py-0.5 text-[10px] font-bold shadow-xs">
+                    📌 {t('pinned')}
+                  </span>
+                )}
+              </div>
               <h3 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">{active.title}</h3>
               {active.summary && <p className="mt-3 line-clamp-3 max-w-xl text-sm leading-6 text-primary-100">{active.summary}</p>}
               <Link to="/announcements" className="mt-5 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-800 transition hover:bg-primary-50 focus-visible:ring-white">{t('readAnnouncement')} <span className="ml-2" aria-hidden="true">→</span></Link>
             </div>
           </div>
           <div className="relative order-1 min-h-[12rem] overflow-hidden md:order-2 md:min-h-0">
-            <img src={active.coverImage} alt="" className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500" />
+            {hasCover ? (
+              <img
+                src={active.coverImage}
+                alt={active.title}
+                onError={() => setImageErrors((prev) => ({ ...prev, [active._id]: true }))}
+                className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+              />
+            ) : (
+              <div className={`absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-tr ${gradientClass} p-6 text-white text-center`}>
+                <span className="text-5xl drop-shadow-md">{categoryEmoji}</span>
+                <p className="mt-2 text-xs font-bold uppercase tracking-wider text-white/90">{label(active.category)}</p>
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent md:bg-gradient-to-r md:from-gray-900/20" aria-hidden="true" />
           </div>
         </div>

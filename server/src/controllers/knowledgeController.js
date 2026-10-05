@@ -427,6 +427,75 @@ export const deleteKnowledgeTopic = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Merge source topic into target topic (reassigning articles & child topics)
+ */
+export const mergeKnowledgeTopics = asyncHandler(async (req, res) => {
+  const sourceTopicId = req.params.id;
+  const { targetTopicId } = req.body;
+
+  if (!targetTopicId) {
+    throw ApiError.badRequest('Target topic ID is required for merge');
+  }
+
+  if (String(sourceTopicId) === String(targetTopicId)) {
+    throw ApiError.badRequest('Cannot merge a topic into itself');
+  }
+
+  const sourceTopic = await KnowledgeTopic.findById(sourceTopicId);
+  if (!sourceTopic) throw ApiError.notFound('Source topic not found');
+
+  const targetTopic = await KnowledgeTopic.findById(targetTopicId);
+  if (!targetTopic) throw ApiError.notFound('Target topic not found');
+
+  // Move all articles from source topic to target topic
+  await KnowledgeArticle.updateMany(
+    { topicId: sourceTopic._id },
+    { topicId: targetTopic._id, subcategory: targetTopic.slug }
+  );
+
+  // Move all child topics of source topic to target topic
+  await KnowledgeTopic.updateMany(
+    { parentId: sourceTopic._id },
+    { parentId: targetTopic._id }
+  );
+
+  await sourceTopic.deleteOne();
+
+  await AuditLog.record({
+    userId: req.user.id,
+    action: 'delete',
+    entity: 'KnowledgeTopic',
+    entityId: sourceTopic._id,
+    after: { mergedInto: targetTopic._id, sourceName: sourceTopic.name, targetName: targetTopic.name },
+    ip: req.ip,
+    userAgent: req.get('user-agent') || '',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: `Successfully merged "${sourceTopic.name}" into "${targetTopic.name}"`,
+    data: { targetTopicId: targetTopic._id },
+  });
+});
+
+/**
+ * Upload single inline image for markdown body
+ */
+export const uploadInlineImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw ApiError.badRequest('Image file is required');
+  }
+
+  const uploaded = await uploadImage(req.file.buffer, 'fti-welcome-hub/knowledge', { maxWidth: 1600 });
+
+  res.status(200).json({
+    success: true,
+    url: uploaded.url,
+    publicId: uploaded.publicId,
+  });
+});
+
+/**
  * Seed realistic IT Knowledge Base topics and interconnected articles
  */
 export const seedMockItKnowledge = asyncHandler(async (req, res) => {

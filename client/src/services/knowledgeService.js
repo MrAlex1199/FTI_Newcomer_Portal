@@ -122,6 +122,16 @@ const knowledgeService = {
   async removeTopic(id) {
     await apiClient.delete(`/knowledge/topics/${id}`);
   },
+  async mergeTopic(id, targetTopicId) {
+    const { data } = await apiClient.post(`/knowledge/topics/${id}/merge`, { targetTopicId });
+    return data;
+  },
+  async uploadInlineImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const { data } = await apiClient.post('/knowledge/upload-inline-image', formData);
+    return data;
+  },
   async seedMockIt() {
     const { data } = await apiClient.post('/knowledge/seed-mock-it');
     return data;

@@ -208,14 +208,17 @@ export default function SiteHeader({ rightContent }) {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={closeDrawer}
-            aria-label={t('closeMenu')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-700/80 bg-primary-800/60 text-white transition hover:bg-primary-700 active:scale-95"
-          >
-            <CloseIcon />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageToggle variant="header" />
+            <button
+              type="button"
+              onClick={closeDrawer}
+              aria-label={t('closeMenu')}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary-700/80 bg-primary-800/60 text-white transition hover:bg-primary-700 active:scale-95"
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         <div className="border-b border-primary-800/60 px-4 py-3 bg-primary-900/40">
@@ -248,6 +251,13 @@ export default function SiteHeader({ rightContent }) {
               active={pathname === '/getting-started'}
               icon="🚀"
               label={t('gettingStarted')}
+              onClick={closeDrawer}
+            />
+            <DrawerLink
+              to="/document-flows"
+              active={pathname === '/document-flows'}
+              icon="🔄"
+              label={t('documentFlows')}
               onClick={closeDrawer}
             />
             <DrawerLink
@@ -483,6 +493,7 @@ function ServicesDropdown({ pathname }) {
     '/departments',
     '/organization',
     '/it-help',
+    '/document-flows',
     '/policies',
     '/interns',
     '/company',
@@ -616,6 +627,12 @@ function ServicesDropdown({ pathname }) {
               icon="📋"
               title={t('policies')}
               subtitle={t('policiesDesc')}
+            />
+            <ServicesMenuItem
+              to="/document-flows"
+              icon="🔄"
+              title={t('documentFlows')}
+              subtitle={t('documentFlowsDesc')}
             />
           </div>
         </div>

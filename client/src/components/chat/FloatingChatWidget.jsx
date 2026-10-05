@@ -300,12 +300,45 @@ export default function FloatingChatWidget() {
                             )}
 
                             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+
+                            {/* Attachments */}
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="space-y-1 mt-1.5">
+                                {msg.attachments.map((att, aIdx) => (
+                                  att.fileType === 'image' ? (
+                                    <img
+                                      key={aIdx}
+                                      src={att.url}
+                                      alt=""
+                                      className="rounded-lg max-h-36 w-full object-cover border border-black/10"
+                                    />
+                                  ) : (
+                                    <a
+                                      key={aIdx}
+                                      href={att.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      download={att.name || 'file'}
+                                      className="flex items-center gap-1.5 rounded-lg bg-black/10 p-1.5 text-[11px] hover:underline"
+                                    >
+                                      <span>📎</span>
+                                      <span className="truncate">{att.name || 'ไฟล์แนบ'}</span>
+                                    </a>
+                                  )
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <span className={`mt-0.5 px-1 text-[9px] text-gray-400 ${isMe ? 'mr-1' : 'ml-7'}`}>
-                          {timeStr}
-                        </span>
+                        <div className={`mt-0.5 flex items-center gap-1 text-[9px] text-gray-400 ${isMe ? 'mr-1' : 'ml-7'}`}>
+                          <span>{timeStr}</span>
+                          {isMe && (
+                            <span className={msg.readBy?.length > 1 ? 'text-primary-600 font-bold' : 'text-gray-400 font-bold'}>
+                              {msg.readBy?.length > 1 ? '✓✓' : '✓'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -324,6 +357,20 @@ export default function FloatingChatWidget() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Quick Replies chips */}
+              <div className="flex items-center gap-1 overflow-x-auto py-1 px-2.5 bg-slate-50 border-t border-gray-100 text-[10px] scrollbar-none">
+                {['สวัสดีครับ 👋', 'รับทราบครับผม ✅', 'ขอบคุณมากครับ 🙏', 'ขอสอบถามงานไอทีครับ 💻'].map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setInputVal(q)}
+                    className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700 hover:border-primary-400 hover:bg-primary-50 hover:text-primary-700 transition"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+
               {/* Chat Input */}
               <form
                 onSubmit={handleSend}
@@ -339,7 +386,7 @@ export default function FloatingChatWidget() {
                 <button
                   type="submit"
                   disabled={!inputVal.trim()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-primary-600 text-white shadow hover:bg-primary-700 disabled:opacity-40"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-primary-600 text-white shadow hover:bg-primary-700 disabled:opacity-40 transition"
                   title={t('sendMessage')}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

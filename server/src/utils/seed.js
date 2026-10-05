@@ -21,11 +21,15 @@ import {
   Announcement,
   Policy,
   FAQ,
+  KnowledgeTopic,
   KnowledgeArticle,
   CompanyInfo,
   Feedback,
   AuditLog,
+  Conversation,
+  ChatMessage,
 } from '../models/index.js';
+import { MOCK_TOPICS, MOCK_ARTICLES, LINK_PAIRS } from '../data/mockItKnowledgeData.js';
 
 dotenv.config();
 
@@ -48,10 +52,13 @@ const clearCollections = async () => {
     Announcement,
     Policy,
     FAQ,
+    KnowledgeTopic,
     KnowledgeArticle,
     CompanyInfo,
     Feedback,
     AuditLog,
+    Conversation,
+    ChatMessage,
   ];
 
   for (const model of models) {
@@ -136,6 +143,7 @@ const seedEmployees = async (dept) => {
     position: 'President',
     departmentId: dept.EXEC._id,
     managerId: null,
+    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
     workEmail: 'somchai.w@example.com',
     extension: '1001',
     officeLocation: 'Building A, 4th Floor',
@@ -153,6 +161,7 @@ const seedEmployees = async (dept) => {
       position: 'Human Resources Manager',
       departmentId: dept.HR._id,
       managerId: president._id,
+      profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
       workEmail: 'pornthip.s@example.com',
       extension: '1101',
       officeLocation: 'Building A, 2nd Floor',
@@ -167,6 +176,7 @@ const seedEmployees = async (dept) => {
       position: 'IT Manager',
       departmentId: dept.IT._id,
       managerId: president._id,
+      profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
       workEmail: 'anucha.r@example.com',
       extension: '1201',
       officeLocation: 'Building A, 3rd Floor',
@@ -181,6 +191,7 @@ const seedEmployees = async (dept) => {
       position: 'Marketing Manager',
       departmentId: dept.MKT._id,
       managerId: president._id,
+      profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
       workEmail: 'wichai.t@example.com',
       extension: '1301',
       officeLocation: 'Building B, 2nd Floor',
@@ -195,6 +206,7 @@ const seedEmployees = async (dept) => {
       position: 'Sales Manager',
       departmentId: dept.SALES._id,
       managerId: president._id,
+      profileImage: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
       workEmail: 'siriporn.c@example.com',
       extension: '1401',
       officeLocation: 'Building B, 1st Floor',
@@ -215,6 +227,7 @@ const seedEmployees = async (dept) => {
       position: 'IT Support Specialist',
       departmentId: dept.IT._id,
       managerId: itManager._id,
+      profileImage: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80',
       workEmail: 'kittipong.s@example.com',
       extension: '1202',
       officeLocation: 'Building A, 3rd Floor',
@@ -229,6 +242,7 @@ const seedEmployees = async (dept) => {
       position: 'Software Developer',
       departmentId: dept.IT._id,
       managerId: itManager._id,
+      profileImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
       workEmail: 'naruemon.p@example.com',
       extension: '1203',
       officeLocation: 'Building A, 3rd Floor',
@@ -243,6 +257,7 @@ const seedEmployees = async (dept) => {
       position: 'HR Officer',
       departmentId: dept.HR._id,
       managerId: hrManager._id,
+      profileImage: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
       workEmail: 'thanakorn.b@example.com',
       extension: '1102',
       officeLocation: 'Building A, 2nd Floor',
@@ -257,6 +272,7 @@ const seedEmployees = async (dept) => {
       position: 'Marketing Executive',
       departmentId: dept.MKT._id,
       managerId: mktManager._id,
+      profileImage: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
       workEmail: 'chalisa.n@example.com',
       extension: '1302',
       officeLocation: 'Building B, 2nd Floor',
@@ -271,6 +287,7 @@ const seedEmployees = async (dept) => {
       position: 'Sales Executive',
       departmentId: dept.SALES._id,
       managerId: salesManager._id,
+      profileImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
       workEmail: 'peerapat.s@example.com',
       extension: '1402',
       officeLocation: 'Building B, 1st Floor',
@@ -339,9 +356,9 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Nattapong',
       lastName: 'Chanthara',
       nickname: 'Nat',
-      university: 'Example University of Technology',
-      faculty: 'Faculty of Information Technology',
-      major: 'Information Technology',
+      university: "King Mongkut's University of Technology Thonburi (KMUTT)",
+      faculty: 'School of Information Technology',
+      major: 'Computer Science',
       year: 4,
       age: 22,
       departmentId: dept.IT._id,
@@ -349,6 +366,7 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2025/02']._id,
       startDate: new Date('2025-06-02'),
       endDate: new Date('2025-08-29'),
+      profileImage: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
       shortBio: 'Worked with the IT support team on asset tracking.',
       projectTitle: 'IT Asset Tracking Spreadsheet Automation',
       lessonsLearned: 'Documenting a process before automating it saves a lot of rework.',
@@ -359,8 +377,8 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Supattra',
       lastName: 'Meesuk',
       nickname: 'Su',
-      university: 'Example Rajabhat University',
-      faculty: 'Faculty of Management Science',
+      university: 'Kasetsart University',
+      faculty: 'Faculty of Business Administration',
       major: 'Human Resource Management',
       year: 4,
       age: 21,
@@ -369,6 +387,7 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2025/02']._id,
       startDate: new Date('2025-06-02'),
       endDate: new Date('2025-08-29'),
+      profileImage: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
       shortBio: 'Supported orientation sessions for new joiners.',
       projectTitle: 'New Joiner Orientation Checklist',
       lessonsLearned: 'New employees ask the same ten questions - write them down once.',
@@ -381,9 +400,9 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Krittapas',
       lastName: 'Thipsang',
       nickname: 'Krit',
-      university: 'Example University of Technology',
+      university: "King Mongkut's Institute of Technology Ladkrabang (KMITL)",
       faculty: 'Faculty of Information Technology',
-      major: 'Information Technology',
+      major: 'Software Engineering',
       year: 4,
       age: 22,
       departmentId: dept.IT._id,
@@ -391,7 +410,8 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/01']._id,
       startDate: new Date('2026-08-03'),
       endDate: new Date('2026-10-30'),
-      shortBio: 'Building the internal newcomer portal.',
+      profileImage: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=400&q=80',
+      shortBio: 'Building the internal newcomer portal and interactive collaboration features.',
       projectTitle: 'FTI Welcome Hub - Internal Onboarding Portal',
       privacyConsent: true,
     },
@@ -399,7 +419,7 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Pimchanok',
       lastName: 'Sirirat',
       nickname: 'Pim',
-      university: 'Example Technology Institute',
+      university: 'Chulalongkorn University',
       faculty: 'Faculty of Engineering',
       major: 'Computer Engineering',
       year: 3,
@@ -409,7 +429,8 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/01']._id,
       startDate: new Date('2026-08-03'),
       endDate: new Date('2026-10-30'),
-      shortBio: 'Assisting with the IT knowledge base and user support.',
+      profileImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+      shortBio: 'Assisting with the IT knowledge base and user support systems.',
       projectTitle: 'IT Self-Service Knowledge Base',
       privacyConsent: true,
     },
@@ -417,8 +438,8 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Jirawat',
       lastName: 'Puangchan',
       nickname: 'Jira',
-      university: 'Example Rajabhat University',
-      faculty: 'Faculty of Management Science',
+      university: 'Thammasat University',
+      faculty: 'Thammasat Business School',
       major: 'Marketing',
       year: 4,
       age: 22,
@@ -427,7 +448,8 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/01']._id,
       startDate: new Date('2026-08-03'),
       endDate: new Date('2026-10-30'),
-      shortBio: 'Supporting campaign content production.',
+      profileImage: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=400&q=80',
+      shortBio: 'Supporting campaign content production and digital communications.',
       projectTitle: 'Product Launch Content Calendar',
       privacyConsent: false,
     },
@@ -435,8 +457,8 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Kanyarat',
       lastName: 'Duangdee',
       nickname: 'Kan',
-      university: 'Example Business College',
-      faculty: 'Faculty of Business Administration',
+      university: 'Srinakharinwirot University (SWU)',
+      faculty: 'Faculty of Social Sciences',
       major: 'Human Resource Management',
       year: 3,
       age: 20,
@@ -445,7 +467,8 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/01']._id,
       startDate: new Date('2026-08-03'),
       endDate: new Date('2026-10-30'),
-      shortBio: 'Helping organise the onboarding document library.',
+      profileImage: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
+      shortBio: 'Helping organise the onboarding document library and activities.',
       projectTitle: 'Onboarding Document Library',
       privacyConsent: true,
     },
@@ -455,8 +478,8 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Teerapat',
       lastName: 'Wongsiri',
       nickname: 'Tee',
-      university: 'Example University of Technology',
-      faculty: 'Faculty of Information Technology',
+      university: 'Mahidol University',
+      faculty: 'Faculty of Information and Communication Technology',
       major: 'Computer Science',
       year: 3,
       departmentId: dept.IT._id,
@@ -464,6 +487,7 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/02']._id,
       startDate: new Date('2026-11-02'),
       endDate: new Date('2027-01-29'),
+      profileImage: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
       shortBio: 'Placement confirmed for the development team.',
       privacyConsent: false,
     },
@@ -471,7 +495,7 @@ const seedInterns = async (dept, emp, batch) => {
       firstName: 'Arisara',
       lastName: 'Kaewkla',
       nickname: 'Ari',
-      university: 'Example Technology Institute',
+      university: 'Chiang Mai University',
       faculty: 'Faculty of Engineering',
       major: 'Industrial Engineering',
       year: 4,
@@ -480,6 +504,7 @@ const seedInterns = async (dept, emp, batch) => {
       batchId: batch['2026/02']._id,
       startDate: new Date('2026-11-02'),
       endDate: new Date('2027-01-29'),
+      profileImage: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80',
       shortBio: 'Placement confirmed for the sales support team.',
       privacyConsent: false,
     },
@@ -491,9 +516,10 @@ const seedInterns = async (dept, emp, batch) => {
 
 const seedUsers = async (emp, interns) => {
   section('Seeding users');
-  const krittapas = interns.find((i) => i.firstName === 'Krittapas');
+  const internByNickname = Object.fromEntries(interns.map((i) => [i.nickname.toLowerCase(), i]));
 
   const users = await User.create([
+    // Standard test accounts (convenience aliases)
     {
       username: 'superadmin',
       email: 'superadmin@example.com',
@@ -527,12 +553,154 @@ const seedUsers = async (emp, interns) => {
       email: 'intern@example.com',
       password: DEV_PASSWORD,
       role: 'intern',
-      internId: krittapas?._id ?? null,
+      internId: internByNickname['krit']?._id ?? null,
+    },
+
+    // 1:1 Accounts for all Employees
+    {
+      username: 'somchai',
+      email: 'somchai.w@example.com',
+      password: DEV_PASSWORD,
+      role: 'admin',
+      employeeId: emp.EMP001._id,
+    },
+    {
+      username: 'pornthip',
+      email: 'pornthip.s@example.com',
+      password: DEV_PASSWORD,
+      role: 'admin',
+      employeeId: emp.EMP002._id,
+    },
+    {
+      username: 'anucha',
+      email: 'anucha.r@example.com',
+      password: DEV_PASSWORD,
+      role: 'super_admin',
+      employeeId: emp.EMP003._id,
+    },
+    {
+      username: 'wichai',
+      email: 'wichai.t@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP004._id,
+    },
+    {
+      username: 'siriporn',
+      email: 'siriporn.c@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP005._id,
+    },
+    {
+      username: 'kittipong',
+      email: 'kittipong.s@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP006._id,
+    },
+    {
+      username: 'naruemon',
+      email: 'naruemon.p@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP007._id,
+    },
+    {
+      username: 'thanakorn',
+      email: 'thanakorn.b@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP008._id,
+    },
+    {
+      username: 'chalisa',
+      email: 'chalisa.n@example.com',
+      password: DEV_PASSWORD,
+      role: 'editor',
+      employeeId: emp.EMP009._id,
+    },
+    {
+      username: 'peerapat',
+      email: 'peerapat.s@example.com',
+      password: DEV_PASSWORD,
+      role: 'staff',
+      employeeId: emp.EMP010._id,
+    },
+
+    // 1:1 Accounts for all Interns
+    {
+      username: 'krit',
+      email: 'krit.t@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['krit']?._id ?? null,
+    },
+    {
+      username: 'pim',
+      email: 'pim.s@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['pim']?._id ?? null,
+    },
+    {
+      username: 'jira',
+      email: 'jira.p@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['jira']?._id ?? null,
+    },
+    {
+      username: 'kan',
+      email: 'kan.d@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['kan']?._id ?? null,
+    },
+    {
+      username: 'nat',
+      email: 'nat.c@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['nat']?._id ?? null,
+    },
+    {
+      username: 'supattra',
+      email: 'supattra.m@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['su']?._id ?? null,
+    },
+    {
+      username: 'tee',
+      email: 'tee.w@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['tee']?._id ?? null,
+    },
+    {
+      username: 'ari',
+      email: 'ari.k@example.com',
+      password: DEV_PASSWORD,
+      role: 'intern',
+      internId: internByNickname['ari']?._id ?? null,
     },
   ]);
 
-  log(`  created ${users.length} users (one per role)`);
-  return Object.fromEntries(users.map((u) => [u.role, u]));
+  const byRole = {};
+  const byUsername = {};
+  users.forEach((u) => {
+    byUsername[u.username] = u;
+    if (!byRole[u.role]) byRole[u.role] = u;
+  });
+  byRole.admin = byUsername['admin'] || byUsername['pornthip'];
+  byRole.super_admin = byUsername['superadmin'] || byUsername['anucha'];
+  byRole.staff = byUsername['staff'] || byUsername['kittipong'];
+  byRole.intern = byUsername['intern'] || byUsername['krit'];
+  byRole.editor = byUsername['editor'] || byUsername['chalisa'];
+
+  log(`  created ${users.length} users (1:1 with all employees and interns + aliases)`);
+  return { ...byRole, byUsername, allUsers: users };
 };
 
 const seedPolicies = async (users) => {
@@ -710,9 +878,10 @@ const seedFaqs = async () => {
 };
 
 const seedArticles = async (users) => {
-  section('Seeding knowledge articles');
-  const articles = await KnowledgeArticle.create([
-    // Getting started guide
+  section('Seeding knowledge articles and topics');
+
+  // 1. Getting started onboarding guides
+  const guideArticles = [
     {
       title: 'Your First Day at FTI',
       slug: 'your-first-day-at-fti',
@@ -764,124 +933,86 @@ const seedArticles = async (users) => {
       status: 'published',
       authorId: users.admin._id,
     },
+  ];
 
-    // IT help centre
-    {
-      title: 'Printer Is Not Printing',
-      slug: 'printer-is-not-printing',
-      category: 'it_help',
-      subcategory: 'printer',
-      summary: 'Step-by-step checklist before contacting IT support.',
-      content:
-        'Check the following in order:\n' +
-        '1. Is the printer powered on and showing a ready status?\n' +
-        '2. Is your computer connected to the office network?\n' +
-        '3. Did you select the correct printer in the print dialog?\n' +
-        '4. Is there a paper jam or an empty paper tray?\n' +
-        '5. Open the print queue and clear any stuck jobs.\n' +
-        '6. Try printing a test page.\n\n' +
-        'If the problem continues, contact IT Support at extension 1202.',
-      tags: ['printer', 'troubleshooting', 'hardware'],
-      sortOrder: 1,
-      isQuickLink: true,
-      quickLinkOrder: 1,
-      helpfulCount: 12,
-      notHelpfulCount: 1,
-      viewCount: 87,
-      status: 'published',
-      authorId: users.super_admin._id,
-    },
-    {
-      title: 'Cannot Connect to Wi-Fi',
-      slug: 'cannot-connect-to-wifi',
-      category: 'it_help',
-      subcategory: 'wifi',
-      summary: 'Common causes when a device will not join the office network.',
-      content:
-        '1. Confirm Wi-Fi is enabled on your device.\n' +
-        '2. Select the network your department uses.\n' +
-        '3. Confirm your account has been granted network access by IT.\n' +
-        '4. Forget the network and reconnect to refresh the settings.\n' +
-        '5. Restart your device.\n\n' +
-        'If you still cannot connect, contact IT Support with your device type ' +
-        'and the error message shown.',
-      tags: ['wifi', 'network', 'connectivity'],
-      sortOrder: 2,
-      isQuickLink: true,
-      quickLinkOrder: 2,
-      helpfulCount: 9,
-      notHelpfulCount: 2,
-      viewCount: 64,
-      status: 'published',
-      authorId: users.super_admin._id,
-    },
-    {
-      title: 'Forgotten Account Password',
-      slug: 'forgotten-account-password',
-      category: 'it_help',
-      subcategory: 'password',
-      summary: 'How to request a password reset safely.',
-      content:
-        'Submit a password reset request to the IT department through your mentor ' +
-        'or by calling extension 1202. IT will verify your identity before resetting ' +
-        'the account.\n\n' +
-        'Never share your password with anyone, and never send a password by chat ' +
-        'or email. Change any temporary password at your first login.',
-      tags: ['password', 'account', 'security'],
-      sortOrder: 3,
-      isQuickLink: true,
-      quickLinkOrder: 3,
-      helpfulCount: 7,
-      notHelpfulCount: 0,
-      viewCount: 41,
-      status: 'published',
-      authorId: users.super_admin._id,
-    },
-    {
-      title: 'Computer Is Running Slowly',
-      slug: 'computer-is-running-slowly',
-      category: 'it_help',
-      subcategory: 'windows',
-      summary: 'First checks for a slow workstation.',
-      content:
-        '1. Restart the computer - this resolves many temporary issues.\n' +
-        '2. Close applications you are not using.\n' +
-        '3. Check available disk space.\n' +
-        '4. Confirm pending system updates have finished installing.\n\n' +
-        'If the computer is still slow after these steps, contact IT Support so the ' +
-        'hardware can be checked.',
-      tags: ['windows', 'performance', 'slow'],
-      sortOrder: 4,
-      helpfulCount: 5,
-      notHelpfulCount: 3,
-      viewCount: 38,
-      status: 'published',
-      authorId: users.super_admin._id,
-    },
-    {
-      title: 'Requesting New Software',
-      slug: 'requesting-new-software',
-      category: 'it_help',
-      subcategory: 'software_request',
-      summary: 'The approval path for installing software on company computers.',
-      content:
-        '1. Discuss the requirement with your mentor.\n' +
-        '2. Submit a software request to the IT department stating the software name, ' +
-        'version, and business reason.\n' +
-        '3. IT will review licensing and security before installing.\n\n' +
-        'Do not download or install software yourself, including free tools.',
-      tags: ['software', 'request', 'licensing'],
-      sortOrder: 5,
-      helpfulCount: 4,
-      notHelpfulCount: 0,
-      viewCount: 22,
-      status: 'published',
-      authorId: users.super_admin._id,
-    },
-  ]);
+  await KnowledgeArticle.create(guideArticles);
+  log(`  created ${guideArticles.length} getting started onboarding articles`);
 
-  log(`  created ${articles.length} knowledge articles (3 guide, 5 IT help)`);
-  return articles;
+  // 2. Knowledge Topics from mockItKnowledgeData
+  const topicMap = new Map();
+  const itManagerId = users.anucha?._id || users.admin._id;
+
+  for (const t of MOCK_TOPICS) {
+    const topic = await KnowledgeTopic.create({
+      name: t.name,
+      slug: t.slug,
+      icon: t.icon,
+      description: t.description,
+      category: 'it_help',
+      sortOrder: t.sortOrder,
+      createdBy: itManagerId,
+    });
+    topicMap.set(t.slug, topic);
+  }
+
+  // Link child topics to parent topics
+  for (const t of MOCK_TOPICS) {
+    if (t.parentSlug && topicMap.has(t.parentSlug)) {
+      const child = topicMap.get(t.slug);
+      const parent = topicMap.get(t.parentSlug);
+      child.parentId = parent._id;
+      await child.save();
+    }
+  }
+  log(`  created ${MOCK_TOPICS.length} hierarchical knowledge topics`);
+
+  // 3. IT Knowledge Articles from mockItKnowledgeData
+  const createdArticles = [];
+  const itAuthorId = users.kittipong?._id || users.anucha?._id || users.admin._id;
+
+  for (const art of MOCK_ARTICLES) {
+    const topic = topicMap.get(art.topicSlug);
+    const topicId = topic ? topic._id : null;
+
+    const created = await KnowledgeArticle.create({
+      title: art.title,
+      slug: art.slug,
+      category: 'it_help',
+      subcategory: art.topicSlug,
+      topicId: topicId,
+      summary: art.summary,
+      content: art.content,
+      tags: art.tags || [],
+      isQuickLink: art.isQuickLink || false,
+      quickLinkOrder: art.quickLinkOrder || 0,
+      sortOrder: 0,
+      status: 'published',
+      authorId: itAuthorId,
+    });
+    createdArticles.push(created);
+  }
+  log(`  created ${createdArticles.length} comprehensive IT knowledge articles`);
+
+  // 4. Interlink related articles for Obsidian Graph View
+  const articleBySlug = new Map(createdArticles.map((a) => [a.slug, a]));
+
+  for (const [slugA, slugB] of LINK_PAIRS) {
+    const artA = articleBySlug.get(slugA);
+    const artB = articleBySlug.get(slugB);
+    if (artA && artB) {
+      if (!artA.relatedArticles?.some((id) => String(id) === String(artB._id))) {
+        artA.relatedArticles = [...(artA.relatedArticles || []), artB._id];
+        await artA.save();
+      }
+      if (!artB.relatedArticles?.some((id) => String(id) === String(artA._id))) {
+        artB.relatedArticles = [...(artB.relatedArticles || []), artA._id];
+        await artB.save();
+      }
+    }
+  }
+  log(`  linked ${LINK_PAIRS.length} article pairs for 360° Obsidian Graph View`);
+
+  return createdArticles;
 };
 
 const seedCompanyInfo = async (users) => {
@@ -920,10 +1051,10 @@ const seedAnnouncements = async (users) => {
   const announcements = await Announcement.create([
     {
       title: 'Welcome to Internship Batch 2026/01',
-      summary: 'Six new interns joined the IT, HR, and Marketing departments this month.',
+      summary: 'ยินดีต้อนรับนักศึกษาฝึกงานรุ่นใหม่ 2026/01 เข้าสู่ครอบครัว FTI อย่างเป็นทางการ พร้อมเริ่มกิจกรรมปฐมนิเทศสัปดาห์นี้',
       content:
-        'Please join us in welcoming the 2026/01 internship batch. ' +
-        'You can see their profiles in the Intern Directory.',
+        'ขอต้อนรับนักศึกษาฝึกงานรุ่นใหม่ประจำปี 2026 เข้าสู่ครอบครัว FTI อย่างอบอุ่น ทุกท่านสามารถดูโปรไฟล์เพื่อนร่วมรุ่นและทำความคุ้นเคยกับระบบพอร์ทัลผ่านเมนูต่างๆ ได้ทันที ขอให้ทุกคนได้รับประสบการณ์และการเรียนรู้ที่ยอดเยี่ยมตลอดการฝึกงาน!',
+      coverImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80',
       category: 'welcome',
       priority: 5,
       targetRoles: [],
@@ -933,52 +1064,53 @@ const seedAnnouncements = async (users) => {
       authorId: users.admin._id,
     },
     {
-      title: 'Portal Maintenance This Weekend',
-      summary: 'The portal will be unavailable on Saturday between 20:00 and 22:00.',
+      title: 'Portal Maintenance & Infrastructure Upgrade',
+      summary: 'แจ้งกำหนดการปิดปรับปรุงและอัปเกรดระบบเครือข่ายเซิร์ฟเวอร์ วันเสาร์นี้เวลา 20:00 - 22:00 น.',
       content:
-        'Scheduled maintenance will take place on Saturday from 20:00 to 22:00. ' +
-        'The portal may be briefly unavailable during this window.',
+        'ฝ่ายเทคโนโลยีสารสนเทศจะดำเนินการปิดปรับปรุงเซิร์ฟเวอร์และบำรุงรักษาระบบฐานข้อมูลในวันเสาร์นี้ ระหว่างเวลา 20:00 - 22:00 น. ในช่วงเวลาดังกล่าว พอร์ทัลอาจไม่สามารถเข้าใช้งานได้ชั่วคราว จึงขออภัยในความไม่สะดวกมา ณ ที่นี้',
+      coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
       category: 'maintenance',
       priority: 3,
       targetRoles: [],
       publishAt: days(-2),
       expireAt: days(5),
       status: 'published',
-      authorId: users.super_admin._id,
+      authorId: users.superadmin?._id || users.admin._id,
     },
     {
-      title: 'Intern Orientation Session',
-      summary: 'Orientation for new interns is scheduled for Friday at 09:00.',
+      title: 'Intern Orientation & Welcome Camp Session',
+      summary: 'กิจกรรมปฐมนิเทศและอบรมการใช้เครื่องมือการทำงานสำหรับนักศึกษาฝึกงาน วันศุกร์นี้ ณ ห้องประชุม A ชั้น 2',
       content:
-        'All interns in the current batch should attend the orientation session in ' +
-        'Meeting Room A on Friday at 09:00. Bring a notebook.',
+        'ขอเชิญนักศึกษาฝึกงานทุกท่านเข้าร่วมกิจกรรมปฐมนิเทศ ณ ห้องประชุม A ชั้น 2 ในวันศุกร์นี้ เวลา 09:00 - 12:00 น. โดยจะมีการแนะนำวัฒนธรรมองค์กร การใช้เครื่องมือสื่อสารภายใน และพบปะกับพี่เลี้ยงประจำแต่ละฝ่าย',
+      coverImage: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
       category: 'event',
       priority: 6,
-      targetRoles: ['intern'],
+      targetRoles: [],
       publishAt: days(-5),
       expireAt: days(10),
+      isPinned: true,
       status: 'published',
       authorId: users.admin._id,
     },
     {
-      title: 'IT Security Awareness Training',
-      summary: 'Short online training on phishing and password safety.',
+      title: 'IT Security Awareness & Cybersecurity 2026',
+      summary: 'หลักสูตรอบรมความปลอดภัยไซเบอร์ภาคบังคับสำหรับพนักงานและนักศึกษาฝึกงานทุกคน ผ่านระบบ E-Learning',
       content:
-        'All staff and interns should complete the security awareness training this ' +
-        'month. Your mentor will share the training link.',
+        'เพื่อยกระดับความปลอดภัยข้อมูลองค์กรตามมาตรฐาน ISO 27001 และ PDPA ขอให้บุคลากรทุกท่านเข้าเรียนหลักสูตรความปลอดภัยไซเบอร์ การป้องกันการโจมตี Phishing และการตั้งรหัสผ่าน 2FA ให้เสร็จสิ้นภายในสิ้นเดือนนี้',
+      coverImage: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
       category: 'training',
       priority: 4,
-      targetRoles: ['staff', 'intern', 'editor'],
+      targetRoles: [],
       publishAt: days(-1),
       status: 'published',
-      authorId: users.super_admin._id,
+      authorId: users.superadmin?._id || users.admin._id,
     },
     {
-      title: 'Public Holiday Notice',
-      summary: 'The office will be closed for the upcoming public holiday.',
+      title: 'Public Holiday Notice & Office Schedule',
+      summary: 'แจ้งวันหยุดทำการสำนักงานเนื่องในวันหยุดนักขัตฤกษ์ และการเปิดทำการตามปกติในวันถัดไป',
       content:
-        'The office will be closed for the public holiday. Normal working hours ' +
-        'resume the following working day.',
+        'สำนักงาน FTI จะหยุดทำการเนื่องในวันหยุดนักขัตฤกษ์ และจะเปิดทำการตามปกติในวันทำการถัดไป ในช่วงวันหยุด ระบบ Smart Floor Plan และกล้องวงจรปิดยังคงบันทึกข้อมูลตามมาตรฐานความปลอดภัย หากมีเหตุฉุกเฉินสามารถติดต่อสายด่วนเจ้าหน้าที่รักษาความปลอดภัยได้ตลอด 24 ชั่วโมง',
+      coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
       category: 'holiday',
       priority: 2,
       targetRoles: [],
@@ -988,19 +1120,22 @@ const seedAnnouncements = async (users) => {
       authorId: users.admin._id,
     },
     {
-      title: 'Draft: Q4 Company Meeting',
-      summary: 'Details to be confirmed.',
-      content: 'Agenda and venue for the Q4 company meeting are being finalised.',
+      title: 'Annual Innovation Showcase & Townhall 2026',
+      summary: 'งานนำเสนอผลงานนวัตกรรมและโปรเจกต์ประจำปีของบุคลากร FTI พร้อมเวทีทาวน์ฮอลล์พบผู้บริหาร',
+      content:
+        'เตรียมพบกับงาน FTI Innovation Showcase 2026 ที่จะเปิดโอกาสให้ทุกแผนกและน้องๆ นักศึกษาฝึกงานได้นำเสนอผลงานโปรเจกต์ดีเด่น พร้อมรับฟังวิสัยทัศน์องค์กรและถาม-ตอบกับผู้บริหารแบบเป็นกันเอง',
+      coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
       category: 'news',
-      priority: 1,
+      priority: 4,
       targetRoles: [],
-      publishAt: days(14),
-      status: 'draft',
-      authorId: users.editor._id,
+      publishAt: days(-1),
+      expireAt: days(30),
+      status: 'published',
+      authorId: users.editor?._id || users.admin._id,
     },
   ]);
 
-  log(`  created ${announcements.length} announcements (5 published, 1 draft/scheduled)`);
+  log(`  created ${announcements.length} announcements with high-res cover posters`);
   return announcements;
 };
 
@@ -1038,6 +1173,353 @@ const seedFeedback = async (users) => {
   return feedback;
 };
 
+const seedConversationsAndMessages = async (users) => {
+  section('Seeding mock chat conversations and messages');
+  const { byUsername, allUsers } = users;
+  const allUserIds = allUsers.map((u) => u._id);
+
+  const uKrit = byUsername['krit'] || byUsername['intern'];
+  const uKit = byUsername['kittipong'] || byUsername['staff'];
+  const uThip = byUsername['pornthip'] || byUsername['admin'];
+  const uNu = byUsername['anucha'] || byUsername['superadmin'];
+  const uPim = byUsername['pim'];
+  const uLisa = byUsername['chalisa'] || byUsername['editor'];
+  const uChai = byUsername['somchai'];
+  const uKorn = byUsername['thanakorn'];
+  const uKan = byUsername['kan'];
+  const uJira = byUsername['jira'];
+
+  // 1. Channel: #ห้องคุยทั่วไป-FTI-Lounge
+  const generalChannel = await Conversation.create({
+    type: 'channel',
+    title: 'ห้องคุยทั่วไป (FTI Lounge)',
+    icon: '💬',
+    description: 'พื้นที่พูดคุยทั่วไป ทักทาย และแลกเปลี่ยนข่าวสารสำหรับชาว FTI ทุกคน',
+    participants: allUserIds,
+    unreadCounts: Object.fromEntries(allUserIds.map((id) => [id.toString(), 0])),
+  });
+
+  const generalMsgs = [
+    {
+      sender: uChai,
+      content: 'สวัสดีตอนเช้าทีมงาน FTI ทุกท่านครับ ขอให้สัปดาห์นี้การทำงานราบรื่นและประสบความสำเร็จครับ 🙏',
+      offsetMinutes: 120,
+    },
+    {
+      sender: uThip,
+      content: 'สวัสดีค่ะคุณสมชาย และยินดีต้อนรับน้องๆ นักศึกษาฝึกงาน Batch 2026/01 ทุกท่านอย่างเป็นทางการนะคะ 🎉',
+      offsetMinutes: 110,
+    },
+    {
+      sender: uNu,
+      content: 'สวัสดีครับทุกคน ระบบเครือข่ายและระบบภายในตึก A และ B พร้อมใช้งานเต็มรูปแบบ หากใครพบปัญหาแจ้งที่ศูนย์ช่วยเหลือไอทีได้ตลอดนะครับ ⚡',
+      offsetMinutes: 90,
+    },
+    {
+      sender: uKit,
+      content: 'ยินดีต้อนรับน้องๆ ครับ เที่ยงนี้มีร้านอาหารแนะนำข้างตึก B รสชาติดีมาก ใครว่างไปทานด้วยกันได้นะครับ 🍛',
+      offsetMinutes: 75,
+    },
+    {
+      sender: uKrit,
+      content: 'ขอบคุณพี่ๆ ทุกคนมากครับ ฝากเนื้อฝากตัวกับพี่ๆ ทีม FTI ด้วยนะครับผม 😊',
+      offsetMinutes: 60,
+    },
+    {
+      sender: uPim,
+      content: 'สวัสดีค่ะพี่ๆ ขอบคุณสำหรับการต้อนรับที่อบอุ่นนะคะ 🙏✨',
+      offsetMinutes: 50,
+    },
+    {
+      sender: uLisa,
+      content: 'บ่ายนี้มีขนมเบรคที่ห้องครัวชั้น 2 นะคะ แวะมาเติมพลังกันได้เลยจ้า ☕🥐',
+      offsetMinutes: 20,
+    },
+  ];
+
+  for (const m of generalMsgs) {
+    if (!m.sender) continue;
+    const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+    await ChatMessage.create({
+      conversationId: generalChannel._id,
+      senderId: m.sender._id,
+      content: m.content,
+      readBy: allUserIds,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    generalChannel.lastMessage = {
+      text: m.content,
+      senderId: m.sender._id,
+      createdAt,
+    };
+  }
+  await generalChannel.save();
+
+  // 2. Channel: #กลุ่มเด็กฝึกงาน-Batch-2026/01
+  const internUserIds = [uKrit?._id, uPim?._id, uJira?._id, uKan?._id, uThip?._id, uKorn?._id, uKit?._id].filter(Boolean);
+  const internChannel = await Conversation.create({
+    type: 'channel',
+    title: 'กลุ่มเด็กฝึกงาน (Batch 2026/01)',
+    icon: '🎓',
+    description: 'พื้นที่ประสานงาน ติดตามความก้าวหน้า และแลกเปลี่ยนของน้องๆ ฝึกงานรุ่น 2026/01',
+    participants: internUserIds,
+    unreadCounts: Object.fromEntries(internUserIds.map((id) => [id.toString(), 0])),
+  });
+
+  const internMsgs = [
+    {
+      sender: uThip,
+      content: 'น้องๆ Batch 2026/01 ทุกคน อย่าลืมส่งแบบฟอร์มเอกสารรายงานตัวฝึกงานภายในวันศุกร์นี้นะคะ 📄',
+      offsetMinutes: 180,
+    },
+    {
+      sender: uKorn,
+      content: 'ใครที่เอกสารมหาวิทยาลัยยังไม่เรียบร้อย มาติดต่อพี่กรที่โต๊ะ HR ตึก A ชั้น 2 ได้เลยนะครับ ยินดีให้คำแนะนำครับ',
+      offsetMinutes: 160,
+    },
+    {
+      sender: uKan,
+      content: 'รับทราบค่ะพี่กร กานต์นำส่งเอกสารเรียบร้อยแล้วค่ะ ขอบคุณมากนะคะ',
+      offsetMinutes: 140,
+    },
+    {
+      sender: uJira,
+      content: 'ของผมกำลังรอตราประทับจากคณะ จะรีบนำส่งให้ภายในวันพรุ่งนี้ครับพี่กร',
+      offsetMinutes: 120,
+    },
+    {
+      sender: uKit,
+      content: 'น้องกฤตและน้องพิมพ์ วันนี้เราจะมี Standup สรุปงานระบบ Welcome Hub เวลา 14:00 น. ที่ห้องประชุม IT นะครับ',
+      offsetMinutes: 45,
+    },
+    {
+      sender: uKrit,
+      content: 'รับทราบครับพี่กิตติพงษ์ ตอนนี้เตรียมสรุปหัวข้อและเดโมระบบเรียบร้อยครับ 💻🚀',
+      offsetMinutes: 30,
+    },
+    {
+      sender: uPim,
+      content: 'รับทราบค่ะ พร้อมเข้าร่วมประชุมค่ะ 👍',
+      offsetMinutes: 25,
+    },
+  ];
+
+  for (const m of internMsgs) {
+    if (!m.sender) continue;
+    const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+    await ChatMessage.create({
+      conversationId: internChannel._id,
+      senderId: m.sender._id,
+      content: m.content,
+      readBy: internUserIds,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    internChannel.lastMessage = {
+      text: m.content,
+      senderId: m.sender._id,
+      createdAt,
+    };
+  }
+  await internChannel.save();
+
+  // 3. Support: IT Helpdesk
+  const itSupportParticipants = Array.from(new Set([uKit?._id, uNu?._id, uKrit?._id, uPim?._id, uThip?._id].filter(Boolean)));
+  const itSupport = await Conversation.create({
+    type: 'support',
+    supportDepartment: 'it',
+    title: 'ศูนย์ช่วยเหลือไอที (IT Support)',
+    icon: '💻',
+    description: 'ช่องทางแจ้งปัญหาการใช้งานคอมพิวเตอร์ อุปกรณ์ไอที และเครือข่าย',
+    participants: itSupportParticipants,
+    unreadCounts: Object.fromEntries(itSupportParticipants.map((id) => [id.toString(), 0])),
+  });
+
+  const itMsgs = [
+    {
+      sender: uKrit,
+      content: 'สวัสดีครับพี่ๆ ทีม IT ขอสอบถามขั้นตอนการขอสิทธิ์เข้าใช้งานระบบฐานข้อมูลการพัฒนาหน่อยครับ',
+      offsetMinutes: 100,
+    },
+    {
+      sender: uKit,
+      content: 'สวัสดีครับน้องกฤต พี่อนุมัติสิทธิ์ในระบบเรียบร้อยแล้วครับ สามารถใช้ Connection String ในคู่มือทดสอบเชื่อมต่อได้เลยครับ 🛠️',
+      offsetMinutes: 80,
+    },
+    {
+      sender: uKrit,
+      content: 'เชื่อมต่อฐานข้อมูลได้สำเร็จแล้วครับ ขอบคุณพี่กิตติพงษ์มากครับผม 🙏',
+      offsetMinutes: 70,
+    },
+  ];
+
+  for (const m of itMsgs) {
+    if (!m.sender) continue;
+    const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+    await ChatMessage.create({
+      conversationId: itSupport._id,
+      senderId: m.sender._id,
+      content: m.content,
+      readBy: itSupportParticipants,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    itSupport.lastMessage = {
+      text: m.content,
+      senderId: m.sender._id,
+      createdAt,
+    };
+  }
+  await itSupport.save();
+
+  // 4. Support: HR Support
+  const hrSupportParticipants = Array.from(new Set([uThip?._id, uKorn?._id, uKrit?._id, uPim?._id, uKan?._id].filter(Boolean)));
+  const hrSupport = await Conversation.create({
+    type: 'support',
+    supportDepartment: 'hr',
+    title: 'ฝ่ายทรัพยากรบุคคล (HR Support)',
+    icon: '👥',
+    description: 'ปรึกษาเรื่องสวัสดิการ กฎระเบียบบริษัท และการลงเวลาปฏิบัติงาน',
+    participants: hrSupportParticipants,
+    unreadCounts: Object.fromEntries(hrSupportParticipants.map((id) => [id.toString(), 0])),
+  });
+
+  const hrMsgs = [
+    {
+      sender: uPim,
+      content: 'ขอสอบถามเรื่องการขอหนังสือรับรองการฝึกงานสำหรับการเบิกเงินสนับสนุนของทางมหาวิทยาลัยค่ะ',
+      offsetMinutes: 90,
+    },
+    {
+      sender: uKorn,
+      content: 'สามารถส่งแบบคำขอผ่านอีเมล hr@fti.or.th หรือติดต่อพี่กรได้เลยครับ ทางพี่จะออกเอกสารพร้อมตราประทับให้ภายใน 2 วันทำการครับ 📄',
+      offsetMinutes: 65,
+    },
+    {
+      sender: uPim,
+      content: 'ได้รับข้อมูลครบถ้วนแล้วค่ะ ขอบคุณมากค่ะพี่กร 🙏',
+      offsetMinutes: 50,
+    },
+  ];
+
+  for (const m of hrMsgs) {
+    if (!m.sender) continue;
+    const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+    await ChatMessage.create({
+      conversationId: hrSupport._id,
+      senderId: m.sender._id,
+      content: m.content,
+      readBy: hrSupportParticipants,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    hrSupport.lastMessage = {
+      text: m.content,
+      senderId: m.sender._id,
+      createdAt,
+    };
+  }
+  await hrSupport.save();
+
+  // 5. Direct 1-on-1: Kittipong (IT Mentor) <-> Krit (IT Intern)
+  if (uKit && uKrit) {
+    const directKitKrit = await Conversation.create({
+      type: 'direct',
+      participants: [uKit._id, uKrit._id],
+      unreadCounts: { [uKit._id.toString()]: 0, [uKrit._id.toString()]: 0 },
+    });
+
+    const directMsgs1 = [
+      {
+        sender: uKit,
+        content: 'สวัสดีกฤต การเซ็ตอัพ Environment ในโปรเจกต์ Welcome Hub เรียบร้อยดีไหม ติดปัญหาเรื่อง Node หรือแพ็กเกจอะไรไหมครับ?',
+        offsetMinutes: 150,
+      },
+      {
+        sender: uKrit,
+        content: 'เรียบร้อยดีครับพี่กิต รัน dev server ได้ปกติและเชื่อมต่อ MongoDB Atlas เรียบร้อยแล้วครับ 💻',
+        offsetMinutes: 130,
+      },
+      {
+        sender: uKit,
+        content: 'เยี่ยมมากครับ ลองดูโครงสร้างของระบบแชทกับผังอาคาร (Floor Plan) ไว้นะ เดี๋ยวเรามาคุยต่อเรื่องการปรับปรุง UI ให้ทันสมัยขึ้นครับ',
+        offsetMinutes: 60,
+      },
+      {
+        sender: uKrit,
+        content: 'รับทราบครับพี่กิต ตอนนี้กำลังพัฒนาส่วน Date Dividers, Read Receipts และกล่องส่งข้อความใหม่อยู่ครับผม 💪✨',
+        offsetMinutes: 10,
+      },
+    ];
+
+    for (const m of directMsgs1) {
+      const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+      await ChatMessage.create({
+        conversationId: directKitKrit._id,
+        senderId: m.sender._id,
+        content: m.content,
+        readBy: [uKit._id, uKrit._id],
+        createdAt,
+        updatedAt: createdAt,
+      });
+      directKitKrit.lastMessage = {
+        text: m.content,
+        senderId: m.sender._id,
+        createdAt,
+      };
+    }
+    await directKitKrit.save();
+  }
+
+  // 6. Direct 1-on-1: Pornthip (HR Manager) <-> Krit (IT Intern)
+  if (uThip && uKrit) {
+    const directThipKrit = await Conversation.create({
+      type: 'direct',
+      participants: [uThip._id, uKrit._id],
+      unreadCounts: { [uThip._id.toString()]: 0, [uKrit._id.toString()]: 0 },
+    });
+
+    const directMsgs2 = [
+      {
+        sender: uThip,
+        content: 'สวัสดีจ้ะกฤต ได้รับคีย์การ์ดและบัตรประจำตัวนักศึกษาฝึกงานเรียบร้อยแล้วใช่ไหมคะ?',
+        offsetMinutes: 200,
+      },
+      {
+        sender: uKrit,
+        content: 'ได้รับครบถ้วนเรียบร้อยแล้วครับพี่ทิพย์ ขอบคุณมากครับผม 🙏',
+        offsetMinutes: 180,
+      },
+      {
+        sender: uThip,
+        content: 'ยินดีมากจ้ะ ขอให้สนุกกับการฝึกงานและการเรียนรู้นะคะ หากมีเรื่องอะไรให้ HR ช่วยเหลือแจ้งได้ตลอดเลยจ้ะ 😊',
+        offsetMinutes: 120,
+      },
+    ];
+
+    for (const m of directMsgs2) {
+      const createdAt = new Date(Date.now() - m.offsetMinutes * 60 * 1000);
+      await ChatMessage.create({
+        conversationId: directThipKrit._id,
+        senderId: m.sender._id,
+        content: m.content,
+        readBy: [uThip._id, uKrit._id],
+        createdAt,
+        updatedAt: createdAt,
+      });
+      directThipKrit.lastMessage = {
+        text: m.content,
+        senderId: m.sender._id,
+        createdAt,
+      };
+    }
+    await directThipKrit.save();
+  }
+
+  log('  created initial mock conversations and messages');
+};
+
 const printSummary = async () => {
   section('Verification');
   const counts = await Promise.all([
@@ -1049,8 +1531,11 @@ const printSummary = async () => {
     Announcement.countDocuments(),
     Policy.countDocuments(),
     FAQ.countDocuments(),
+    KnowledgeTopic.countDocuments(),
     KnowledgeArticle.countDocuments(),
     Feedback.countDocuments(),
+    Conversation.countDocuments(),
+    ChatMessage.countDocuments(),
   ]);
 
   const labels = [
@@ -1062,28 +1547,39 @@ const printSummary = async () => {
     'Announcements',
     'Policies',
     'FAQ',
+    'Knowledge topics',
     'Knowledge articles',
     'Feedback',
+    'Conversations',
+    'Chat messages',
   ];
 
   labels.forEach((label, index) => {
     log(`  ${label.padEnd(20)} ${counts[index]}`);
   });
 
-  log('\n  Login accounts (development only):');
-  log('  ┌──────────────┬──────────────┬───────────────┐');
-  log('  │ username     │ role         │ password      │');
-  log('  ├──────────────┼──────────────┼───────────────┤');
-  for (const [username, role] of [
-    ['superadmin', 'super_admin'],
-    ['admin', 'admin'],
-    ['editor', 'editor'],
-    ['staff', 'staff'],
-    ['intern', 'intern'],
+  log('\n  Login accounts (all passwords: ' + DEV_PASSWORD + '):');
+  log('  ┌──────────────┬──────────────┬───────────────────────────────┐');
+  log('  │ username     │ role         │ linked person                 │');
+  log('  ├──────────────┼──────────────┼───────────────────────────────┤');
+  for (const [username, role, person] of [
+    ['admin', 'admin', 'Pornthip Saelim (HR Manager)'],
+    ['superadmin', 'super_admin', 'Anucha Rattanakul (IT Manager)'],
+    ['staff', 'staff', 'Kittipong Sae-ung (IT Support)'],
+    ['intern', 'intern', 'Krittapas Thipsang (IT Intern)'],
+    ['editor', 'editor', 'Chalisa Nimnual (Marketing)'],
+    ['somchai', 'admin', 'Somchai Wattana (President)'],
+    ['pornthip', 'admin', 'Pornthip Saelim (HR Manager)'],
+    ['anucha', 'super_admin', 'Anucha Rattanakul (IT Manager)'],
+    ['kittipong', 'staff', 'Kittipong Sae-ung (IT Support)'],
+    ['krit', 'intern', 'Krittapas Thipsang (IT Intern)'],
+    ['pim', 'intern', 'Pimchanok Sirirat (IT Intern)'],
+    ['jira', 'intern', 'Jirawat Puangchan (MKT Intern)'],
+    ['kan', 'intern', 'Kanyarat Duangdee (HR Intern)'],
   ]) {
-    log(`  │ ${username.padEnd(12)} │ ${role.padEnd(12)} │ ${DEV_PASSWORD.padEnd(13)} │`);
+    log(`  │ ${username.padEnd(12)} │ ${role.padEnd(12)} │ ${person.padEnd(29)} │`);
   }
-  log('  └──────────────┴──────────────┴───────────────┘');
+  log('  └──────────────┴──────────────┴───────────────────────────────┘');
 };
 
 const run = async () => {
@@ -1120,6 +1616,7 @@ const run = async () => {
     await seedCompanyInfo(users);
     await seedAnnouncements(users);
     await seedFeedback(users);
+    await seedConversationsAndMessages(users);
 
     await printSummary();
 

@@ -12,6 +12,8 @@ import {
   createKnowledgeTopic,
   updateKnowledgeTopic,
   deleteKnowledgeTopic,
+  mergeKnowledgeTopics,
+  uploadInlineImage,
   seedMockItKnowledge,
 } from '../controllers/knowledgeController.js';
 import {
@@ -54,6 +56,8 @@ router.get('/topics', requirePermission('policies:view'), listKnowledgeTopics);
 router.post('/topics', requirePermission('knowledge:manage'), createTopicValidator, validate, createKnowledgeTopic);
 router.patch('/topics/:id', requirePermission('knowledge:manage'), updateTopicValidator, validate, updateKnowledgeTopic);
 router.delete('/topics/:id', requirePermission('knowledge:manage'), topicIdValidator, validate, deleteKnowledgeTopic);
+router.post('/topics/:id/merge', requirePermission('knowledge:manage'), topicIdValidator, validate, mergeKnowledgeTopics);
+router.post('/upload-inline-image', requirePermission('knowledge:manage'), imageUpload('image'), uploadInlineImage);
 router.post('/seed-mock-it', requirePermission('knowledge:manage'), seedMockItKnowledge);
 
 // Categories & Quick links

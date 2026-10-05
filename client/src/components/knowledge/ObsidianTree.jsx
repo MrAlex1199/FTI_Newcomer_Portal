@@ -20,6 +20,7 @@ function FolderTreeNode({
   onOpenCreateTopic,
   onOpenEditTopic,
   onDeleteTopic,
+  onOpenMergeTopic,
   onOpenCreateArticle,
 }) {
   const { t } = useLanguage();
@@ -144,6 +145,20 @@ function FolderTreeNode({
                       <span>✏️</span>
                       <span>{t('renameFolder')}</span>
                     </button>
+                    {onOpenMergeTopic && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          onOpenMergeTopic(topic);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-blue-50 text-blue-700"
+                      >
+                        <span>🔀</span>
+                        <span>{t('mergeFolder') || 'ยุบรวมโฟลเดอร์...'}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -185,6 +200,7 @@ function FolderTreeNode({
               onOpenCreateTopic={onOpenCreateTopic}
               onOpenEditTopic={onOpenEditTopic}
               onDeleteTopic={onDeleteTopic}
+              onOpenMergeTopic={onOpenMergeTopic}
               onOpenCreateArticle={onOpenCreateArticle}
             />
           ))}
@@ -237,10 +253,12 @@ export default function ObsidianTree({
   canManage = false,
   onOpenCreateTopic,
   onOpenEditTopic,
+  onOpenMergeTopic,
   onDeleteTopic,
   onOpenCreateArticle,
   search: externalSearch,
   onSearchChange,
+  onToggleCollapse,
 }) {
   const { t } = useLanguage();
   const [internalSearch, setInternalSearch] = useState('');
@@ -353,7 +371,7 @@ export default function ObsidianTree({
             <button
               type="button"
               onClick={expandAll}
-              title="Expand all"
+              title={t('expandAll') || 'Expand all'}
               className="rounded p-1 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             >
               ⊞
@@ -361,11 +379,26 @@ export default function ObsidianTree({
             <button
               type="button"
               onClick={collapseAll}
-              title="Collapse all"
+              title={t('collapseAll') || 'Collapse all'}
               className="rounded p-1 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             >
               ⊟
             </button>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title={t('hideSidebar') || 'Hide sidebar'}
+                className="rounded p-1 text-slate-400 hover:bg-slate-200/80 hover:text-slate-700 ml-0.5 transition-colors"
+                aria-label="Hide sidebar"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="m14 9-3 3 3 3" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -509,6 +542,7 @@ export default function ObsidianTree({
                 canManage={canManage}
                 onOpenCreateTopic={onOpenCreateTopic}
                 onOpenEditTopic={onOpenEditTopic}
+                onOpenMergeTopic={onOpenMergeTopic}
                 onDeleteTopic={onDeleteTopic}
                 onOpenCreateArticle={onOpenCreateArticle}
               />
